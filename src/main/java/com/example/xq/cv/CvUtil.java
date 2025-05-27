@@ -19,19 +19,22 @@ public class CvUtil {
         // 加载图像
         Mat src = Imgcodecs.imread("test.jpg");
 
+        Rect roi = new Rect(16, 630, src.width() - 16 * 2, 1790 - 630);
+
+        Mat result = new Mat(src, roi);
 
 
 
-
-
-        // 2. 转换为灰度图
-        Mat gray = new Mat();
-        Imgproc.cvtColor(src, gray, Imgproc.COLOR_BGR2GRAY);
 
         Scalar color = new Scalar(0, 255, 0); // 绿色
 
-        Imgproc.rectangle(src, new Rect(16,630, src.width()-16*2, 1790-630), color,4);
-
+        int w = result.width() / 9;
+        int h =w;
+        for (int i = 0; i < 9; i++){
+            for(int j= 0; j < 10; j++){
+                Imgproc.rectangle(result, new Rect(i * w + w/2, j * h + h/2, w, h  ), color,2);
+            }
+        }
 
 
 
@@ -40,7 +43,7 @@ public class CvUtil {
         HighGui.namedWindow("img", HighGui.WINDOW_NORMAL);
         HighGui.resizeWindow("img", 800, 900);
 
-        HighGui.imshow("img", src);
+        HighGui.imshow("img", result);
         HighGui.waitKey(0);
         HighGui.destroyAllWindows();
 
