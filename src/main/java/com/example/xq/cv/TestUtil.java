@@ -1,14 +1,17 @@
 package com.example.xq.cv;
 
-import org.opencv.core.*;
+import cn.hutool.core.util.URLUtil;
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
 import org.opencv.highgui.HighGui;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.File;
 
-public class CvUtil {
+public class TestUtil {
 
     static {
         // 加载OpenCV本地库
@@ -40,7 +43,19 @@ public class CvUtil {
             }
         }
 
+        File dir = new File("template");
+        for (File file : dir.listFiles()) {
+            System.out.println(file);
+            String absolutePath = file.getAbsolutePath();
+            absolutePath = URLUtil.decode(absolutePath, "UTF-8");
 
+            Mat templateImage = Imgcodecs.imread(absolutePath, Imgcodecs.IMREAD_COLOR);
+
+            Mat result = new Mat();
+            Imgproc.matchTemplate(src, templateImage, result, Imgproc.TM_CCOEFF_NORMED);
+            System.out.println(result);
+
+        }
 
 
         // 显示结果
