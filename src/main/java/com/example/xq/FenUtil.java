@@ -3,7 +3,9 @@ package com.example.xq;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ChineseChessFENConverter {
+public class FenUtil {
+
+
 
     public static String convertToFEN(String[][] board) {
         if (board == null || board.length != 10 || board[0].length != 9) {
@@ -92,5 +94,10 @@ public class ChineseChessFENConverter {
 
         String fen = convertToFEN(board);
         System.out.println("FEN: " + fen);
+
+        String action = "a3a4";
+
+        String s = MoveUtil.convertToChineseNotation(board, action);
+        System.out.println("Action:" + s);
     }
 }

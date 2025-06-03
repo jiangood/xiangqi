@@ -13,7 +13,7 @@ public class FenTest {
         String[][] board = CvUtil.parse("demos/base.jpg");
 
 
-        String fen = ChineseChessFENConverter.convertToFEN(board);
+        String fen = FenUtil.convertToFEN(board);
         System.out.printf(BASE_FEN);
         System.out.printf(fen);
 

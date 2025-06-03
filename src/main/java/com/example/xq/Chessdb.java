@@ -20,9 +20,12 @@ public class Chessdb {
         params.put("board", board);
 
         String body = HttpUtil.get(url, params);
+        System.out.println(body);
 
-         body = body.substring(5,9);
+        body = body.substring(5, 9);
 
         return body;
     }
+
+
 }
