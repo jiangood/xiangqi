@@ -1,20 +1,18 @@
-package com.example.xq;
+package com.example.xq.utils;
 
-import com.example.xq.cv.CvUtil;
-import com.example.xq.engine.PikafishProcessHandler;
+import com.example.xq.utils.opencv.OpenCvUtil;
+import com.example.xq.utils.engine.PikafishProcessHandler;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
 
-@Service
-public class MainService {
+public class MainUtil {
 
     PikafishProcessHandler h = new PikafishProcessHandler();
 
-    @PostConstruct
-    public void init(){
+    public MainUtil(){
         try {
             h.startEngine(new File("bin/Pikafish-20250110/pikafish-bmi2.exe").getAbsolutePath());
         } catch (IOException e) {
@@ -24,7 +22,7 @@ public class MainService {
 
 
     public String process(String imageFile) throws InterruptedException, IOException {
-        String[][] boardArr = CvUtil.parse(imageFile);
+        String[][] boardArr = OpenCvUtil.parse(imageFile);
 
         // 判断是否标准的红上黑下，如果不是，则红黑转换
         if (!isBlackTop(boardArr)) {
@@ -36,7 +34,7 @@ public class MainService {
 
         String query = h.getBestMove(board,20);
 
-        String action = MoveUtil.convertToChineseNotation(boardArr, query);
+        String action = CnUtil.convertToChineseNotation(boardArr, query);
 
         System.out.println(query);
 
