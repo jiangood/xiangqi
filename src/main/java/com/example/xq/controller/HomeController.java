@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,7 +27,7 @@ public class HomeController {
     }
 
     @PostMapping("upload")
-    public String upload(MultipartFile file, Model model) throws IOException, InterruptedException {
+    public String upload(MultipartFile file, RedirectAttributes atts) throws IOException, InterruptedException {
 
         String originalFilename = file.getOriginalFilename();
         File tempFile = FileUtil.createTempFile(FileUtil.extName(originalFilename), true);
@@ -36,7 +37,7 @@ public class HomeController {
 
         tempFile.delete();
 
-        model.addAttribute("action", action);
-        return "index";
+        atts.addFlashAttribute("action",action);
+        return "redirect:/";
     }
 }
