@@ -8,10 +8,10 @@ public class FenTest {
 
     public static final String BASE_FEN = "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w";
 
-    @Test
-    public  void main() {
-        String[][] board = CvUtil.parse("demos/base.jpg");
 
+    @Test
+    public void process() throws InterruptedException {
+        String[][] board = CvUtil.parse("demos/base.jpg");
 
         String fen = FenUtil.convertToFEN(board);
         System.out.printf(BASE_FEN);

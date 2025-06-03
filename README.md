@@ -21,3 +21,9 @@ ucinewgame
 position fen r2ak1b1r/4a4/2n1b1nc1/p1p1p1p1p/2c6/6P2/P3P3P/N1CC2N2/9/1RBAKAB1R w
 
 go depth 20
+
+## 安装 
+
+linux
+
+yum install libatomic
