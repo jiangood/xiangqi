@@ -1,11 +1,15 @@
 package com.example.xq;
 
 import com.example.xq.cv.CvUtil;
+import org.springframework.stereotype.Service;
 
-public class Main {
+@Service
+public class MainService {
 
-    public static void main(String[] args) {
-        String[][] boardArr = CvUtil.parse("demos/base.jpg");
+
+
+    public String process(String imageFile) {
+        String[][] boardArr = CvUtil.parse(imageFile);
 
         // 判断是否标准的红上黑下，如果不是，则红黑转换
         if (!isBlackTop(boardArr)) {
@@ -22,6 +26,7 @@ public class Main {
         System.out.println(query);
 
         System.out.println(action);
+        return action;
     }
 
     private static void convertRedBlack(String[][] boardArr) {
