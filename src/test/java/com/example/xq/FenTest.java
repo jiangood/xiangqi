@@ -1,0 +1,23 @@
+package com.example.xq;
+
+import cn.hutool.core.lang.Assert;
+import com.example.xq.cv.CvUtil;
+import org.junit.jupiter.api.Test;
+
+public class FenTest {
+
+    public static final String BASE_FEN = "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w";
+
+    @Test
+    public  void main() {
+        String[][] board = CvUtil.parse("demos/base.jpg");
+
+
+        String fen = ChineseChessFENConverter.convertToFEN(board);
+        System.out.printf(BASE_FEN);
+        System.out.printf(fen);
+
+        Assert.state(fen.equals(BASE_FEN));
+        System.out.println(fen);
+    }
+}

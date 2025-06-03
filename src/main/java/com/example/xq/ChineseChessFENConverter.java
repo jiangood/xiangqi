@@ -12,14 +12,14 @@ public class ChineseChessFENConverter {
 
         // 1. 处理棋盘部分
         List<String> fenRows = new ArrayList<>();
-        
+
         for (int i = 0; i < 10; i++) {
             StringBuilder rowBuilder = new StringBuilder();
             int emptyCount = 0;
-            
+
             for (int j = 0; j < 9; j++) {
                 String piece = board[i][j];
-                
+
                 if (piece == null || piece.trim().isEmpty() || piece.equals("  ")) {
                     emptyCount++;
                 } else {
@@ -30,14 +30,14 @@ public class ChineseChessFENConverter {
                     rowBuilder.append(convertPieceToFEN(piece));
                 }
             }
-            
+
             if (emptyCount > 0) {
                 rowBuilder.append(emptyCount);
             }
-            
+
             fenRows.add(rowBuilder.toString());
         }
-        
+
         String boardFEN = String.join("/", fenRows);
 
         // 2. 当前走子方（假设红方先行）
@@ -58,16 +58,16 @@ public class ChineseChessFENConverter {
         // 确定棋子字母大小写（红方大写，黑方小写）
         char fenChar = switch (typeChar) {
             case '车' -> 'r';
-            case '马' -> 'h';
+            case '马' -> 'n';
             case '炮' -> 'c';
-            case '象', '相' -> 'e';
+            case '象', '相' -> 'b';
             case '士', '仕' -> 'a';
             case '将', '帅' -> 'k';
             case '兵', '卒' -> 'p';
             default -> ' ';
         };
 
-        if (colorChar == '红' || colorChar == 'r') { // 假设'r'表示红
+        if (colorChar == '红') {
             fenChar = Character.toUpperCase(fenChar);
         }
 
@@ -82,7 +82,7 @@ public class ChineseChessFENConverter {
             {"  ", "黑炮", "  ", "  ", "  ", "  ", "  ", "黑炮", "  "},
             {"黑卒", "  ", "黑卒", "  ", "黑卒", "  ", "黑卒", "  ", "黑卒"},
             {"  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  "},
-            
+
             {"  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  "},
             {"红兵", "  ", "红兵", "  ", "红兵", "  ", "红兵", "  ", "红兵"},
             {"  ", "红炮", "  ", "  ", "  ", "  ", "  ", "红炮", "  "},

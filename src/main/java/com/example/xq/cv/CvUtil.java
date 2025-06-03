@@ -2,7 +2,6 @@ package com.example.xq.cv;
 
 import cn.hutool.core.io.FileUtil;
 import org.opencv.core.*;
-import org.opencv.highgui.HighGui;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
@@ -20,48 +19,34 @@ public class CvUtil {
     }
 
 
-    public static void main(String[] args) {
+    public static String[][] parse(String imageFile) {
+
         // 加载图像
-        Mat src = Imgcodecs.imread("test.jpg");
+        Mat src = Imgcodecs.imread(imageFile);
 
         Map<Point, String> matchResult = matchTemplate(src);
 
-        int x = 8;
-        int y = 640;
+        int baseX = 8;
+        int baseY = 640;
 
+        int blockWidth = (src.width() - 2 * baseX) / 9;
+        int blockHeight = blockWidth - 5;
+        String[][] arr = new String[10][9];
 
-        Scalar color = new Scalar(0, 255, 0); // 绿色
-
-        int w = (src.width() - 2 * x) / 9;
-        int h = w - 5;
-        String[][] arr = new String[9][10];
-        for (int i = 0; i < 9; i++) {
-            for (int j = 0; j < 10; j++) {
-                Rect rec = new Rect(x + i * w, y + j * h, w, h);
-                //   Imgproc.rectangle(src, rec, color, 2);
-                // 保存模板
-                //  Imgcodecs.imwrite("img" + i +j + ".jpg", new Mat(src, rec));
-
+        for (int y = 0; y < 10; y++) {
+            for (int x = 0; x < 9; x++) {
+                Rect rec = new Rect(baseX + x * blockWidth, baseY + y * blockHeight, blockWidth, blockHeight);
                 for (Map.Entry<Point, String> e : matchResult.entrySet()) {
                     Point p = e.getKey();
                     String name = e.getValue();
                     if (p.inside(rec)) {
-                        arr[i][j] = name;
-                        Imgproc.rectangle(src, rec, color, 2);
+                        arr[y][x] = name;
                     }
                 }
             }
         }
 
-
-        // 显示结果
-        HighGui.namedWindow("img", HighGui.WINDOW_NORMAL);
-        HighGui.resizeWindow("img", 800, 900);
-
-        HighGui.imshow("img", src);
-        HighGui.waitKey(0);
-        HighGui.destroyAllWindows();
-
+        return arr;
 
     }
 

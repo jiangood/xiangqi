@@ -1,8 +1,9 @@
-yzto6rGJWoRktFXXP29uQ
-bce-v3/ALTAK-rxgNMSVUBwKBpDoXi7Zqq/f9f5f55a3bf3b9268dd1ca4fbbcaab1559d17643
+# 接口
+https://www.chessdb.cn/cloudbook_api.html
 
+# FEN 格式
+https://www.xqbase.com/protocol/cchess_move.htm
 
-AccessKeyID:
-ALTAKLsCc5HNYq7N3WCcgwQ5uN
-AccessKeySecret:
-0bc09e6c15604d33856bdbffe8599e1a
+![img.png](img.png)
+
+![img_1.png](img_1.png)
