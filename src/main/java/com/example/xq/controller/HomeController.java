@@ -4,6 +4,7 @@ import cn.hutool.core.io.FileUtil;
 import com.example.xq.MainService;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -25,8 +26,7 @@ public class HomeController {
     }
 
     @PostMapping("upload")
-    @ResponseBody
-    public String upload(MultipartFile file) throws IOException {
+    public String upload(MultipartFile file, Model model) throws IOException, InterruptedException {
 
         String originalFilename = file.getOriginalFilename();
         File tempFile = FileUtil.createTempFile(FileUtil.extName(originalFilename), true);
@@ -34,9 +34,9 @@ public class HomeController {
 
         String action = mainService.process(tempFile.getAbsolutePath());
 
-
         tempFile.delete();
 
-        return action;
+        model.addAttribute("action", action);
+        return "index";
     }
 }

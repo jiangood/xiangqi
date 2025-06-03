@@ -10,6 +10,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class CvUtil {
 
@@ -19,7 +22,7 @@ public class CvUtil {
     }
 
 
-    public static String[][] parse(String imageFile) {
+    public static String[][] parse(String imageFile) throws InterruptedException {
 
         // 加载图像
         Mat src = Imgcodecs.imread(imageFile);
@@ -50,21 +53,32 @@ public class CvUtil {
 
     }
 
-    public static Map<Point, String> matchTemplate(Mat src) {
+    public static Map<Point, String> matchTemplate(Mat src) throws InterruptedException {
         Map<Point, String> map = new HashMap<>();
         File template = new File("template");
-        for (File file : template.listFiles()) {
-            List<Point> points = matchTemplate(src, file);
-            for (Point point : points) {
-                map.put(point, FileUtil.mainName(file));
-            }
+
+
+        File[] files = template.listFiles();
+        ExecutorService executor = Executors.newFixedThreadPool(files.length);
+        for (File file : files) {
+            executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    List<Point> points = matchTemplate(src, file);
+                    for (Point point : points) {
+                        map.put(point, FileUtil.mainName(file));
+                    }
+                }
+            });
         }
+        executor.shutdown();
+        executor.awaitTermination(1, TimeUnit.MINUTES);
+
         return map;
     }
 
+
     public static List<Point> matchTemplate(Mat src, File templateFIle) {
-
-
         File tempFile = FileUtil.createTempFile(); // 中文不可读
 
 
@@ -89,17 +103,11 @@ public class CvUtil {
                 if (value != null && value[0] >= threshold) {
                     Point p = new Point(j, i);
 
-
                     // 输出所有匹配位置
                     System.out.println(FileUtil.mainName(templateFIle) + " 找到 " + matches.size() + " 个匹配项：");
                     System.out.println("坐标: (" + p.x + ", " + p.y + ")");
 
-                    // 在主图上绘制矩形标记匹配位置
-                 /*   Imgproc.rectangle(src, p,
-                            new Point(p.x + templateImage.cols(), p.y + templateImage.rows()),
-                            new Scalar(0, 0, 255), 2);*/
-
-                    matches.add(new Point(p.x + templateImage.cols() /2, p.y+ templateImage.height() /2));
+                    matches.add(new Point(p.x + templateImage.cols() / 2, p.y + templateImage.height() / 2));
                 }
             }
         }

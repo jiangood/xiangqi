@@ -8,7 +8,7 @@ public class MainService {
 
 
 
-    public String process(String imageFile) {
+    public String process(String imageFile) throws InterruptedException {
         String[][] boardArr = CvUtil.parse(imageFile);
 
         // 判断是否标准的红上黑下，如果不是，则红黑转换

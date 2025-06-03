@@ -1,5 +1,6 @@
 package com.example.xq;
 
+import cn.hutool.core.lang.Assert;
 import cn.hutool.http.HttpUtil;
 
 import java.util.HashMap;
@@ -21,6 +22,8 @@ public class Chessdb {
 
         String body = HttpUtil.get(url, params);
         System.out.println(body);
+
+        Assert.state(!body.contains("invalid"), "非法" + body);
 
         body = body.substring(5, 9);
 
