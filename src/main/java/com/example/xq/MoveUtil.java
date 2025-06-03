@@ -15,7 +15,7 @@ public class MoveUtil {
 
     public static String convertToChineseNotation(String[][] board, String move) {
         if (move.length() != 4) {
-            return "非法走法";
+            return "非法走法" + move;
         }
 
         // 解析起始和目标位置
@@ -26,7 +26,7 @@ public class MoveUtil {
         int endRow = 10 - Character.getNumericValue(move.charAt(3)) - 1;
 
         if (startCol == -1 || endCol == -1 || startRow < 0 || startRow > 9 || endRow < 0 || endRow > 9) {
-            return "非法走法";
+            return "非法走法, 坐标错误" + startRow ;
         }
 
         // 获取棋子类型

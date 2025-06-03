@@ -1,14 +1,29 @@
 package com.example.xq;
 
 import com.example.xq.cv.CvUtil;
+import com.example.xq.engine.PikafishProcessHandler;
+import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
+
+import java.io.File;
+import java.io.IOException;
 
 @Service
 public class MainService {
 
+    PikafishProcessHandler h = new PikafishProcessHandler();
+
+    @PostConstruct
+    public void init(){
+        try {
+            h.startEngine(new File("bin/Pikafish-20250110/pikafish-bmi2.exe").getAbsolutePath());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
 
-    public String process(String imageFile) throws InterruptedException {
+    public String process(String imageFile) throws InterruptedException, IOException {
         String[][] boardArr = CvUtil.parse(imageFile);
 
         // 判断是否标准的红上黑下，如果不是，则红黑转换
@@ -19,7 +34,7 @@ public class MainService {
         String board = FenUtil.convertToFEN(boardArr);
 
 
-        String query = Chessdb.query(board);
+        String query = h.getBestMove(board,20);
 
         String action = MoveUtil.convertToChineseNotation(boardArr, query);
 
