@@ -1,4 +1,4 @@
-package com.example.xq.utils.opencv;
+package com.example.xq.cv;
 
 import cn.hutool.core.io.FileUtil;
 import org.opencv.core.*;
@@ -14,7 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class OpenCvUtil {
+public class CvUtil {
 
     static {
         // 加载OpenCV本地库

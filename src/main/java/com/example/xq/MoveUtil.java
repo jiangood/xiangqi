@@ -1,4 +1,4 @@
-package com.example.xq.utils;
+package com.example.xq;
 
 /***
 
@@ -7,7 +7,7 @@ package com.example.xq.utils;
  平：棋子横向移动（左右移动，不改变纵线）。
 
  */
-public class CnUtil {
+public class MoveUtil {
 
     // 列字母到数字的映射（a-i对应0-8）
     private static final String COLUMN_LETTERS = "abcdefghi";

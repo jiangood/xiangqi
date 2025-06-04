@@ -1,4 +1,4 @@
-package com.example.xq.utils;
+package com.example.xq;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -97,7 +97,7 @@ public class FenUtil {
 
         String action = "a3a4";
 
-        String s = CnUtil.convertToChineseNotation(board, action);
+        String s = MoveUtil.convertToChineseNotation(board, action);
         System.out.println("Action:" + s);
     }
 }
