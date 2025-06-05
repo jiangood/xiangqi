@@ -13,6 +13,7 @@ RUN yum update -y && \
     epel-release \
     opencv \
     opencv-devel \
+    libatomic \
     && yum clean all
 
 # 设置工作目录
