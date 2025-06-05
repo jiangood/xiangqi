@@ -18,12 +18,13 @@ RUN apt-get update && \
 # 设置工作目录
 WORKDIR /app
 
-
 # 设置环境变量，使Java能够找到OpenCV库
 ENV LD_LIBRARY_PATH=/usr/lib/jni
 
-COPY --from=java /app.jar ./
 ADD template ./template
+
+COPY --from=java /app.jar ./
+
 # 运行示例程序
 EXPOSE 80
 ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-Duser.timezone=Asia/Shanghai","-jar","app.jar"]
