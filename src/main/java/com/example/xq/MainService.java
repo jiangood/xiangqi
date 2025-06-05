@@ -1,5 +1,6 @@
 package com.example.xq;
 
+import cn.hutool.system.SystemUtil;
 import com.example.xq.cv.CvUtil;
 import com.example.xq.engine.PikafishProcessHandler;
 import jakarta.annotation.PostConstruct;
@@ -16,7 +17,9 @@ public class MainService {
     @PostConstruct
     public void init(){
         try {
-            h.startEngine(new File("bin/Pikafish-20250110/pikafish-bmi2.exe").getAbsolutePath());
+            boolean win = SystemUtil.getOsInfo().isWindows();
+            String path = win ? "bin/Pikafish-20250110/pikafish-bmi2.exe": "bin/Pikafish-20250110/Linux/pikafish-avx2";
+            h.startEngine(new File(path).getAbsolutePath());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
