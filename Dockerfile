@@ -21,6 +21,10 @@ WORKDIR /app
 # 设置环境变量，使Java能够找到OpenCV库
 ENV LD_LIBRARY_PATH=/usr/lib/jni
 
+
+# 安装pikafish
+
+
 ADD template ./template
 
 COPY --from=java /app.jar ./
