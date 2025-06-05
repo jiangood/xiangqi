@@ -2,7 +2,7 @@ FROM maven:3-openjdk-17 AS java
 WORKDIR /build
 ADD pom.xml ./
 ADD src ./src
-RUN mvn package -DskipTests -q
+RUN mvn package
 RUN  mv target/*.jar /app.jar
 
 
