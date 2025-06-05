@@ -16,6 +16,7 @@ ENV TZ=Asia/Shanghai
 # 避免交互式安装提示
 ENV DEBIAN_FRONTEND=noninteractive
 
+
 # 更新并安装依赖
 RUN  apt-get update && apt-get install -y openjdk-17-jdk \
     libopencv-dev \
@@ -24,7 +25,11 @@ RUN  apt-get update && apt-get install -y openjdk-17-jdk \
 
 
 
-
+# 配置 Locale 和时区
+RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
+    sed -i '/zh_CN.UTF-8/s/^# //g' /etc/locale.gen && \
+    locale-gen && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 
 # 设置工作目录
