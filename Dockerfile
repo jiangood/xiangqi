@@ -5,7 +5,7 @@ RUN mvn package -q -DskipTests
 RUN  mv target/*.jar /app.jar
 
 
-FROM amazoncorretto:17
+FROM amazoncorretto:17-al2023
 
 # 安装 OpenCV 依赖项
 RUN yum update -y && \
@@ -16,7 +16,7 @@ RUN yum update -y && \
     libatomic \
     && yum clean all
 
-RUN strings /usr/lib64/libstdc++.so.6 | grep GLIBCXX
+
 
 
 # 设置工作目录
