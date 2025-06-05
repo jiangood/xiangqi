@@ -16,6 +16,9 @@ RUN yum update -y && \
     libatomic \
     && yum clean all
 
+RUN strings /usr/lib64/libstdc++.so.6 | grep GLIBCXX
+
+
 # 设置工作目录
 WORKDIR /app
 
