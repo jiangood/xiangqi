@@ -27,9 +27,18 @@ ENV LD_LIBRARY_PATH=/usr/lib/jni
 
 
 # 安装pikafish
+
+RUN wget -4c https://ftp.gnu.org/gnu/glibc/glibc-2.29.tar.gz
+RUN tar -zxvf glibc-2.29.tar.gz
+RUN  cd glibc-2.29 && \
+mkdir build_dir && \
+cd build_dir && \
+sudo ../configure --prefix=/opt/glibc && \
+sudo make && \
+sudo make install
+
 ADD lib/Pikafish-20250110 ./bin/Pikafish-20250110
 RUN chmod +x ./bin/Pikafish-20250110/Linux/*
-RUN ./bin/Pikafish-20250110/Linux/pikafish-avx2 help
 
 
 ADD template ./template
