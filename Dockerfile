@@ -25,11 +25,6 @@ RUN  apt-get update && apt-get install -y openjdk-17-jdk \
 
 
 
-# 配置 Locale 和时区
-RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
-    sed -i '/zh_CN.UTF-8/s/^# //g' /etc/locale.gen && \
-    locale-gen && \
-    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 
 # 设置工作目录
@@ -50,4 +45,4 @@ COPY --from=java /app.jar ./
 
 # 运行示例程序
 EXPOSE 80
-ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-Duser.timezone=Asia/Shanghai","-jar","app.jar"]
+ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-Duser.timezone=Asia/Shanghai","-Dfile.encoding=UTF-8","-jar","app.jar"]
