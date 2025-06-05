@@ -19,11 +19,20 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # 更新并安装依赖
 RUN  apt-get update && apt-get install -y openjdk-17-jdk \
-    libopencv-dev \
      # 皮卡鱼依赖
     libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 
+
+# 安装指定版本opencv
+
+RUN sudo apt install -y cmake g++
+#安装项目构建工具，有两个选择，make或ninja， ninja自动支持多线程，make得自己加-j选项，这里先全安装上
+RUN sudo apt install make ninja-build
+RUN wget https://github.com/opencv/opencv/archive/refs/tags/4.11.0.zip && unzip  4.11.0.zip && ls && cd  4.11.0 && \
+    cmake -B build -GNinja -DCMAKE_INSTALL_PREFIX=~/lib/opencv4.9.0_install && \
+    cmake --build build/ &&\
+    cmake --install build/
 
 
 
