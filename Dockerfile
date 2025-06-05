@@ -23,7 +23,7 @@ WORKDIR /app
 ENV LD_LIBRARY_PATH=/usr/lib/jni
 
 COPY --from=java /app.jar ./
-
+ADD template ./template
 # 运行示例程序
 EXPOSE 80
 ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-Duser.timezone=Asia/Shanghai","-jar","app.jar"]
