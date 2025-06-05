@@ -20,7 +20,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 # 更新并安装依赖
 RUN  apt-get update && apt-get install -y openjdk-17-jdk \
     libopencv-dev \
-  #  libatomic \
+     # 皮卡鱼依赖
+    libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 
 
