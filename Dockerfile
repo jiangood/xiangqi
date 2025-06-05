@@ -7,6 +7,7 @@ RUN mvn package -DskipTests -q  mv target/*.jar /app.jar && rm -rf *
 
 
 FROM amazoncorretto:17
+RUN apt-get update
 
 # 安装OpenCV依赖
 RUN apt-get update && \
