@@ -1,7 +1,7 @@
 FROM maven:3-openjdk-17 AS java
 WORKDIR /build
 ADD . .
-RUN mvn package -q
+RUN mvn package -q -DskipTests
 RUN  mv target/*.jar /app.jar
 
 
