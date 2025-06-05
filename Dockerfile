@@ -2,8 +2,8 @@ FROM maven:3-openjdk-17 AS java
 WORKDIR /build
 ADD pom.xml ./
 RUN mvn dependency:go-offline --fail-never
-ADD . .
-RUN mvn package -DskipTests -q  mv target/*.jar /app.jar && rm -rf *
+ADD src ./src
+RUN mvn package -DskipTests -q && mv target/*.jar /app.jar && rm -rf *
 
 
 FROM amazoncorretto:17
