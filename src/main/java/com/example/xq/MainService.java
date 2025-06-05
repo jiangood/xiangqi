@@ -1,15 +1,18 @@
 package com.example.xq;
 
+import cn.hutool.core.lang.Assert;
 import cn.hutool.system.SystemUtil;
 import com.example.xq.cv.CvUtil;
 import com.example.xq.engine.PikafishProcessHandler;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
 
 @Service
+@Slf4j
 public class MainService {
 
     PikafishProcessHandler h = new PikafishProcessHandler();
@@ -18,10 +21,16 @@ public class MainService {
     public void init(){
         try {
             boolean win = SystemUtil.getOsInfo().isWindows();
+            log.info("是否win {}", win);
             String path = win ? "bin/Pikafish-20250110/pikafish-bmi2.exe": "bin/Pikafish-20250110/Linux/pikafish-avx2";
-            h.startEngine(new File(path).getAbsolutePath());
+            log.info("皮卡鱼 {}", path);
+            File file = new File(path);
+            String absolutePath = file.getAbsolutePath();
+            log.info("绝对路径 {}, 是否存在{}", absolutePath, file.exists());
+            Assert.state(file.exists(), "文件不存在 " + absolutePath);
+            h.startEngine(absolutePath);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.info("初始化皮卡鱼失败", e);
         }
     }
 
