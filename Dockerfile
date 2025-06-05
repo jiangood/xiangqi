@@ -6,7 +6,7 @@ RUN  mv target/*.jar /app.jar
 
 
 # 使用官方 Ubuntu 镜像
-FROM ubuntu:22.04
+FROM ubuntu
 
 # 设置语言、时区
 ENV LANG zh_CN.UTF-8
