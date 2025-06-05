@@ -8,6 +8,11 @@ RUN  mv target/*.jar /app.jar
 # 使用官方 Ubuntu 镜像
 FROM ubuntu:22.04
 
+# 设置语言、时区
+ENV LANG zh_CN.UTF-8
+ENV LC_ALL zh_CN.UTF-8
+ENV TZ=Asia/Shanghai
+
 # 避免交互式安装提示
 ENV DEBIAN_FRONTEND=noninteractive
 
