@@ -7,14 +7,14 @@ RUN mvn package -DskipTests -q  mv target/*.jar /app.jar && rm -rf *
 
 
 FROM amazoncorretto:17
-RUN apt-get update
 
-# 安装OpenCV依赖
-RUN apt-get update && \
-    apt-get install -y \
-    libopencv-dev \
-    opencv-data \
-    && rm -rf /var/lib/apt/lists/*
+# 安装 OpenCV 依赖项
+RUN yum update -y && \
+    yum install -y \
+    epel-release \
+    opencv \
+    opencv-devel \
+    && yum clean all
 
 # 设置工作目录
 WORKDIR /app
