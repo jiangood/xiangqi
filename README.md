@@ -1,5 +1,5 @@
-# 接口 （有些局面不全）
-https://www.chessdb.cn/cloudbook_api.html
+# 中国象棋局面分析接口
+
 
 # FEN 格式
 https://www.xqbase.com/protocol/cchess_move.htm
