@@ -1,8 +1,6 @@
 FROM maven:3-openjdk-17 AS java
 WORKDIR /build
-ADD pom.xml ./
-ADD src ./src
-ADD lib ./lib
+ADD . .
 RUN mvn package -q
 RUN  mv target/*.jar /app.jar
 
