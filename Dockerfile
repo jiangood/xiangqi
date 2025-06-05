@@ -25,7 +25,6 @@ ENV LD_LIBRARY_PATH=/usr/lib/jni
 # 安装pikafish
 ADD lib/Pikafish-20250110 ./bin/Pikafish-20250110
 RUN chmod +x ./bin/Pikafish-20250110/Linux/*
-RUN /app/bin/Pikafish-20250110/Linux/pikafish-avx2
 ADD template ./template
 
 COPY --from=java /app.jar ./

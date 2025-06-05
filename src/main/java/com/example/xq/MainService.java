@@ -1,6 +1,8 @@
 package com.example.xq;
 
 import cn.hutool.core.lang.Assert;
+import cn.hutool.core.util.RuntimeUtil;
+import cn.hutool.setting.dialect.PropsUtil;
 import cn.hutool.system.SystemUtil;
 import com.example.xq.cv.CvUtil;
 import com.example.xq.engine.PikafishProcessHandler;
@@ -28,6 +30,10 @@ public class MainService {
             String absolutePath = file.getAbsolutePath();
             log.info("绝对路径 {}, 是否存在{}", absolutePath, file.exists());
             Assert.state(file.exists(), "文件不存在 " + absolutePath);
+
+            String help = RuntimeUtil.execForStr(absolutePath, "help");
+            log.info("help: {}",help);
+
             h.startEngine(absolutePath);
         } catch (IOException e) {
             log.info("初始化皮卡鱼失败", e);
