@@ -1,5 +1,6 @@
 package com.example.xq.engine;
 
+import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.RuntimeUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.system.SystemUtil;
@@ -43,18 +44,13 @@ public class PikafishProcessHandler {
                 log.warn("软件不存在 {}", file.getAbsolutePath());
                 continue;
             }
+            // 返回多行时才有效
             String help = RuntimeUtil.execForStr(file.getAbsolutePath(), "help");
             log.info("help: {}", help);
-            if (StrUtil.isEmpty(help)) {
-                log.warn("软件无法运行 {}", file);
-                continue;
+            if (StrUtil.isNotEmpty(help) && StrUtil.count(help, "\n") > 2) {
+                return file;
             }
-
-
-            log.info("使用引擎" + file.getAbsolutePath());
-
-
-            return file;
+            log.warn("当前引擎无法运行，继续判断 {}", file);
         }
 
         return null;
@@ -79,6 +75,7 @@ public class PikafishProcessHandler {
 
     public String getBestMove(String fen, int depth) throws IOException {
         sendCommand("position fen " + fen);
+        ThreadUtil.sleep(100);
         sendCommand("go depth " + depth);
         String bestMove = waitForResponse("bestmove");
         return bestMove != null ? bestMove.split(" ")[1] : null;

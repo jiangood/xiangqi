@@ -1,6 +1,5 @@
 package com.example.xq;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -13,8 +12,8 @@ import java.util.Map;
  */
 public class NameUtil {
 
-    // 列字母到数字的映射（a-i对应0-8）
-    private static final String COLUMN_LETTERS = "abcdefghi";
+
+    // 中文棋谱从右到左
     private static final String COLUMN_LETTERS_CN = "九八七六五四三二一";
 
     public static String convertToChineseNotation(String[][] board, String move) {
@@ -23,18 +22,12 @@ public class NameUtil {
         }
 
         // 解析起始和目标位置
-        int startCol = COLUMN_LETTERS.indexOf(move.charAt(0));
-        int startRow = 10 - Character.getNumericValue(move.charAt(1)) - 1;
-
-        int endCol = COLUMN_LETTERS.indexOf(move.charAt(2));
-        int endRow = 10 - Character.getNumericValue(move.charAt(3)) - 1;
-
-        if (startCol == -1 || endCol == -1 || startRow < 0 || startRow > 9 || endRow < 0 || endRow > 9) {
-            return "非法走法, 坐标错误" + startRow;
-        }
+        int x1 = move.charAt(0) - 'a';
+        int y1 = move.charAt(1) - '0';
 
         // 获取棋子类型
-        String piece = board[startRow][startCol];
+        String piece = board[9 - y1][x1];
+
         if (piece == null || piece.trim().isEmpty()) {
             return "起始位置无棋子";
         }
@@ -49,6 +42,9 @@ public class NameUtil {
 
     /**
      * 参考图三
+     * <p>
+     * 坐标
+     *
      * @param move
      * @return
      */
@@ -58,51 +54,30 @@ public class NameUtil {
         }
 
         // 解析起始和目标位置, 坐标原点为左下
-        char c1 = move.charAt(0);
-        char c2 = move.charAt(1);
-        char c3 = move.charAt(2);
-        char c4 = move.charAt(3);
+        int x1 = move.charAt(0) - 'a';
+        int y1 = move.charAt(1) - '0';
+        int x2 = move.charAt(2) - 'a';
+        int y2 = move.charAt(3) - '0';
 
-
-
-
-        int letterIndex = COLUMN_LETTERS.indexOf(c1);
-        char letterCn = COLUMN_LETTERS_CN.charAt(letterIndex);
-
-
-        int letterIndex2 = COLUMN_LETTERS.indexOf(c3);
-        char letterCn2 = COLUMN_LETTERS_CN.charAt(letterIndex2);
-
-        int startRow = 10 - Character.getNumericValue(c2) - 1;
-
-
-        int endCol = COLUMN_LETTERS.indexOf(c3);
-
-        int endRow = 10 - Character.getNumericValue(c4) - 1;
-
-
-
-
-        int startPos = 9 - (letterIndex);
-        int endPos = 9 - (endCol);
+        char x1cn = COLUMN_LETTERS_CN.charAt(x1);
+        char x2cn = COLUMN_LETTERS_CN.charAt(x2);
 
         // 平
-        if(c2 == c4){ // 平，      H2-E2  炮二平五
-            return letterCn + "平" + letterCn2;
+        if (y1 == y2) { // 平，      H2-E2  炮二平五
+            return x1cn + "平" + x2cn;
         }
+
+
+        String dir = y2 > y1 ? "进" : "退";
+        int step = Math.abs(y2 - y1);
+
         // 进退， 判断字母相同
-        if(c1 == c3){ //     map.put("E2-E6", "炮五进四");
-            int step =c4-c2;
-            String dir = step > 0 ? "进":"退";
-            return letterCn +dir + step;
+        if (x1 == x2) { //     map.put("E2-E6", "炮五进四");
+            return x1cn + dir + step;
         }
-
-
-        String direction = endRow > startRow ? "进" : "退";
-        int distance = Math.abs(endRow - startRow);
 
         // 如果是否斜着走，最后一个字为目标列号
-        return startPos + direction + endPos;
+        return x1cn + dir + x2cn;
     }
 
     public static char getChinesePieceName(char pieceType) {
@@ -119,7 +94,7 @@ public class NameUtil {
     }
 
     public static void main(String[] args) {
-     //   convertToChineseNotation("e6e4");
+        //   convertToChineseNotation("e6e4");
         Map<String, String> map = new LinkedHashMap<>();
         map.put("E2-E6", "炮五进四");
         map.put("H2-E2", "炮二平五");
@@ -128,11 +103,10 @@ public class NameUtil {
         map.put("E6-E4", "前炮退二");
 
         for (Map.Entry<String, String> e : map.entrySet()) {
-            String move = e.getKey().replace("-","").toLowerCase();
+            String move = e.getKey().replace("-", "").toLowerCase();
             String x = convertToChineseNotation(move);
             System.out.println(x);
         }
-
 
 
     }

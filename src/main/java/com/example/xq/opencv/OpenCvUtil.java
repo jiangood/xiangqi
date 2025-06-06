@@ -76,9 +76,7 @@ public class OpenCvUtil {
         Map<Point, String> map = new HashMap<>();
 
         templateMatMap.forEach((name, mat) -> {
-            log.info("匹配模板文件 {}", name);
             List<Point> points = matchTemplate(src, mat);
-            log.info("结果 {}", points.size());
             for (Point point : points) {
                 map.put(point, FileUtil.mainName(name));
             }
