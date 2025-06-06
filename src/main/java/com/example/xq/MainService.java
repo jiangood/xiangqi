@@ -56,7 +56,7 @@ public class MainService {
         String board = FenUtil.convertToFEN(boardArr);
 
 
-        String query = h.getBestMove(board,20);
+        String query = h.getBestMove(board,10);
         log.info("获取最佳走法:{}",query);
 
         String action = MoveUtil.convertToChineseNotation(boardArr, query);
