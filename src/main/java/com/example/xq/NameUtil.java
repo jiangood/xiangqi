@@ -94,7 +94,7 @@ public class NameUtil {
         if(c1 == c3){ //     map.put("E2-E6", "炮五进四");
             int step =c4-c2;
             String dir = step > 0 ? "进":"退";
-            return letterCn +dir + letterCn2;
+            return letterCn +dir + step;
         }
 
 
