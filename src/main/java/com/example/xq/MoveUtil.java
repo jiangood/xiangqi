@@ -26,7 +26,7 @@ public class MoveUtil {
         int endRow = 10 - Character.getNumericValue(move.charAt(3)) - 1;
 
         if (startCol == -1 || endCol == -1 || startRow < 0 || startRow > 9 || endRow < 0 || endRow > 9) {
-            return "非法走法, 坐标错误" + startRow ;
+            return "非法走法, 坐标错误" + startRow;
         }
 
         // 获取棋子类型
@@ -36,7 +36,7 @@ public class MoveUtil {
         }
 
         char pieceType = piece.charAt(1); // 第二个字符是棋子类型
-        String pieceName = getChinesePieceName(pieceType);
+        char pieceName = getChinesePieceName(pieceType);
 
         // 生成中文描述
         int startPos = 9 - (startCol);
@@ -44,27 +44,32 @@ public class MoveUtil {
 
         // 平
         if (startRow == endRow) {
-            return pieceName + startPos +  "平" + endPos;
+            return pieceName + startPos + "平" + endPos;
         }
 
         String direction = endRow < startRow ? "进" : "退";
-        int distance = Math.abs( endRow - startRow);
-        return pieceName + startPos + direction + distance;
+        int distance = Math.abs(endRow - startRow);
+        // 如果直线走，最后一个字为步数
+        if (startCol == endCol) {
+            return pieceName + startPos + direction + distance;
+        }
+
+        // 如果是否斜着走，最后一个字为目标列号
+        return pieceName + startPos + direction + endCol;
     }
 
-    private static String getChinesePieceName(char pieceType) {
+    private static char getChinesePieceName(char pieceType) {
         return switch (pieceType) {
-            case '车' -> "车";
-            case '马' -> "马";
-            case '炮' -> "炮";
-            case '相', '象' -> "象";
-            case '仕', '士' -> "士";
-            case '帅', '将' -> "帅";
-            case '兵', '卒' -> "兵";
-            default -> "";
+            case 'r' -> '车';
+            case 'n' -> '马';
+            case 'c' -> '炮';
+            case 'b' -> '象';
+            case 'a' -> '士';
+            case 'k', '将' -> '帅';
+            case 'p' -> '兵';
+            default -> pieceType;
         };
     }
-
 
 
 }
