@@ -48,7 +48,7 @@ public class NameUtil {
             return "非法走法" + move;
         }
 
-        // 解析起始和目标位置
+        // 解析起始和目标位置, 坐标原点为左下
         int startCol = COLUMN_LETTERS.indexOf(move.charAt(0));
         int startRow = 10 - Character.getNumericValue(move.charAt(1)) - 1;
 
@@ -60,8 +60,6 @@ public class NameUtil {
         }
 
 
-
-        // 生成中文描述
         int startPos = 9 - (startCol);
         int endPos = 9 - (endCol);
 

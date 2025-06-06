@@ -58,7 +58,6 @@ public class FenUtil {
         char typeChar = piece.charAt(1);  // 第二个字符表示棋子类型
 
         // 确定棋子字母大小写（红方大写，黑方小写）
-
         if (colorChar == 'r') {
             typeChar = Character.toUpperCase(typeChar);
         }
