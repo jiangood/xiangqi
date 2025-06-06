@@ -1,6 +1,9 @@
 FROM maven:3-openjdk-17 AS java
-WORKDIR /build
-ADD . .
+
+ADD pom.xml ./
+RUN mvn dependency:go-offline -q -B -T 1C --fail-never
+ADD src ./src
+ADD lib ./lib
 RUN mvn package -q -DskipTests
 RUN  mv target/*.jar /app.jar
 
