@@ -18,15 +18,15 @@ import java.util.Map;
 
 @Slf4j
 public class OpenCvUtil {
-    private  Map<String,Mat> templateMatMap = new HashMap<>();
+    private Map<String, Mat> templateMatMap = new HashMap<>();
+
     static {
         // 加载OpenCV本地库
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
     }
 
 
-
-    public    OpenCvUtil() {
+    public OpenCvUtil() {
         log.info("初始化opencv中...");
         File template = new File("template");
         log.info("模板目录:{} 存在：{}", template, FileUtil.exist(template));
@@ -36,11 +36,11 @@ public class OpenCvUtil {
             log.info("文件 {} {}", file.getAbsolutePath(), file.length());
             Mat templateImage = Imgcodecs.imread(file.getAbsolutePath(), Imgcodecs.IMREAD_COLOR);
 
-            templateMatMap.put(FileUtil.mainName(file),templateImage);
+            templateMatMap.put(FileUtil.mainName(file), templateImage);
         }
     }
 
-    public  String[][] parseBoard(String imageFile) throws Exception {
+    public String[][] parseBoard(String imageFile) throws Exception {
         log.info("加载图像: {},是否存在: {}", imageFile, FileUtil.exist(imageFile));
         Mat src = Imgcodecs.imread(imageFile);
 
@@ -72,13 +72,13 @@ public class OpenCvUtil {
 
     }
 
-    public  Map<Point, String> matchTemplate(Mat src) throws Exception {
+    public Map<Point, String> matchTemplate(Mat src) throws Exception {
         Map<Point, String> map = new HashMap<>();
 
-        templateMatMap.forEach((name,mat)->{
-            log.info("模板文件 {}", name);
-
+        templateMatMap.forEach((name, mat) -> {
+            log.info("匹配模板文件 {}", name);
             List<Point> points = matchTemplate(src, mat);
+            log.info("结果 {}", points.size());
             for (Point point : points) {
                 map.put(point, FileUtil.mainName(name));
             }
@@ -89,7 +89,7 @@ public class OpenCvUtil {
     }
 
 
-    public  List<Point> matchTemplate(Mat src, Mat templateImage) {
+    public List<Point> matchTemplate(Mat src, Mat templateImage) {
 
 
         Mat result = new Mat();
@@ -111,8 +111,6 @@ public class OpenCvUtil {
                 }
             }
         }
-
-
 
 
         return matches;

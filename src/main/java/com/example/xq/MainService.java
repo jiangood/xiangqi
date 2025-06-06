@@ -24,7 +24,7 @@ public class MainService {
         try {
             boolean win = SystemUtil.getOsInfo().isWindows();
             log.info("是否win {}", win);
-            String path = win ? "bin/Pikafish-20250110": "bin/Pikafish-20250110/Linux";
+            String path =  "bin/Pikafish-20250110";
             log.info("皮卡鱼 {}", path);
 
 

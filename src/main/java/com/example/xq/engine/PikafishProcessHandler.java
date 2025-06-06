@@ -37,6 +37,7 @@ public class PikafishProcessHandler {
             }
 
 
+            log.info("使用引擎" + file.getAbsolutePath());
 
             engineProcess = Runtime.getRuntime().exec(file.getAbsolutePath());
             reader = new BufferedReader(new InputStreamReader(engineProcess.getInputStream()));
@@ -57,7 +58,7 @@ public class PikafishProcessHandler {
     public String waitForResponse(String expected) throws IOException {
         String line;
         while ((line = reader.readLine()) != null) {
-            log.info("命令行响应:{}",line);
+            log.info("命令行响应: {}",line);
             if (line.startsWith(expected)) {
                 return line;
             }
