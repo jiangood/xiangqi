@@ -100,10 +100,6 @@ public class NameUtil {
 
         String direction = endRow > startRow ? "进" : "退";
         int distance = Math.abs(endRow - startRow);
-        // 如果直线走，最后一个字为步数
-        if (letterIndex == endCol) {
-            return startPos + direction + distance;
-        }
 
         // 如果是否斜着走，最后一个字为目标列号
         return startPos + direction + endPos;
