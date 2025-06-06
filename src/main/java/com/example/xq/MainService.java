@@ -85,7 +85,7 @@ public class MainService {
         for (int i = 0; i < 3; i++) {
             for (int j = 4; j < 4 + 3; j++) {
                 String piece = boardArr[i][j];
-                if (piece != null && piece.equals("黑将")) {
+                if (piece != null && piece.equals("bk")) { // bk 即 黑将
                     return true;
                 }
             }

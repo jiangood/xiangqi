@@ -74,7 +74,7 @@ public class NameUtil {
         }
 
 
-        String dir = y2 < y1 ? "进" : "退";
+        String dir = y2 > y1 ? "进" : "退";
         int step = Math.abs(y2 - y1);
         char stepCn = COLUMN_LETTERS_CN.charAt(step - 1);
 
@@ -102,8 +102,8 @@ public class NameUtil {
 
         for (Map.Entry<String, String> e : map.entrySet()) {
             String move = e.getKey().replace("-", "").toLowerCase();
-            String x = convertToChineseNotation(move);
-            System.out.println(x);
+            String result = convertToChineseNotation(move);
+            System.out.println(e.getKey() + " " +e.getValue() + " > " + result);
         }
 
 
