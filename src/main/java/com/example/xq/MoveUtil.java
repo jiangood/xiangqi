@@ -65,7 +65,7 @@ public class MoveUtil {
             case 'c' -> '炮';
             case 'b' -> '象';
             case 'a' -> '士';
-            case 'k', '将' -> '帅';
+            case 'k' -> '帅';
             case 'p' -> '兵';
             default -> pieceType;
         };
