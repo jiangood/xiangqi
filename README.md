@@ -14,6 +14,11 @@ https://www.xqbase.com/protocol/cchess_move.htm
 # 引擎
 https://www.pikafish.com
 
+根据 引擎介绍.txt 
+
+大多数情况下，引擎速度：vnni512>avx512>avx512f>avxvnni>bmi2>avx2>sse41-popcnt>ssse3 棋友根据自己的CPU选择相应的引擎
+
+
 ## 命令行
 https://blog.csdn.net/gitblog_01232/article/details/143039330
 https://github.com/official-pikafish/Pikafish/wiki/UCI-&-Commands

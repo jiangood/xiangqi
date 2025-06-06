@@ -2,6 +2,7 @@ package com.example.xq.engine;
 
 import cn.hutool.core.util.RuntimeUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.system.SystemUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
@@ -12,9 +13,21 @@ public class PikafishProcessHandler {
     private BufferedReader reader;
     private BufferedWriter writer;
 
+    // 大多数情况下，引擎速度：vnni512>avx512>avx512f>avxvnni>bmi2>avx2>sse41-popcnt>ssse3 棋友根据自己的CPU选择相应的引擎
+    private static  String[] FILE_NAMES = {"vnni512","avx512","avx512f","avxvnni","bmi2","avx2","sse41-popcnt","ssse3"};
+
     public void startEngine(File dir) throws IOException {
-        File[] files = dir.listFiles();
-        for (File file : files) {
+        boolean win = SystemUtil.getOsInfo().isWindows();
+
+        for (String fileName : FILE_NAMES) {
+            if(win){
+                fileName = fileName +".exe";
+            }
+            File file = new File(dir, fileName);
+            if(!file.exists()){
+                log.warn("软件不存在 {}", file.getAbsolutePath());
+                continue;
+            }
             String help = RuntimeUtil.execForStr(file.getAbsolutePath(), "help");
             log.info("help: {}",help);
             if(StrUtil.isEmpty(help)){
