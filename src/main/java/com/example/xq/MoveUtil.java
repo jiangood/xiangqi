@@ -36,7 +36,7 @@ public class MoveUtil {
         }
 
         char pieceType = piece.charAt(1); // 第二个字符是棋子类型
-        char pieceName = getChinesePieceName(pieceType);
+        String pieceName = String.valueOf(getChinesePieceName(pieceType));
 
         // 生成中文描述
         int startPos = 9 - (startCol);
