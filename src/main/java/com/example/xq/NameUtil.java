@@ -38,24 +38,47 @@ public class NameUtil {
         char pieceType = piece.charAt(1); // 第二个字符是棋子类型
         String pieceName = String.valueOf(getChinesePieceName(pieceType));
 
+        String suffix = convertToChineseNotation(move);
+
+        return pieceName + suffix;
+    }
+
+    public static String convertToChineseNotation( String move) {
+        if (move.length() != 4) {
+            return "非法走法" + move;
+        }
+
+        // 解析起始和目标位置
+        int startCol = COLUMN_LETTERS.indexOf(move.charAt(0));
+        int startRow = 10 - Character.getNumericValue(move.charAt(1)) - 1;
+
+        int endCol = COLUMN_LETTERS.indexOf(move.charAt(2));
+        int endRow = 10 - Character.getNumericValue(move.charAt(3)) - 1;
+
+        if (startCol == -1 || endCol == -1 || startRow < 0 || startRow > 9 || endRow < 0 || endRow > 9) {
+            return "非法走法, 坐标错误" + startRow;
+        }
+
+
+
         // 生成中文描述
         int startPos = 9 - (startCol);
         int endPos = 9 - (endCol);
 
         // 平
         if (startRow == endRow) {
-            return pieceName + startPos + "平" + endPos;
+            return   startPos + "平" + endPos;
         }
 
-        String direction = endRow < startRow ? "进" : "退";
+        String direction = endRow > startRow ? "进" : "退";
         int distance = Math.abs(endRow - startRow);
         // 如果直线走，最后一个字为步数
         if (startCol == endCol) {
-            return pieceName + startPos + direction + distance;
+            return  startPos + direction + distance;
         }
 
         // 如果是否斜着走，最后一个字为目标列号
-        return pieceName + startPos + direction + endCol;
+        return   startPos + direction + endPos;
     }
 
     public static char getChinesePieceName(char pieceType) {
@@ -69,6 +92,11 @@ public class NameUtil {
             case 'p' -> '兵';
             default -> pieceType;
         };
+    }
+
+    public static void main(String[] args) {
+        String x = convertToChineseNotation("b9c7");
+        System.out.println(x);
     }
 
 
