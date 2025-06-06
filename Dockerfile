@@ -27,7 +27,7 @@ WORKDIR /app
 
 # 安装pikafish
 ADD lib/Pikafish-20250110 ./bin/Pikafish-20250110
-RUN chmod +x ./bin/Pikafish-20250110/Linux/*
+RUN chmod +x ./bin/Pikafish-20250110/*
 
 ADD lib/libopencv_java4110.so /usr/lib/
 ADD template ./template
