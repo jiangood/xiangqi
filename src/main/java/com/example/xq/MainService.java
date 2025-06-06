@@ -41,12 +41,6 @@ public class MainService {
     public String process(String imageFile) throws Exception {
         String[][] boardArr = cv.parseBoard(imageFile);
         log.info("解析棋盘结果：{}", boardArr.length);
-        for (String[] row : boardArr) {
-            for (String cell : row) {
-                System.out.println(cell);
-                //System.out.printf(StrUtil.emptyToDefault(cell, "空白"));
-            }
-        }
 
         // 判断是否标准的红上黑下，如果不是，则红黑转换
         if (!isBlackTop(boardArr)) {

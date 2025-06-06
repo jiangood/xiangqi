@@ -20,6 +20,7 @@ public class PikafishProcessHandler {
         boolean win = SystemUtil.getOsInfo().isWindows();
 
         for (String fileName : FILE_NAMES) {
+            fileName = "pikafish-" + fileName;
             if(win){
                 fileName = fileName +".exe";
             }
