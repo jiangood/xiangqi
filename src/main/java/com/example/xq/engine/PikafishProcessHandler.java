@@ -19,6 +19,7 @@ public class PikafishProcessHandler {
             log.info("help: {}",help);
             if(StrUtil.isEmpty(help)){
                 log.warn("软件无法运行 {}", file);
+                continue;
             }
 
 
