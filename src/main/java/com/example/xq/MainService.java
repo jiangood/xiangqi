@@ -1,7 +1,5 @@
 package com.example.xq;
 
-import cn.hutool.core.lang.Assert;
-import cn.hutool.core.util.RuntimeUtil;
 import cn.hutool.system.SystemUtil;
 import com.example.xq.opencv.OpenCvUtil;
 import com.example.xq.engine.PikafishProcessHandler;
@@ -53,7 +51,7 @@ public class MainService {
         String query = h.getBestMove(board,10);
         log.info("获取最佳走法:{}",query);
 
-        String action = MoveUtil.convertToChineseNotation(boardArr, query);
+        String action = NameUtil.convertToChineseNotation(boardArr, query);
 
         System.out.println(query);
 

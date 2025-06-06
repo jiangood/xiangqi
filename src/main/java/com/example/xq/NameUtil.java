@@ -7,7 +7,7 @@ package com.example.xq;
  平：棋子横向移动（左右移动，不改变纵线）。
 
  */
-public class MoveUtil {
+public class NameUtil {
 
     // 列字母到数字的映射（a-i对应0-8）
     private static final String COLUMN_LETTERS = "abcdefghi";
@@ -58,7 +58,7 @@ public class MoveUtil {
         return pieceName + startPos + direction + endCol;
     }
 
-    private static char getChinesePieceName(char pieceType) {
+    public static char getChinesePieceName(char pieceType) {
         return switch (pieceType) {
             case 'r' -> '车';
             case 'n' -> '马';
