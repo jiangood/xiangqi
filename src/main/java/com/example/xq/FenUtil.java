@@ -58,46 +58,13 @@ public class FenUtil {
         char typeChar = piece.charAt(1);  // 第二个字符表示棋子类型
 
         // 确定棋子字母大小写（红方大写，黑方小写）
-        char fenChar = switch (typeChar) {
-            case '车' -> 'r';
-            case '马' -> 'n';
-            case '炮' -> 'c';
-            case '象', '相' -> 'b';
-            case '士', '仕' -> 'a';
-            case '将', '帅' -> 'k';
-            case '兵', '卒' -> 'p';
-            default -> ' ';
-        };
 
-        if (colorChar == '红') {
-            fenChar = Character.toUpperCase(fenChar);
+        if (colorChar == 'r') {
+            typeChar = Character.toUpperCase(typeChar);
         }
 
-        return String.valueOf(fenChar);
+        return String.valueOf(typeChar);
     }
 
-    public static void main(String[] args) {
-        // 示例棋盘（10行9列）
-        String[][] board = {
-            {"黑车", "黑马", "黑象", "黑士", "黑将", "黑士", "黑象", "黑马", "黑车"},
-            {"  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  "},
-            {"  ", "黑炮", "  ", "  ", "  ", "  ", "  ", "黑炮", "  "},
-            {"黑卒", "  ", "黑卒", "  ", "黑卒", "  ", "黑卒", "  ", "黑卒"},
-            {"  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  "},
 
-            {"  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  "},
-            {"红兵", "  ", "红兵", "  ", "红兵", "  ", "红兵", "  ", "红兵"},
-            {"  ", "红炮", "  ", "  ", "  ", "  ", "  ", "红炮", "  "},
-            {"  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  "},
-            {"红车", "红马", "红相", "红仕", "红帅", "红仕", "红相", "红马", "红车"}
-        };
-
-        String fen = convertToFEN(board);
-        System.out.println("FEN: " + fen);
-
-        String action = "a3a4";
-
-        String s = MoveUtil.convertToChineseNotation(board, action);
-        System.out.println("Action:" + s);
-    }
 }

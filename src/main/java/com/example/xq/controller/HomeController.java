@@ -26,7 +26,7 @@ public class HomeController {
     }
 
     @PostMapping("upload")
-    public String upload(MultipartFile file, RedirectAttributes atts) throws IOException, InterruptedException {
+    public String upload(MultipartFile file, RedirectAttributes atts) throws Exception {
 
         String originalFilename = file.getOriginalFilename();
         File tempFile = FileUtil.createTempFile(FileUtil.extName(originalFilename), true);
@@ -36,13 +36,13 @@ public class HomeController {
 
         tempFile.delete();
 
-        atts.addFlashAttribute("action", action);
+        atts.addFlashAttribute("msg", action);
         return "redirect:/";
     }
 
     @PostMapping("api/upload")
     @ResponseBody
-    public String upload(MultipartFile file) throws IOException, InterruptedException {
+    public String upload(MultipartFile file) throws Exception {
 
         String originalFilename = file.getOriginalFilename();
         File tempFile = FileUtil.createTempFile(FileUtil.extName(originalFilename), true);

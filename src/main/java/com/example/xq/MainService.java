@@ -2,9 +2,8 @@ package com.example.xq;
 
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.RuntimeUtil;
-import cn.hutool.setting.dialect.PropsUtil;
 import cn.hutool.system.SystemUtil;
-import com.example.xq.cv.CvUtil;
+import com.example.xq.opencv.OpenCvUtil;
 import com.example.xq.engine.PikafishProcessHandler;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -35,14 +34,22 @@ public class MainService {
             log.info("help: {}",help);
 
             h.startEngine(absolutePath);
+
         } catch (IOException e) {
             log.info("初始化皮卡鱼失败", e);
         }
     }
 
 
-    public String process(String imageFile) throws InterruptedException, IOException {
-        String[][] boardArr = CvUtil.parse(imageFile);
+    public String process(String imageFile) throws Exception {
+        String[][] boardArr = OpenCvUtil.parseBoard(imageFile);
+        log.info("解析棋盘结果：{}", boardArr.length);
+        for (String[] row : boardArr) {
+            for (String cell : row) {
+                System.out.println(cell);
+                //System.out.printf(StrUtil.emptyToDefault(cell, "空白"));
+            }
+        }
 
         // 判断是否标准的红上黑下，如果不是，则红黑转换
         if (!isBlackTop(boardArr)) {
@@ -53,6 +60,7 @@ public class MainService {
 
 
         String query = h.getBestMove(board,20);
+        log.info("获取最佳走法:{}",query);
 
         String action = MoveUtil.convertToChineseNotation(boardArr, query);
 
@@ -71,7 +79,7 @@ public class MainService {
                     char[] charArray = cell.toCharArray();
                     char color = charArray[0];
                     char type = charArray[1];
-                    char newColor = color == '红' ? '黑' : '红';
+                    char newColor = color == 'r' ? 'b' : 'r';
                     boardArr[i][j] = newColor + "" + type;
                 }
             }

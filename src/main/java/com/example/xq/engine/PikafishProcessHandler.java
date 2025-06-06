@@ -1,7 +1,10 @@
 package com.example.xq.engine;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.*;
 
+@Slf4j
 public class PikafishProcessHandler {
     private Process engineProcess;
     private BufferedReader reader;
@@ -18,6 +21,7 @@ public class PikafishProcessHandler {
     }
 
     public void sendCommand(String command) throws IOException {
+        log.info("发送命令行: {}",command);
         writer.write(command + "\n");
         writer.flush();
     }
@@ -25,6 +29,7 @@ public class PikafishProcessHandler {
     public String waitForResponse(String expected) throws IOException {
         String line;
         while ((line = reader.readLine()) != null) {
+            log.info("命令行响应:{}",line);
             if (line.startsWith(expected)) {
                 return line;
             }

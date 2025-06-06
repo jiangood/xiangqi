@@ -13,7 +13,7 @@
     <button type="submit">提交</button>
 </form>
 
-${action!''}
+${msg!''}
 
 </body>
 </html>
