@@ -37,8 +37,9 @@ public class MainService {
 
 
     public String process(String imageFile) throws Exception {
+        long time = System.currentTimeMillis();
         String[][] boardArr = cv.parseBoard(imageFile);
-        log.info("解析棋盘结果：{}", boardArr.length);
+        log.info("解析棋盘，耗时：{}", System.currentTimeMillis() - time);
 
         // 判断是否标准的红上黑下，如果不是，则红黑转换
         if (!isBlackTop(boardArr)) {
@@ -50,6 +51,7 @@ public class MainService {
 
         String query = h.getBestMove(board,10);
         log.info("获取最佳走法:{}",query);
+        log.info("耗时:{}", System.currentTimeMillis() - time);
 
         String action = NameUtil.convertToChineseNotation(boardArr, query);
 

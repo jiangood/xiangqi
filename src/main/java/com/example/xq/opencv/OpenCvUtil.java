@@ -88,10 +88,11 @@ public class OpenCvUtil {
 
 
     public List<Point> matchTemplate(Mat src, Mat templateImage) {
-
-
+        long start = System.currentTimeMillis();
         Mat result = new Mat();
+
         Imgproc.matchTemplate(src, templateImage, result, Imgproc.TM_CCOEFF_NORMED);
+        log.info("调用 Imgproc.matchTemplate 耗时 {}", System.currentTimeMillis() - start);
 
         // 设置匹配阈值（0-1之间，越接近1要求越严格）
         double threshold = 0.7;
@@ -109,6 +110,7 @@ public class OpenCvUtil {
                 }
             }
         }
+        log.info("调用 matchTemplate 耗时 {}", System.currentTimeMillis() - start);
 
 
         return matches;
