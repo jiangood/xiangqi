@@ -102,6 +102,7 @@ public class OpenCvUtil {
         // 存储所有匹配位置
         List<Point> matches = new ArrayList<>();
 
+
         // 找出所有超过阈值的匹配位置
         for (int i = 0; i < result.rows(); i++) {
             for (int j = 0; j < result.cols(); j++) {
