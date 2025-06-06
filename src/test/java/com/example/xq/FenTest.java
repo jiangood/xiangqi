@@ -11,7 +11,7 @@ public class FenTest {
 
     @Test
     public void process() throws Exception {
-        String[][] board = OpenCvUtil.parseBoard("demos/base.jpg");
+        String[][] board = new  OpenCvUtil().parseBoard("demos/base.jpg");
 
         String fen = FenUtil.convertToFEN(board);
         System.out.printf(BASE_FEN);

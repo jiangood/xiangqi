@@ -18,17 +18,15 @@ import java.util.Map;
 
 @Slf4j
 public class OpenCvUtil {
-    private static Map<String,Mat> templateMatMap = new HashMap<>();
+    private  Map<String,Mat> templateMatMap = new HashMap<>();
     static {
         // 加载OpenCV本地库
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-
-        init();
     }
 
 
 
-    private static void init() {
+    public    OpenCvUtil() {
         log.info("初始化opencv中...");
         File template = new File("template");
         log.info("模板目录:{} 存在：{}", template, FileUtil.exist(template));
@@ -42,7 +40,7 @@ public class OpenCvUtil {
         }
     }
 
-    public static String[][] parseBoard(String imageFile) throws Exception {
+    public  String[][] parseBoard(String imageFile) throws Exception {
         log.info("加载图像: {},是否存在: {}", imageFile, FileUtil.exist(imageFile));
         Mat src = Imgcodecs.imread(imageFile);
 
@@ -74,7 +72,7 @@ public class OpenCvUtil {
 
     }
 
-    public static Map<Point, String> matchTemplate(Mat src) throws Exception {
+    public  Map<Point, String> matchTemplate(Mat src) throws Exception {
         Map<Point, String> map = new HashMap<>();
 
         templateMatMap.forEach((name,mat)->{
@@ -91,7 +89,7 @@ public class OpenCvUtil {
     }
 
 
-    public static List<Point> matchTemplate(Mat src, Mat templateImage) {
+    public  List<Point> matchTemplate(Mat src, Mat templateImage) {
 
 
         Mat result = new Mat();

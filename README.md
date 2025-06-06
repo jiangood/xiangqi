@@ -1,5 +1,7 @@
 # 中国象棋局面分析接口
-
+```shell
+docker run --rm -p 9988:80 --name xq registry.cn-hangzhou.aliyuncs.com/mxvc/xq:master
+```
 
 # FEN 格式
 https://www.xqbase.com/protocol/cchess_move.htm

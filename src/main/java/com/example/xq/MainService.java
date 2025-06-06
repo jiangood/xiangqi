@@ -17,23 +17,20 @@ import java.io.IOException;
 public class MainService {
 
     PikafishProcessHandler h = new PikafishProcessHandler();
+    OpenCvUtil cv = new OpenCvUtil();
 
     @PostConstruct
     public void init(){
         try {
             boolean win = SystemUtil.getOsInfo().isWindows();
             log.info("是否win {}", win);
-            String path = win ? "bin/Pikafish-20250110/pikafish-bmi2.exe": "bin/Pikafish-20250110/Linux/pikafish-avx2";
+            String path = win ? "bin/Pikafish-20250110": "bin/Pikafish-20250110/Linux";
             log.info("皮卡鱼 {}", path);
-            File file = new File(path);
-            String absolutePath = file.getAbsolutePath();
-            log.info("绝对路径 {}, 是否存在{}", absolutePath, file.exists());
-            Assert.state(file.exists(), "文件不存在 " + absolutePath);
 
-            String help = RuntimeUtil.execForStr(absolutePath, "help");
-            log.info("help: {}",help);
 
-            h.startEngine(absolutePath);
+
+
+            h.startEngine(new File(path));
 
         } catch (IOException e) {
             log.info("初始化皮卡鱼失败", e);
@@ -42,7 +39,7 @@ public class MainService {
 
 
     public String process(String imageFile) throws Exception {
-        String[][] boardArr = OpenCvUtil.parseBoard(imageFile);
+        String[][] boardArr = cv.parseBoard(imageFile);
         log.info("解析棋盘结果：{}", boardArr.length);
         for (String[] row : boardArr) {
             for (String cell : row) {

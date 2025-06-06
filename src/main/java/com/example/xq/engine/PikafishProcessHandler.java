@@ -1,5 +1,7 @@
 package com.example.xq.engine;
 
+import cn.hutool.core.util.RuntimeUtil;
+import cn.hutool.core.util.StrUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
@@ -10,14 +12,25 @@ public class PikafishProcessHandler {
     private BufferedReader reader;
     private BufferedWriter writer;
 
-    public void startEngine(String enginePath) throws IOException {
-        engineProcess = Runtime.getRuntime().exec(enginePath);
-        reader = new BufferedReader(new InputStreamReader(engineProcess.getInputStream()));
-        writer = new BufferedWriter(new OutputStreamWriter(engineProcess.getOutputStream()));
+    public void startEngine(File dir) throws IOException {
+        File[] files = dir.listFiles();
+        for (File file : files) {
+            String help = RuntimeUtil.execForStr(file.getAbsolutePath(), "help");
+            log.info("help: {}",help);
+            if(StrUtil.isEmpty(help)){
+                log.warn("软件无法运行 {}", file);
+            }
 
-        // 发送初始化命令
-        sendCommand("uci");
-        waitForResponse("uciok");
+
+
+            engineProcess = Runtime.getRuntime().exec(file.getAbsolutePath());
+            reader = new BufferedReader(new InputStreamReader(engineProcess.getInputStream()));
+            writer = new BufferedWriter(new OutputStreamWriter(engineProcess.getOutputStream()));
+
+            // 发送初始化命令
+            sendCommand("uci");
+            waitForResponse("uciok");
+        }
     }
 
     public void sendCommand(String command) throws IOException {
