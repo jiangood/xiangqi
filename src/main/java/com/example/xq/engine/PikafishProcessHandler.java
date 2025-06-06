@@ -46,6 +46,7 @@ public class PikafishProcessHandler {
             // 发送初始化命令
             sendCommand("uci");
             waitForResponse("uciok");
+            break;
         }
     }
 
