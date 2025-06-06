@@ -34,7 +34,7 @@ public class OpenCvUtil {
 
         for (File file : template.listFiles()) {
             log.info("文件 {} {}", file.getAbsolutePath(), file.length());
-            Mat templateImage = Imgcodecs.imread(file.getAbsolutePath(), Imgcodecs.IMREAD_COLOR);
+            Mat templateImage = Imgcodecs.imread(file.getAbsolutePath(), Imgcodecs.IMREAD_GRAYSCALE);
 
             templateMatMap.put(FileUtil.mainName(file), templateImage);
         }
@@ -42,7 +42,7 @@ public class OpenCvUtil {
 
     public String[][] parseBoard(String imageFile) throws Exception {
         log.info("加载图像: {},是否存在: {}", imageFile, FileUtil.exist(imageFile));
-        Mat src = Imgcodecs.imread(imageFile);
+        Mat src = Imgcodecs.imread(imageFile, Imgcodecs.IMREAD_GRAYSCALE);
 
         Map<Point, String> matchResult = matchTemplate(src);
         log.info("匹配结果: {}", matchResult);
@@ -88,12 +88,14 @@ public class OpenCvUtil {
 
 
     public List<Point> matchTemplate(Mat src, Mat templateImage) {
-        long start = System.currentTimeMillis();
+        long startTime = System.currentTimeMillis();
         Mat result = new Mat();
 
         Imgproc.matchTemplate(src, templateImage, result, Imgproc.TM_CCOEFF_NORMED);
-        log.info("调用 Imgproc.matchTemplate 耗时 {}", System.currentTimeMillis() - start);
+        log.info("调用 Imgproc.matchTemplate 耗时 {}", System.currentTimeMillis() - startTime);
 
+        startTime = System.currentTimeMillis();
+        
         // 设置匹配阈值（0-1之间，越接近1要求越严格）
         double threshold = 0.7;
 
@@ -110,7 +112,7 @@ public class OpenCvUtil {
                 }
             }
         }
-        log.info("调用 matchTemplate 耗时 {}", System.currentTimeMillis() - start);
+        log.info("找出所有超过阈值的匹配位置 耗时 {}", System.currentTimeMillis() - startTime);
 
 
         return matches;
