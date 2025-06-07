@@ -34,5 +34,5 @@ ADD template ./template
 COPY --from=java /app.jar ./
 
 # 运行示例程序
-EXPOSE 80
+EXPOSE 8080
 ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-Duser.timezone=Asia/Shanghai","-Dfile.encoding=UTF-8","-jar","app.jar"]

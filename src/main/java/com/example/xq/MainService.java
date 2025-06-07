@@ -40,6 +40,12 @@ public class MainService {
         long time = System.currentTimeMillis();
         String[][] boardArr = cv.parseBoard(imageFile);
         log.info("解析棋盘，耗时：{}", System.currentTimeMillis() - time);
+        for (String[] strings : boardArr) {
+            for (String c : strings) {
+                System.out.print(c == null ? "+" : c);
+            }
+            System.out.print("\n");
+        }
 
         // 判断是否标准的红上黑下，如果不是，则红黑转换
         if (!isBlackTop(boardArr)) {
@@ -85,7 +91,7 @@ public class MainService {
      */
     private static boolean isBlackTop(String[][] boardArr) {
         for (int i = 0; i < 3; i++) {
-            for (int j = 4; j < 4 + 3; j++) {
+            for (int j = 3; j < 6; j++) {
                 String piece = boardArr[i][j];
                 if (piece != null && piece.equals("bk")) { // bk 即 黑将
                     return true;
