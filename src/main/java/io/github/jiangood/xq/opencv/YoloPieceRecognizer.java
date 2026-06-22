@@ -15,9 +15,9 @@ import java.util.logging.Logger;
 public class YoloPieceRecognizer implements PieceRecognizer {
 
     private static final Logger log = Logger.getLogger(YoloPieceRecognizer.class.getName());
-    private static final int INPUT_SIZE = 640;
-    private static final float CONFIDENCE_THRESHOLD = 0.5f;
-    private static final float NMS_THRESHOLD = 0.45f;
+    private static final int INPUT_SIZE = 1280;
+    private static final float CONFIDENCE_THRESHOLD = 0.25f;
+    private static final float NMS_THRESHOLD = 0.65f;
     private static final int NUM_CLASSES = 14;
 
     private static final String[] CLASS_NAMES = {
@@ -56,9 +56,22 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         Rect boardRect = BoardUtils.locateBoard(srcGray);
         log.info("棋盘外边框: " + boardRect);
 
-        Mat boardRegion = new Mat(srcColor, boardRect);
-        Map<Point, String> detections = runYoloInference(boardRegion);
-        log.info("YOLO 检测到 " + detections.size() + " 个棋子");
+        // 全图 1280 推理，比裁切棋盘后推理更准确
+        Map<Point, String> fullImageDetections = runYoloInference(srcColor);
+        log.info("YOLO 检测到 " + fullImageDetections.size() + " 个棋子");
+
+        // 将全图坐标转换为棋盘相对坐标
+        Map<Point, String> detections = new LinkedHashMap<>();
+        for (Map.Entry<Point, String> entry : fullImageDetections.entrySet()) {
+            Point relPt = new Point(
+                entry.getKey().x - boardRect.x,
+                entry.getKey().y - boardRect.y
+            );
+            if (relPt.x >= 0 && relPt.x <= boardRect.width && relPt.y >= 0 && relPt.y <= boardRect.height) {
+                detections.put(relPt, entry.getValue());
+            }
+        }
+        log.info("棋盘区域内 " + detections.size() + " 个棋子");
 
         Point[][] calibratedGrid = BoardUtils.calibrateGrid(detections, boardRect);
         log.info("自校准网格完成");
@@ -74,13 +87,17 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         int newH = Math.round(origH * scale);
         int padW = (INPUT_SIZE - newW) / 2;
         int padH = (INPUT_SIZE - newH) / 2;
+        int padWRest = (INPUT_SIZE - newW) % 2;
+        int padHRest = (INPUT_SIZE - newH) % 2;
 
         Mat resized = new Mat();
         Imgproc.resize(boardRegion, resized, new Size(newW, newH));
 
         Mat padded = new Mat();
-        Core.copyMakeBorder(resized, padded, padH, padH, padW, padW,
+        Core.copyMakeBorder(resized, padded, padH, padH + padHRest, padW, padW + padWRest,
                 Core.BORDER_CONSTANT, new Scalar(114, 114, 114));
+
+        Imgproc.cvtColor(padded, padded, Imgproc.COLOR_BGR2RGB);
 
         float[] inputData = new float[3 * INPUT_SIZE * INPUT_SIZE];
         for (int c = 0; c < 3; c++) {
@@ -119,7 +136,7 @@ public class YoloPieceRecognizer implements PieceRecognizer {
             float maxScore = 0;
             int classId = -1;
             for (int j = 0; j < NUM_CLASSES; j++) {
-                float score = sigmoid(predictions[4 + j][i]);
+                float score = predictions[4 + j][i];
                 if (score > maxScore) {
                     maxScore = score;
                     classId = j;
@@ -128,10 +145,10 @@ public class YoloPieceRecognizer implements PieceRecognizer {
 
             if (maxScore < CONFIDENCE_THRESHOLD) continue;
 
-            float x1 = (cx - w / 2) * INPUT_SIZE;
-            float y1 = (cy - h / 2) * INPUT_SIZE;
-            float x2 = (cx + w / 2) * INPUT_SIZE;
-            float y2 = (cy + h / 2) * INPUT_SIZE;
+            float x1 = cx - w / 2;
+            float y1 = cy - h / 2;
+            float x2 = cx + w / 2;
+            float y2 = cy + h / 2;
 
             detections.add(new Detection(x1, y1, x2, y2, maxScore, classId));
         }
@@ -168,10 +185,6 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         }
 
         return result;
-    }
-
-    private static float sigmoid(float x) {
-        return (float) (1.0 / (1.0 + Math.exp(-x)));
     }
 
     private static float iou(Detection a, Detection b) {

@@ -32,5 +32,9 @@ build/
 .vscode/
 /bin/Pikafish-20250110/
 /model-training/data/
+/model-training/runs/
+/model-training/yolo11n.pt
+/model-training/**/__pycache__/
+/models/
 /docs/superpowers/
 /docs/superpowers/specs/
