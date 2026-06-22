@@ -97,7 +97,7 @@ public class OpenCvUtil {
         startTime = System.currentTimeMillis();
         
         // 设置匹配阈值（0-1之间，越接近1要求越严格）
-        double threshold = 0.7;
+        double threshold = 0.65;
 
         // 存储所有匹配位置
         List<Point> matches = new ArrayList<>();
