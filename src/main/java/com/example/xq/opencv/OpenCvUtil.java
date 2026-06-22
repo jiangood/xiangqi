@@ -41,7 +41,7 @@ public class OpenCvUtil {
     }
 
     public String[][] parseBoard(String imageFile) throws Exception {
-        log.info("加载图像: {},是否存在: {}", imageFile, FileUtil.exist(imageFile));
+        log.info("加载图像: {}", imageFile);
         Mat src = Imgcodecs.imread(imageFile, Imgcodecs.IMREAD_GRAYSCALE);
 
         Map<Point, String> matchResult = matchTemplate(src);

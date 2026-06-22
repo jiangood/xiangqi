@@ -10,14 +10,18 @@ public class FenTest {
 
 
     @Test
-    public void process() throws Exception {
-        String[][] board = new  OpenCvUtil().parseBoard("demos/base.jpg");
-
+    public void processBase1() throws Exception {
+        String[][] board = new  OpenCvUtil().parseBoard("demos/base-1.jpg");
         String fen = FenUtil.convertToFEN(board);
-        System.out.printf(BASE_FEN);
-        System.out.printf(fen);
-
         Assert.state(fen.equals(BASE_FEN));
-        System.out.println(fen);
+    }
+
+    @Test
+    public void processBase2() throws Exception {
+        String[][] board = new  OpenCvUtil().parseBoard("demos/base-2.jpg");
+        String fen = FenUtil.convertToFEN(board);
+        System.out.println("解析FEN:" + fen);
+        System.out.println("开局FEN:" + BASE_FEN);
+        Assert.state(fen.equals(BASE_FEN));
     }
 }

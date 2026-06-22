@@ -1,7 +1,0 @@
-services:
-  web:
-    image: registry.cn-hangzhou.aliyuncs.com/mxvc/xq:master
-    environment:
-      server.port: 7777
-    ports:
-      - 7777:7777
