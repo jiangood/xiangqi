@@ -33,6 +33,8 @@ build/
 /bin/Pikafish-20250110/
 /model-training/data/images/
 /model-training/data/labels/
+/model-training/data/raw/
+/model-training/data/preview/
 /model-training/runs/
 /model-training/yolo11n.pt
 /model-training/**/__pycache__/
