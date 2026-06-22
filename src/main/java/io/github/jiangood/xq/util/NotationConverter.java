@@ -1,16 +1,18 @@
 package io.github.jiangood.xq.util;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 /***
-
- 进：棋子向对方方向（即棋盘上方）移动。
- 退：棋子向己方方向（即棋盘下方）移动。
- 平：棋子横向移动（左右移动，不改变纵线）。
-
+ * 进：棋子向对方方向（即棋盘上方）移动。
+ * 退：棋子向己方方向（即棋盘下方）移动。
+ * 平：棋子横向移动（左右移动，不改变纵线）。
+ *
+ * 用法示例：
+ * convertToChineseNotation("e2e4")  → "炮五进四"
+ * convertToChineseNotation("h2e2")  → "炮二平五"
+ * convertToChineseNotation("h0g2")  → "马二进三"
  */
-public class NameUtil {
+public class NotationConverter {
 
 
     // 中文棋谱从右到左
@@ -90,24 +92,4 @@ public class NameUtil {
     public static char getChinesePieceName(char pieceType) {
         return PIECE_MAP.getOrDefault(pieceType, pieceType);
     }
-
-    public static void main(String[] args) {
-        //   convertToChineseNotation("e6e4");
-        Map<String, String> map = new LinkedHashMap<>();
-        map.put("E2-E6", "炮五进四");
-        map.put("H2-E2", "炮二平五");
-        map.put("H0-G2", "马二进三");
-        map.put("B2-E2", "炮八平五");
-        map.put("E6-E4", "前炮退二");
-
-        for (Map.Entry<String, String> e : map.entrySet()) {
-            String move = e.getKey().replace("-", "").toLowerCase();
-            String result = convertToChineseNotation(move);
-            System.out.println(e.getKey() + " " +e.getValue() + " > " + result);
-        }
-
-
-    }
-
-
 }

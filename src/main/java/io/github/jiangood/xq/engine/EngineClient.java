@@ -8,9 +8,9 @@ import cn.hutool.system.SystemUtil;
 import java.io.*;
 import java.util.logging.Logger;
 
-public class PikafishProcessHandler {
+public class EngineClient {
 
-    private static final Logger log = Logger.getLogger(PikafishProcessHandler.class.getName());
+    private static final Logger log = Logger.getLogger(EngineClient.class.getName());
 
     private Process engineProcess;
     private BufferedReader reader;
@@ -85,7 +85,7 @@ public class PikafishProcessHandler {
             sendCommand("quit");
             engineProcess.waitFor();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.log(java.util.logging.Level.SEVERE, "关闭引擎失败", e);
         }
     }
 }

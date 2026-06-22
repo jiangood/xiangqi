@@ -1,19 +1,19 @@
 package io.github.jiangood.xq;
 
 import cn.hutool.core.lang.Assert;
-import io.github.jiangood.xq.opencv.OpenCvUtil;
+import io.github.jiangood.xq.opencv.ChessboardRecognizer;
 import io.github.jiangood.xq.util.FenUtil;
 import org.junit.jupiter.api.Test;
 
-public class FenTest {
+public class ChessboardRecognizerTest {
 
     public static final String BASE_FEN = "rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w";
 
 
 /*    @Test
     public void processBase1() throws Exception {
-        String[][] board = new  OpenCvUtil().parseBoard("demos/base-1.jpg");
-        String fen = FenUtil.convertToFEN(board);
+        String[][] board = new  ChessboardRecognizer().parseBoard("demos/base-1.jpg");
+        String fen = FenUtil.toFen(board);
         System.out.println("解析FEN:" + fen);
         System.out.println("开局FEN:" + BASE_FEN);
         Assert.state(fen.equals(BASE_FEN));
@@ -21,8 +21,8 @@ public class FenTest {
 
     @Test
     public void processBase2() throws Exception {
-        String[][] board = new  OpenCvUtil().parseBoard("demos/base-2.jpg");
-        String fen = FenUtil.convertToFEN(board);
+        String[][] board = new  ChessboardRecognizer().parseBoard("demos/base-2.jpg");
+        String fen = FenUtil.toFen(board);
         System.out.println("解析FEN:" + fen);
         System.out.println("开局FEN:" + BASE_FEN);
         Assert.state(fen.equals(BASE_FEN));

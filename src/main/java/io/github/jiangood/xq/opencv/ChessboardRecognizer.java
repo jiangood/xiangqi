@@ -17,9 +17,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-public class OpenCvUtil {
+public class ChessboardRecognizer {
 
-    private static final Logger log = Logger.getLogger(OpenCvUtil.class.getName());
+    private static final Logger log = Logger.getLogger(ChessboardRecognizer.class.getName());
 
     private Map<String, Mat> templateMatMap = new HashMap<>();
 
@@ -31,7 +31,7 @@ public class OpenCvUtil {
         }
     }
 
-    public OpenCvUtil() {
+    public ChessboardRecognizer() {
         log.info("初始化opencv中...");
         File template = new File("template");
         log.info("模板目录:" + template + " 存在：" + FileUtil.exist(template));
@@ -56,7 +56,7 @@ public class OpenCvUtil {
 
         int blockWidth = (src.width() - 2 * baseX) / 9;
         int blockHeight = blockWidth - 5;
-        String[][] arr = new String[10][9];
+        String[][] board = new String[10][9];
 
         for (int y = 0; y < 10; y++) {
             for (int x = 0; x < 9; x++) {
@@ -65,13 +65,13 @@ public class OpenCvUtil {
                     Point p = e.getKey();
                     String name = e.getValue();
                     if (p.inside(rec)) {
-                        arr[y][x] = name;
+                        board[y][x] = name;
                     }
                 }
             }
         }
 
-        return arr;
+        return board;
     }
 
     public Map<Point, String> matchTemplate(Mat src) throws Exception {

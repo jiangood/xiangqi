@@ -1,22 +1,22 @@
 package io.github.jiangood.xq;
 
 import cn.hutool.system.SystemUtil;
-import io.github.jiangood.xq.opencv.OpenCvUtil;
-import io.github.jiangood.xq.engine.PikafishProcessHandler;
+import io.github.jiangood.xq.opencv.ChessboardRecognizer;
+import io.github.jiangood.xq.engine.EngineClient;
 import io.github.jiangood.xq.util.FenUtil;
-import io.github.jiangood.xq.util.NameUtil;
+import io.github.jiangood.xq.util.NotationConverter;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class MainService {
+public class BoardService {
 
-    private static final Logger log = Logger.getLogger(MainService.class.getName());
+    private static final Logger log = Logger.getLogger(BoardService.class.getName());
 
-    PikafishProcessHandler h = new PikafishProcessHandler();
-    OpenCvUtil cv = new OpenCvUtil();
+    EngineClient engineClient = new EngineClient();
+    ChessboardRecognizer boardRecognizer = new ChessboardRecognizer();
 
     public void init() {
         try {
@@ -24,48 +24,50 @@ public class MainService {
             log.info("是否win " + win);
             String path = "bin/Pikafish-20250110";
             log.info("皮卡鱼 " + path);
-            h.startEngine(new File(path));
+            engineClient.startEngine(new File(path));
         } catch (IOException e) {
             log.log(Level.SEVERE, "初始化皮卡鱼失败", e);
         }
     }
 
     public void shutdown() {
-        h.close();
+        engineClient.close();
     }
 
     public String process(String imageFile) throws Exception {
         long time = System.currentTimeMillis();
-        String[][] boardArr = cv.parseBoard(imageFile);
+        String[][] board = boardRecognizer.parseBoard(imageFile);
         log.info("解析棋盘，耗时：" + (System.currentTimeMillis() - time));
-        for (String[] strings : boardArr) {
-            for (String c : strings) {
-                System.out.print(c == null ? "+" : c);
+        StringBuilder sb = new StringBuilder();
+        for (String[] row : board) {
+            for (String c : row) {
+                sb.append(c == null ? "+" : c);
             }
-            System.out.print("\n");
+            sb.append("\n");
         }
+        log.info("棋盘:\n" + sb);
 
         // 判断是否标准的红上黑下，如果不是，则红黑转换
-        if (!isBlackTop(boardArr)) {
-            convertRedBlack(boardArr);
+        if (!isBlackTop(board)) {
+            convertRedBlack(board);
         }
 
-        String board = FenUtil.convertToFEN(boardArr);
+        String fen = FenUtil.toFen(board);
 
-        String query = h.getBestMove(board, 10);
+        String query = engineClient.getBestMove(fen, 10);
         log.info("获取最佳走法:" + query);
         log.info("耗时:" + (System.currentTimeMillis() - time));
 
-        String action = NameUtil.convertToChineseNotation(boardArr, query);
+        String action = NotationConverter.convertToChineseNotation(board, query);
 
-        System.out.println(query);
-        System.out.println(action);
+        log.info("引擎输出: " + query);
+        log.info("中文棋谱: " + action);
         return action;
     }
 
-    private static void convertRedBlack(String[][] boardArr) {
-        for (int i = 0; i < boardArr.length; i++) {
-            String[] row = boardArr[i];
+    private static void convertRedBlack(String[][] board) {
+        for (int i = 0; i < board.length; i++) {
+            String[] row = board[i];
             for (int j = 0; j < row.length; j++) {
                 String cell = row[j];
                 if (cell != null) {
@@ -73,16 +75,16 @@ public class MainService {
                     char color = charArray[0];
                     char type = charArray[1];
                     char newColor = color == 'r' ? 'b' : 'r';
-                    boardArr[i][j] = newColor + "" + type;
+                    board[i][j] = newColor + "" + type;
                 }
             }
         }
     }
 
-    private static boolean isBlackTop(String[][] boardArr) {
+    private static boolean isBlackTop(String[][] board) {
         for (int i = 0; i < 3; i++) {
             for (int j = 3; j < 6; j++) {
-                String piece = boardArr[i][j];
+                String piece = board[i][j];
                 if (piece != null && piece.equals("bk")) {
                     return true;
                 }

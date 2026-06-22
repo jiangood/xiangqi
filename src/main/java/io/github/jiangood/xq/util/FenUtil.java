@@ -7,7 +7,7 @@ public class FenUtil {
 
 
 
-    public static String convertToFEN(String[][] board) {
+    public static String toFen(String[][] board) {
         if (board == null || board.length != 10 || board[0].length != 9) {
             throw new IllegalArgumentException("棋盘必须是10行9列的二维数组");
         }
