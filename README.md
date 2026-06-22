@@ -5,9 +5,9 @@ java -jar app.jar <image-file-path>
 
 # FEN 格式
 https://www.xqbase.com/protocol/cchess_move.htm
-![img_2.png](img_2.png)
+![img_2.png](docs/images/img_2.png)
 
-![img_1.png](img_1.png)
+![img_1.png](docs/images/img_1.png)
 
 红色大写，黑色小写
 
