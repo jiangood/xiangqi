@@ -8,7 +8,7 @@ def train():
         epochs=100,
         imgsz=640,
         batch=16,
-        device="auto",
+        device="cpu",
         workers=4,
         project="models",
         name="xiangqi_yolo",

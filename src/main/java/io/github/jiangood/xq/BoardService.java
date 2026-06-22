@@ -19,7 +19,7 @@ public class BoardService {
 
     private static final Logger log = Logger.getLogger(BoardService.class.getName());
 
-    private static final boolean USE_YOLO = false;
+    private static final boolean USE_YOLO = true;
 
     EngineClient engineClient = new EngineClient();
     PieceRecognizer boardRecognizer;
