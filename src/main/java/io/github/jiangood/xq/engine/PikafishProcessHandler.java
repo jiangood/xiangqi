@@ -1,4 +1,4 @@
-package com.example.xq.engine;
+package io.github.jiangood.xq.engine;
 
 import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.RuntimeUtil;

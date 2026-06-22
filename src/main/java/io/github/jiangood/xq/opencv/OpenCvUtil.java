@@ -1,4 +1,4 @@
-package com.example.xq.opencv;
+package io.github.jiangood.xq.opencv;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.lang.Assert;
@@ -23,7 +23,7 @@ public class OpenCvUtil {
     private Map<String, Mat> templateMatMap = new HashMap<>();
 
     static {
-        System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+        System.load("lib/opencv_java4110.dll");
     }
 
     public OpenCvUtil() {

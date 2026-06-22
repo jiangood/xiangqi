@@ -1,8 +1,10 @@
-package com.example.xq;
+package io.github.jiangood.xq;
 
 import cn.hutool.system.SystemUtil;
-import com.example.xq.opencv.OpenCvUtil;
-import com.example.xq.engine.PikafishProcessHandler;
+import io.github.jiangood.xq.opencv.OpenCvUtil;
+import io.github.jiangood.xq.engine.PikafishProcessHandler;
+import io.github.jiangood.xq.util.FenUtil;
+import io.github.jiangood.xq.util.NameUtil;
 
 import java.io.File;
 import java.io.IOException;

@@ -1,7 +1,8 @@
-package com.example.xq;
+package io.github.jiangood.xq;
 
 import cn.hutool.core.lang.Assert;
-import com.example.xq.opencv.OpenCvUtil;
+import io.github.jiangood.xq.opencv.OpenCvUtil;
+import io.github.jiangood.xq.util.FenUtil;
 import org.junit.jupiter.api.Test;
 
 public class FenTest {
@@ -13,6 +14,8 @@ public class FenTest {
     public void processBase1() throws Exception {
         String[][] board = new  OpenCvUtil().parseBoard("demos/base-1.jpg");
         String fen = FenUtil.convertToFEN(board);
+        System.out.println("解析FEN:" + fen);
+        System.out.println("开局FEN:" + BASE_FEN);
         Assert.state(fen.equals(BASE_FEN));
     }
 

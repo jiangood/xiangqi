@@ -1,4 +1,4 @@
-package com.example.xq;
+package io.github.jiangood.xq.util;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

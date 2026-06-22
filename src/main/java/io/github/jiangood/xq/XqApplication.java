@@ -1,4 +1,4 @@
-package com.example.xq;
+package io.github.jiangood.xq;
 
 public class XqApplication {
 

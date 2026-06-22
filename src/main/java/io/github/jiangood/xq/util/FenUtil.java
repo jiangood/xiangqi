@@ -1,4 +1,4 @@
-package com.example.xq;
+package io.github.jiangood.xq.util;
 
 import java.util.ArrayList;
 import java.util.List;
