@@ -1,13 +1,19 @@
 package com.example.xq;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-@SpringBootApplication
 public class XqApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(XqApplication.class, args);
+    public static void main(String[] args) throws Exception {
+        if (args.length < 1) {
+            System.out.println("Usage: java -jar app.jar <image-file-path>");
+            System.exit(1);
+        }
+        MainService service = new MainService();
+        service.init();
+        try {
+            String result = service.process(args[0]);
+            System.out.println(result);
+        } finally {
+            service.shutdown();
+        }
     }
-
 }

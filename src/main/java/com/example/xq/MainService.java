@@ -3,43 +3,39 @@ package com.example.xq;
 import cn.hutool.system.SystemUtil;
 import com.example.xq.opencv.OpenCvUtil;
 import com.example.xq.engine.PikafishProcessHandler;
-import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-@Service
-@Slf4j
 public class MainService {
+
+    private static final Logger log = Logger.getLogger(MainService.class.getName());
 
     PikafishProcessHandler h = new PikafishProcessHandler();
     OpenCvUtil cv = new OpenCvUtil();
 
-    @PostConstruct
-    public void init(){
+    public void init() {
         try {
             boolean win = SystemUtil.getOsInfo().isWindows();
-            log.info("是否win {}", win);
-            String path =  "bin/Pikafish-20250110";
-            log.info("皮卡鱼 {}", path);
-
-
-
-
+            log.info("是否win " + win);
+            String path = "bin/Pikafish-20250110";
+            log.info("皮卡鱼 " + path);
             h.startEngine(new File(path));
-
         } catch (IOException e) {
-            log.info("初始化皮卡鱼失败", e);
+            log.log(Level.SEVERE, "初始化皮卡鱼失败", e);
         }
     }
 
+    public void shutdown() {
+        h.close();
+    }
 
     public String process(String imageFile) throws Exception {
         long time = System.currentTimeMillis();
         String[][] boardArr = cv.parseBoard(imageFile);
-        log.info("解析棋盘，耗时：{}", System.currentTimeMillis() - time);
+        log.info("解析棋盘，耗时：" + (System.currentTimeMillis() - time));
         for (String[] strings : boardArr) {
             for (String c : strings) {
                 System.out.print(c == null ? "+" : c);
@@ -54,15 +50,13 @@ public class MainService {
 
         String board = FenUtil.convertToFEN(boardArr);
 
-
-        String query = h.getBestMove(board,10);
-        log.info("获取最佳走法:{}",query);
-        log.info("耗时:{}", System.currentTimeMillis() - time);
+        String query = h.getBestMove(board, 10);
+        log.info("获取最佳走法:" + query);
+        log.info("耗时:" + (System.currentTimeMillis() - time));
 
         String action = NameUtil.convertToChineseNotation(boardArr, query);
 
         System.out.println(query);
-
         System.out.println(action);
         return action;
     }
@@ -83,17 +77,11 @@ public class MainService {
         }
     }
 
-
-    /**
-     * 判断  黑将
-     * @param boardArr
-     * @return
-     */
     private static boolean isBlackTop(String[][] boardArr) {
         for (int i = 0; i < 3; i++) {
             for (int j = 3; j < 6; j++) {
                 String piece = boardArr[i][j];
-                if (piece != null && piece.equals("bk")) { // bk 即 黑将
+                if (piece != null && piece.equals("bk")) {
                     return true;
                 }
             }

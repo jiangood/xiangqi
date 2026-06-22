@@ -1,6 +1,6 @@
 # 中国象棋局面分析接口
 ```shell
-docker run --rm -p 9988:80 --name xq registry.cn-hangzhou.aliyuncs.com/mxvc/xq:master
+java -jar app.jar <image-file-path>
 ```
 
 # FEN 格式

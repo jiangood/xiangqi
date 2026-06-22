@@ -4,17 +4,18 @@ import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.RuntimeUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.system.SystemUtil;
-import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
+import java.util.logging.Logger;
 
-@Slf4j
 public class PikafishProcessHandler {
+
+    private static final Logger log = Logger.getLogger(PikafishProcessHandler.class.getName());
+
     private Process engineProcess;
     private BufferedReader reader;
     private BufferedWriter writer;
 
-    // 大多数情况下，引擎速度：vnni512>avx512>avx512f>avxvnni>bmi2>avx2>sse41-popcnt>ssse3 棋友根据自己的CPU选择相应的引擎
     private static String[] FILE_NAMES = {"vnni512", "avx512", "avx512f", "avxvnni", "bmi2", "avx2", "sse41-popcnt", "ssse3"};
 
     public void startEngine(File dir) throws IOException {
@@ -26,7 +27,6 @@ public class PikafishProcessHandler {
         reader = new BufferedReader(new InputStreamReader(engineProcess.getInputStream()));
         writer = new BufferedWriter(new OutputStreamWriter(engineProcess.getOutputStream()));
 
-        // 发送初始化命令
         sendCommand("uci");
         waitForResponse("uciok");
     }
@@ -41,23 +41,22 @@ public class PikafishProcessHandler {
             }
             File file = new File(dir, fileName);
             if (!file.exists()) {
-                log.warn("软件不存在 {}", file.getAbsolutePath());
+                log.warning("软件不存在 " + file.getAbsolutePath());
                 continue;
             }
-            // 返回多行时才有效
             String help = RuntimeUtil.execForStr(file.getAbsolutePath(), "help");
-            log.info("help: {}", help);
+            log.info("help: " + help);
             if (StrUtil.isNotEmpty(help) && StrUtil.count(help, "\n") > 2) {
                 return file;
             }
-            log.warn("当前引擎无法运行，继续判断 {}", file);
+            log.warning("当前引擎无法运行，继续判断 " + file);
         }
 
         return null;
     }
 
     public void sendCommand(String command) throws IOException {
-        log.info("发送命令行: {}", command);
+        log.info("发送命令行: " + command);
         writer.write(command + "\n");
         writer.flush();
     }
@@ -65,7 +64,7 @@ public class PikafishProcessHandler {
     public String waitForResponse(String expected) throws IOException {
         String line;
         while ((line = reader.readLine()) != null) {
-            log.info("命令行响应: {}", line);
+            log.info("命令行响应: " + line);
             if (line.startsWith(expected)) {
                 return line;
             }
