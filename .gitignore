@@ -31,5 +31,6 @@ build/
 ### VS Code ###
 .vscode/
 /bin/Pikafish-20250110/
+/model-training/data/
 /docs/superpowers/
 /docs/superpowers/specs/
