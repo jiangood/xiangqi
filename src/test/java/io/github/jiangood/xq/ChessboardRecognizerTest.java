@@ -5,6 +5,7 @@ import io.github.jiangood.xq.opencv.ChessboardRecognizer;
 import io.github.jiangood.xq.util.FenUtil;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.opencv.objdetect.Board;
 
 public class ChessboardRecognizerTest {
 
@@ -28,6 +29,14 @@ public class ChessboardRecognizerTest {
     @Test
     public void processLast2() throws Exception {
         String[][] board = new ChessboardRecognizer().parseBoard("demos/last-2.jpg");
+        String fen = FenUtil.toFen(board);
+        Assert.state(fen.equals("2ba1k3/4a4/4b4/pr7/9/9/P7P/4Br3/3KR4/9 w"));
+    }
+
+    @Test
+    public void processLast2Changed() throws Exception {
+        String[][] board = new ChessboardRecognizer().parseBoard("demos/last-2-changed.jpg");
+        BoardService.printBoard(board);
         String fen = FenUtil.toFen(board);
         Assert.state(fen.equals("2ba1k3/4a4/4b4/pr7/9/9/P7P/4Br3/3KR4/9 w"));
     }
