@@ -8,6 +8,8 @@ import io.github.jiangood.xq.util.NotationConverter;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -63,6 +65,41 @@ public class BoardService {
         log.info("引擎输出: " + query);
         log.info("中文棋谱: " + action);
         return action;
+    }
+
+    private static final Map<String, String> PIECE_CHINESE = new LinkedHashMap<>();
+
+    static {
+        // 红方
+        PIECE_CHINESE.put("rk", "帅");
+        PIECE_CHINESE.put("ra", "仕");
+        PIECE_CHINESE.put("rb", "相");
+        PIECE_CHINESE.put("rr", "車");
+        PIECE_CHINESE.put("rn", "馬");
+        PIECE_CHINESE.put("rc", "炮");
+        PIECE_CHINESE.put("rp", "兵");
+        // 黑方
+        PIECE_CHINESE.put("bk", "将");
+        PIECE_CHINESE.put("ba", "士");
+        PIECE_CHINESE.put("bb", "象");
+        PIECE_CHINESE.put("br", "车");
+        PIECE_CHINESE.put("bn", "马");
+        PIECE_CHINESE.put("bc", "炮");
+        PIECE_CHINESE.put("bp", "卒");
+    }
+
+    public static void printBoard(String[][] board) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 9; j++) {
+                String p = board[i][j];
+                sb.append(p == null ? "＋" : PIECE_CHINESE.getOrDefault(p, p)).append(" ");
+            }
+            sb.append("\n");
+        }
+        sb.append("\n红方：帅 仕 相 車 馬 炮 兵\n");
+        sb.append("黑方：将 士 象 车 马 炮 卒");
+        System.out.println(sb);
     }
 
     private static void convertRedBlack(String[][] board) {
