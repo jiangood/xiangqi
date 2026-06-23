@@ -1,7 +1,7 @@
 # YOLO dataset config for Chinese Chess (Xiangqi) piece detection
 # Classes: 14 piece types
 
-path: .  # dataset root dir (relative to this file)
+path: D:/ws/xiangqi/model-training/data  # dataset root dir (absolute)
 train: images/train
 val: images/val
 

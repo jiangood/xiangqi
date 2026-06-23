@@ -151,6 +151,10 @@ public class ChessboardRecognizerTest {
             }
             if (!overlap) kept.add(d);
         }
+
+        // compute grid first for score analysis
+        Point[][] grid = BoardUtils.calibrateGrid(new LinkedHashMap<>(), boardRect);
+
         // print detailed scores for horse positions (bottom rank col 1 and 7)
         System.out.println("\n=== 详细类别得分（底线马位置：row=9, col=1 和 col=7） ===");
         for (int i = 0; i < numPreds; i++) {
@@ -191,9 +195,8 @@ public class ChessboardRecognizerTest {
             Imgproc.putText(src, label, new Point(d[0], d[1]-5), Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, color, 2);
         }
 
-        // draw grid
-        Point[][] grid = BoardUtils.calibrateGrid(new LinkedHashMap<>(), boardRect);
-        for (int r = 0; r < 10; r++) {
+         // draw grid
+         for (int r = 0; r < 10; r++) {
             for (int c = 0; c < 9; c++) {
                 Imgproc.circle(src, grid[r][c], 4, new Scalar(255, 0, 255), -1);
             }
