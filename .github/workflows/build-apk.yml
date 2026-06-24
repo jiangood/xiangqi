@@ -20,7 +20,16 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
+      - name: Setup Android SDK
+        run: |
+          SDK_MGR="/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -f "$SDK_MGR" ]; then
+            SDK_MGR="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          echo "SDK manager: $SDK_MGR"
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          ls -la $(dirname "$SDK_MGR") 2>/dev/null || echo "cmdline-tools not found"
+          yes | $SDK_MGR --install "platforms;android-34" "build-tools;34.0.0" || true
 
       - name: Build debug APK
         run: |
