@@ -39,3 +39,12 @@
 - YOLO input during inference is 1280; training is 640 — resize mismatch intentional (letterbox padding handles it)
 - `lib/opencv_java4110.dll` must exist at runtime; loaded via `System.load()` in static initializer
 - `.gitignore` ignores: training outputs (`model-training/data/images/`, labels, preview, runs), YOLO weights, raw data
+
+## Android
+
+- Android project at `android/`; build with `.\gradlew assembleDebug` (from `android/`)
+- CI: `.github/workflows/build-apk.yml` — triggers on `v*` tag, runs tests, builds release APK, creates GitHub Release
+- Release APK requires `KEYSTORE_B64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` secrets
+- ABIs: `arm64-v8a` only in release; debug keeps all for emulator testing
+- APK naming: `xq-{versionName}.apk`
+- Model/data files not committed for Android; must be bundled separately

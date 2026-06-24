@@ -43,3 +43,9 @@ build/
 /model-training/data/raw/
 /model-training.rar
 # ONNX models tracked via LFS - not in .gitignore
+
+# Android
+android/.gradle/
+android/local.properties
+release-key.jks
+*.apk
