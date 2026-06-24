@@ -37,29 +37,20 @@ jobs:
             ~/.gradle/wrapper
           key: gradle-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle/libs.versions.toml') }}
 
-      - name: Decode keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > ${{ runner.temp }}/release-key.jks
-
       - name: Run unit tests
         run: |
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest --console=plain
 
-      - name: Build APK
+      - name: Build Debug APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease
-        env:
-          KEYSTORE_PATH: ${{ runner.temp }}/release-key.jks
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          ./gradlew assembleDebug
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref }}
-          files: android/app/build/outputs/apk/release/xq-*.apk
+          files: android/app/build/outputs/apk/debug/xq-*.apk
           generate_release_notes: true

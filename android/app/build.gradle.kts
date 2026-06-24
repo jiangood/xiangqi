@@ -11,8 +11,8 @@ android {
         applicationId = "io.github.jiangood.xq"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
@@ -44,13 +44,15 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.findByName("release")
-            applicationVariants.all {
-                val v = versionName
-                outputs.all {
-                    this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-                    outputFileName = "xq-${v}.apk"
-                }
-            }
+        }
+    }
+
+    applicationVariants.all {
+        val v = versionName
+        val variant = name
+        outputs.all {
+            this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            outputFileName = "xq-${v}-${variant}.apk"
         }
     }
 

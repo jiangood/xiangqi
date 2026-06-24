@@ -46,6 +46,12 @@ fun MainScreen(
         when (val s = state) {
             is UiState.Idle -> {
                 Text("请选择棋盘图片开始分析", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "截屏后也可分享到本app快速分析",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
             }
             is UiState.Analyzing -> {
                 CircularProgressIndicator()
