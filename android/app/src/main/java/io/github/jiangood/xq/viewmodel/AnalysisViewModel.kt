@@ -21,6 +21,7 @@ sealed class UiState {
     object Idle : UiState()
     object Analyzing : UiState()
     data class Result(
+        val standardMoves: List<String>,
         val moves: List<String>,
         val currentMoveIndex: Int = 0,
         val stepPreviews: Map<Int, Bitmap> = emptyMap()
@@ -93,7 +94,7 @@ class AnalysisViewModel : ViewModel() {
                 val moves = engineClient?.getTopMoves(fen, 3, 10) ?: emptyList()
                 val chineseMoves = moves.map { NotationConverter.convertToChineseNotation(board, it) }
 
-                _uiState.value = UiState.Result(moves = chineseMoves)
+                _uiState.value = UiState.Result(standardMoves = moves, moves = chineseMoves)
 
                 generatePreviews()
             } catch (e: Exception) {
@@ -141,10 +142,28 @@ class AnalysisViewModel : ViewModel() {
                 r.lastSrc, r.lastBoardRect, emptyMap(), r.lastGrid
             )
             val step4Bmp = AndroidImageUtils.matToBitmap(step4Mat)
-            val state2 = _uiState.value
-            if (state2 is UiState.Result) {
-                _uiState.value = state2.copy(stepPreviews = state2.stepPreviews + (4 to step4Bmp))
-            }
+val state2 = _uiState.value
+                if (state2 is UiState.Result && state2.standardMoves.isNotEmpty()) {
+                    // Draw red circle on source square of best move
+                    val move = state2.standardMoves[0]
+                    val col = move[0] - 'a'
+                    val row = 9 - (move[1].digitToInt() - 1)
+                    
+                    val grid = r.lastGrid
+                    if (grid.size >= 11 && grid[0].size >= 10 && row in 0..9 && col in 0..8) {
+                        val x = (grid[row][col].x + grid[row][col + 1].x) / 2
+                        val y = (grid[row][col].y + grid[row + 1][col].y) / 2
+                        org.opencv.imgproc.Imgproc.circle(
+                            step4Mat,
+                            org.opencv.core.Point(x, y),
+                            20,
+                            org.opencv.core.Scalar(0.0, 0.0, 255.0),
+                            3
+                        )
+                    }
+                    
+                    _uiState.value = state2.copy(stepPreviews = state2.stepPreviews + (4 to step4Bmp))
+                }
         } catch (_: Exception) {
             // preview generation failure is non-fatal
         }
