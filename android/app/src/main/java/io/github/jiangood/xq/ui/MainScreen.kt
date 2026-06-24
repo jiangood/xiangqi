@@ -21,10 +21,12 @@ import io.github.jiangood.xq.viewmodel.UiState
 @Composable
 fun MainScreen(
     viewModel: AnalysisViewModel,
-    onPickImage: () -> Unit
+    onPickImage: () -> Unit,
+    onToggleFloating: (Boolean) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
+    var floatingEnabled by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -36,6 +38,22 @@ fun MainScreen(
         Text("中国象棋支招", fontSize = 22.sp, fontWeight = FontWeight.Bold)
 
         Spacer(Modifier.height(16.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("悬浮窗", modifier = Modifier.weight(1f))
+            Switch(
+                checked = floatingEnabled,
+                onCheckedChange = {
+                    floatingEnabled = it
+                    onToggleFloating(it)
+                }
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
 
         Button(onClick = onPickImage) {
             Text("选择图片")
