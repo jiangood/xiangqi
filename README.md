@@ -1,7 +1,12 @@
-# 中国象棋局面分析接口
+# 中国象棋局面分析
+基于yolo自训练的jj象棋模型，进行棋子识别，利用opencv进行棋盘网格识别，利用皮卡鱼进行象棋推理，得到最佳走法
+
+## cli 主要用于验证
 ```shell
 java -jar cli/target/app.jar <image-file-path>
 ```
+## Android
+支持安卓手机
 
 # FEN 格式
 局面表达式，通过一个fen串，就能表示某一个象棋局面，也是象棋引擎需要的格式
