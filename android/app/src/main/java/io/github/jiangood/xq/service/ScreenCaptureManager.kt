@@ -1,0 +1,77 @@
+package io.github.jiangood.xq.service
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.PixelFormat
+import android.hardware.display.DisplayManager
+import android.media.Image
+import android.media.ImageReader
+import android.media.projection.MediaProjection
+import android.util.DisplayMetrics
+import android.view.WindowManager
+import java.io.File
+import java.io.FileOutputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
+object ScreenCaptureManager {
+    private const val SCREENSHOT_NAME = "floating_screenshot.png"
+
+    fun capture(mediaProjection: MediaProjection, context: Context): File? {
+        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val metrics = DisplayMetrics()
+        windowManager.defaultDisplay.getRealMetrics(metrics)
+        val width = metrics.widthPixels
+        val height = metrics.heightPixels
+        val density = metrics.densityDpi
+
+        val imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+        val virtualDisplay = mediaProjection.createVirtualDisplay(
+            "FloatingCapture",
+            width, height, density,
+            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+            imageReader.surface, null, null
+        )
+
+        val latch = CountDownLatch(1)
+        var bitmap: Bitmap? = null
+
+        imageReader.setOnImageAvailableListener({ reader ->
+            val image = reader.acquireLatestImage()
+            if (image != null) {
+                bitmap = imageToBitmap(image)
+                image.close()
+            }
+            latch.countDown()
+        }, null)
+
+        latch.await(1, TimeUnit.SECONDS)
+
+        virtualDisplay.release()
+        imageReader.close()
+
+        val file = File(context.cacheDir, SCREENSHOT_NAME)
+        bitmap?.let { bmp ->
+            FileOutputStream(file).use { out ->
+                bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+        }
+        return if (file.exists()) file else null
+    }
+
+    private fun imageToBitmap(image: Image): Bitmap {
+        val planes = image.planes
+        val buffer = planes[0].buffer
+        val pixelStride = planes[0].pixelStride
+        val rowStride = planes[0].rowStride
+        val rowPadding = rowStride - pixelStride * image.width
+
+        val bitmap = Bitmap.createBitmap(
+            image.width + rowPadding / pixelStride,
+            image.height,
+            Bitmap.Config.ARGB_8888
+        )
+        bitmap.copyPixelsFromBuffer(buffer)
+        return Bitmap.createBitmap(bitmap, 0, 0, image.width, image.height)
+    }
+}
