@@ -33,14 +33,14 @@ jobs:
 
 - name: Build release APK
   env:
-    KEYSTORE_BASE64: ${{ secrets.KEYSTORE_B64 }}
+    KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
     KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
     KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
     KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
   run: |
     cd android
     chmod +x gradlew
-    echo $KEYSTORE_BASE64 | base64 -d > app/keystore.jks
+    echo "$KEYSTORE_B64" | base64 -d > app/keystore.jks
     ./gradlew assembleRelease --no-daemon
 
 - uses: softprops/action-gh-release@v2
