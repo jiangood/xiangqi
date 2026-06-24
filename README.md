@@ -4,6 +4,7 @@ java -jar cli/target/app.jar <image-file-path>
 ```
 
 # FEN 格式
+局面表达式，通过一个fen串，就能表示某一个象棋局面，也是象棋引擎需要的格式
 https://www.xqbase.com/protocol/cchess_move.htm
 ![img_2.png](docs/images/img_2.png)
 
