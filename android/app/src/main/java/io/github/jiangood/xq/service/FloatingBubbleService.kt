@@ -130,7 +130,7 @@ class FloatingBubbleService : Service() {
                     val result = AnalysisEngine.analyze(this@FloatingBubbleService, file)
                     withContext(Dispatchers.Main) {
                         if (result != null && result.chineseMoves.isNotEmpty()) {
-                            showResult(result.chineseMoves[0])
+                            showResult(result.chineseMoves[0], result.fen)
                         }
                     }
                 }
@@ -141,11 +141,11 @@ class FloatingBubbleService : Service() {
         }
     }
 
-    private fun showResult(move: String) {
+    private fun showResult(move: String, fen: String) {
         try {
             resultOverlay?.let { windowManager.removeView(it) }
         } catch (_: Exception) {}
-        resultOverlay = ResultOverlayView(this, move) { view ->
+        resultOverlay = ResultOverlayView(this, move, fen) { view ->
             try { windowManager.removeView(view) } catch (_: Exception) {}
             resultOverlay = null
         }

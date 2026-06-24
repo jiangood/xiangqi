@@ -16,6 +16,7 @@ import io.github.jiangood.xq.MainActivity
 class ResultOverlayView(
     context: Context,
     move: String,
+    fen: String,
     private val onDismiss: (View) -> Unit
 ) : FrameLayout(context) {
 
@@ -62,7 +63,7 @@ class ResultOverlayView(
                         val intent = Intent(context, MainActivity::class.java).apply {
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
                             putExtra("from_floating", true)
-                            putExtra("fen", "")
+                            putExtra("fen", fen)
                             putExtra("move", move)
                         }
                         context.startActivity(intent)

@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit
 
 object ScreenCaptureManager {
     private const val SCREENSHOT_NAME = "floating_screenshot.png"
+    private const val CAPTURE_TIMEOUT_SECONDS = 3
 
     fun capture(mediaProjection: MediaProjection, context: Context): File? {
         return try {
@@ -36,20 +37,33 @@ object ScreenCaptureManager {
 
             val latch = CountDownLatch(1)
             var bitmap: Bitmap? = null
+            var captureError: Exception? = null
 
             imageReader.setOnImageAvailableListener({ reader ->
-                val image = reader.acquireLatestImage()
-                if (image != null) {
-                    bitmap = imageToBitmap(image)
-                    image.close()
+                try {
+                    val image = reader.acquireLatestImage()
+                    if (image != null) {
+                        bitmap = imageToBitmap(image)
+                        image.close()
+                    }
+                } catch (e: Exception) {
+                    captureError = e
+                } finally {
+                    latch.countDown()
                 }
-                latch.countDown()
             }, null)
 
-            latch.await(1, TimeUnit.SECONDS)
+            val success = latch.await(CAPTURE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
 
             virtualDisplay.release()
             imageReader.close()
+
+            if (!success || captureError != null) {
+                if (captureError != null) {
+                    android.util.Log.e("ScreenCapture", "Capture failed", captureError)
+                }
+                return null
+            }
 
             val file = File(context.cacheDir, SCREENSHOT_NAME)
             bitmap?.let { bmp ->
@@ -59,23 +73,21 @@ object ScreenCaptureManager {
             }
             if (file.exists()) file else null
         } catch (e: Exception) {
+            android.util.Log.e("ScreenCapture", "Capture exception", e)
             null
         }
     }
 
     private fun imageToBitmap(image: Image): Bitmap {
-        val planes = image.planes
-        val buffer = planes[0].buffer
-        val pixelStride = planes[0].pixelStride
-        val rowStride = planes[0].rowStride
-        val rowPadding = rowStride - pixelStride * image.width
+        val plane = image.planes[0]
+        val buffer = plane.buffer
+        val pixelStride = plane.pixelStride
+        val rowStride = plane.rowStride
+        val width = image.width
+        val height = image.height
 
-        val bitmap = Bitmap.createBitmap(
-            image.width + rowPadding / pixelStride,
-            image.height,
-            Bitmap.Config.ARGB_8888
-        )
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         bitmap.copyPixelsFromBuffer(buffer)
-        return Bitmap.createBitmap(bitmap, 0, 0, image.width, image.height)
+        return bitmap
     }
 }

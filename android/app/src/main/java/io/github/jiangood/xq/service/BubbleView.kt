@@ -9,8 +9,10 @@ import android.view.View
 import android.view.WindowManager
 
 class BubbleView(context: Context) : View(context) {
-    private var startDx = 0f
-    private var startDy = 0f
+    private var initialTouchX = 0f
+    private var initialTouchY = 0f
+    private var initialWindowX = 0
+    private var initialWindowY = 0
     private var isDragging = false
     var onClick: (() -> Unit)? = null
 
@@ -43,14 +45,19 @@ class BubbleView(context: Context) : View(context) {
         val y = event.rawY
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                startDx = x - params.x
-                startDy = y - params.y
+                initialTouchX = x
+                initialTouchY = y
+                initialWindowX = params.x
+                initialWindowY = params.y
                 isDragging = false
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                params.x = (x - startDx).toInt()
-                params.y = (y - startDy).toInt()
+                val dx = (x - initialTouchX).toInt()
+                val dy = (y - initialTouchY).toInt()
+                params.x = initialWindowX + dx
+                params.y = initialWindowY + dy
+                clampPosition(params)
                 (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)
                     ?.updateViewLayout(this, params)
                 isDragging = true
@@ -64,5 +71,16 @@ class BubbleView(context: Context) : View(context) {
             }
         }
         return super.onTouchEvent(event)
+    }
+
+    private fun clampPosition(params: WindowManager.LayoutParams) {
+        val display = (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.defaultDisplay
+            ?: return
+        val metrics = android.util.DisplayMetrics()
+        display.getRealMetrics(metrics)
+        val maxX = metrics.widthPixels - width
+        val maxY = metrics.heightPixels - height
+        params.x = params.x.coerceIn(0, maxX)
+        params.y = params.y.coerceIn(0, maxY)
     }
 }
