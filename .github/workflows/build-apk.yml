@@ -30,13 +30,17 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
-      - name: Test Java
-        run: java -version 2>&1
+      - name: Test environment
+        run: |
+          echo "JAVA_HOME: $JAVA_HOME"
+          which java
+          java -version 2>&1
 
       - name: Build
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew --version --no-daemon 2>&1
+          ./gradlew assembleDebug --no-daemon 2>&1
 
       - uses: softprops/action-gh-release@v2
         with:
