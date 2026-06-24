@@ -42,23 +42,20 @@ class AnalysisViewModel : ViewModel() {
     }
 
     fun initEngine(context: Context) {
-        val engineDir = File(context.filesDir, "pikafish")
-        if (!engineDir.exists()) engineDir.mkdirs()
-        for (asset in listOf("pikafish-armv8", "pikafish-armv8-dotprod", "pikafish.nnue")) {
-            val outFile = File(engineDir, asset)
-            if (!outFile.exists()) {
-                try {
-                    context.assets.open(asset).use { input ->
-                        outFile.outputStream().use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                } catch (e: Exception) {
-                    // file might not exist in assets, skip
+        // Extract NNUE weights file (data, not executable — goes in filesDir)
+        val nnueFile = File(context.filesDir, "pikafish.nnue")
+        if (!nnueFile.exists()) {
+            try {
+                context.assets.open("pikafish.nnue").use { input ->
+                    nnueFile.outputStream().use { output -> input.copyTo(output) }
                 }
+            } catch (e: Exception) {
+                // NNUE might be bundled elsewhere, skip
             }
         }
-        val engine = AndroidEngineClient(engineDir)
+        // Engine binary comes from nativeLibraryDir (exec-allowed mount)
+        // via jniLibs/arm64-v8a/libpikafish-armv8*.so
+        val engine = AndroidEngineClient(context)
         if (engine.start()) {
             engineClient = engine
         } else {
