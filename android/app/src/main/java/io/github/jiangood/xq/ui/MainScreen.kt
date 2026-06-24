@@ -35,7 +35,7 @@ fun MainScreen(
             .verticalScroll(scrollState),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("中国象棋支招", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text("象棋支招", fontSize = 22.sp, fontWeight = FontWeight.Bold)
 
         Spacer(Modifier.height(16.dp))
 

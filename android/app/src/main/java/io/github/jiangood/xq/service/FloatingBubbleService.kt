@@ -71,7 +71,7 @@ class FloatingBubbleService : Service() {
                 nm.createNotificationChannel(channel)
             }
             val notification = NotificationCompat.Builder(this, channelId)
-                .setContentTitle("中国象棋支招")
+                .setContentTitle("象棋支招")
                 .setContentText("悬浮窗运行中，点击截图分析")
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setOngoing(true)
