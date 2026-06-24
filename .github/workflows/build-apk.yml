@@ -21,6 +21,7 @@ jobs:
           lfs: true
 
       - name: Pull LFS objects
+        working-directory: .
         run: |
           git lfs pull
           ls -lh android/app/src/main/assets/ android/app/src/main/jniLibs/arm64-v8a/
