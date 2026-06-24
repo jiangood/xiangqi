@@ -1,0 +1,45 @@
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+/bin/Pikafish-20250110/
+/model-training/data/images/
+/model-training/data/labels/
+/model-training/data/preview/
+/model-training/runs/
+/model-training/yolo11n.pt
+/model-training/**/__pycache__/
+/docs/superpowers/
+/docs/superpowers/specs/
+**/tmp/
+/model-training/data/raw/
+/model-training.rar
+# ONNX models tracked via LFS - not in .gitignore

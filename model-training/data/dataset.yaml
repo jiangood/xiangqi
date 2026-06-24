@@ -1,0 +1,22 @@
+# YOLO dataset config for Chinese Chess (Xiangqi) piece detection
+# Classes: 14 piece types
+
+path: D:/ws/xiangqi/model-training/data  # dataset root dir (absolute)
+train: images/train
+val: images/train
+
+names:
+  0: rk  # 帅 red king
+  1: ra  # 仕 red advisor
+  2: rb  # 相 red bishop
+  3: rr  # 車 red rook
+  4: rn  # 馬 red knight
+  5: rc  # 炮 red cannon
+  6: rp  # 兵 red pawn
+  7: bk  # 将 black king
+  8: ba  # 士 black advisor
+  9: bb  # 象 black bishop
+  10: br # 车 black rook
+  11: bn # 马 black knight
+  12: bc # 炮 black cannon
+  13: bp # 卒 black pawn

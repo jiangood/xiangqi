@@ -1,0 +1,41 @@
+# Xiangqi (中国象棋局面分析)
+
+## Build & Run
+
+- `mvn clean package -DskipTests` → `target/app.jar`
+- `java -jar target/app.jar <image-path>` (Java 17)
+- Maven via aliyun mirror (pom.xml), OpenCV native JAR at `lib/opencv-4110.jar`
+- OpenCV native DLL: `lib/opencv_java4110.dll` (Win) / `libopencv_java4110.so` (Linux)
+
+## Architecture
+
+- Entry: `App.java` → `BoardService` → `PieceRecognizer` interface
+- Two recognizers: `YoloPieceRecognizer` (ONNX, `USE_YOLO=true`) / `TemplateMatchRecognizer`
+- `BoardUtils.locateBoard()`: Canny edge + contour finding; `calibrateGrid()`: piece positions → 10×9 grid
+- `EngineClient`: wraps Pikafish UCI engine at `bin/Pikafish-20250110/`; auto-selects best variant (vnni512→...→ssse3)
+- `FenUtil`: board→FEN (red uppercase, e.g. `K`=帅, `k`=将); `NotationConverter`: engine move→Chinese notation
+- Board convention: **black-on-top, red-on-bottom** assumed; `isBlackTop()` check auto-swaps colors if violated
+
+## YOLO Model
+
+- ONNX model at `models/xiangqi_yolo.onnx`, input 1280×1280 letterbox, 14 classes
+- Classes: rk ra rb rr rn rc rp / bk ba bb br bn bc bp
+- Inference params: conf=0.25, NMS=0.65, intra threads=1
+- Training: `model-training/scripts/train.py` (YOLOv11n, 640×640, `flipud=0.5`)
+- Export: `export_onnx.py` (PT→ONNX at 640→deployed at 1280)
+- Data prep: `YoloUtil.main()` reads raw screenshots, locates board, template-matches pieces → YOLO labels
+- Template dir: `template/` (14 piece images)
+
+## Tests
+
+- `mvn test` (JUnit 5 via surefire); test class: `ChessboardRecognizerTest`
+- Test images in `demos/`; expected FENs hardcoded in test file
+- Uses `cn.hutool.core.lang.Assert` (not JUnit assertions) in `assertRecognizer`
+
+## Key Conventions
+
+- Pre-commit: verify by running `mvn test -pl .` (single-module)
+- Model output ONNX goes to `models/`; training artifacts to `model-training/data/`
+- YOLO input during inference is 1280; training is 640 — resize mismatch intentional (letterbox padding handles it)
+- `lib/opencv_java4110.dll` must exist at runtime; loaded via `System.load()` in static initializer
+- `.gitignore` ignores: training outputs (`model-training/data/images/`, labels, preview, runs), YOLO weights, raw data
