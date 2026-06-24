@@ -30,7 +30,7 @@ build/
 
 ### VS Code ###
 .vscode/
-/bin/Pikafish-20250110/
+cli/bin/Pikafish-20250110/
 /model-training/data/images/
 /model-training/data/labels/
 /model-training/data/preview/

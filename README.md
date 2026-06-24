@@ -1,6 +1,6 @@
 # 中国象棋局面分析接口
 ```shell
-java -jar app.jar <image-file-path>
+java -jar cli/target/app.jar <image-file-path>
 ```
 
 # FEN 格式
