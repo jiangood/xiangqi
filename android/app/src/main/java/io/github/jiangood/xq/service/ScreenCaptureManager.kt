@@ -18,45 +18,49 @@ object ScreenCaptureManager {
     private const val SCREENSHOT_NAME = "floating_screenshot.png"
 
     fun capture(mediaProjection: MediaProjection, context: Context): File? {
-        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        val metrics = DisplayMetrics()
-        windowManager.defaultDisplay.getRealMetrics(metrics)
-        val width = metrics.widthPixels
-        val height = metrics.heightPixels
-        val density = metrics.densityDpi
+        return try {
+            val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            val metrics = DisplayMetrics()
+            windowManager.defaultDisplay.getRealMetrics(metrics)
+            val width = metrics.widthPixels
+            val height = metrics.heightPixels
+            val density = metrics.densityDpi
 
-        val imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
-        val virtualDisplay = mediaProjection.createVirtualDisplay(
-            "FloatingCapture",
-            width, height, density,
-            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-            imageReader.surface, null, null
-        )
+            val imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+            val virtualDisplay = mediaProjection.createVirtualDisplay(
+                "FloatingCapture",
+                width, height, density,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                imageReader.surface, null, null
+            )
 
-        val latch = CountDownLatch(1)
-        var bitmap: Bitmap? = null
+            val latch = CountDownLatch(1)
+            var bitmap: Bitmap? = null
 
-        imageReader.setOnImageAvailableListener({ reader ->
-            val image = reader.acquireLatestImage()
-            if (image != null) {
-                bitmap = imageToBitmap(image)
-                image.close()
+            imageReader.setOnImageAvailableListener({ reader ->
+                val image = reader.acquireLatestImage()
+                if (image != null) {
+                    bitmap = imageToBitmap(image)
+                    image.close()
+                }
+                latch.countDown()
+            }, null)
+
+            latch.await(1, TimeUnit.SECONDS)
+
+            virtualDisplay.release()
+            imageReader.close()
+
+            val file = File(context.cacheDir, SCREENSHOT_NAME)
+            bitmap?.let { bmp ->
+                FileOutputStream(file).use { out ->
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
             }
-            latch.countDown()
-        }, null)
-
-        latch.await(1, TimeUnit.SECONDS)
-
-        virtualDisplay.release()
-        imageReader.close()
-
-        val file = File(context.cacheDir, SCREENSHOT_NAME)
-        bitmap?.let { bmp ->
-            FileOutputStream(file).use { out ->
-                bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
-            }
+            if (file.exists()) file else null
+        } catch (e: Exception) {
+            null
         }
-        return if (file.exists()) file else null
     }
 
     private fun imageToBitmap(image: Image): Bitmap {

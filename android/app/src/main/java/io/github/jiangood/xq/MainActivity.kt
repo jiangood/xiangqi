@@ -44,6 +44,11 @@ class MainActivity : ComponentActivity() {
         if (result.resultCode == RESULT_OK && result.data != null) {
             val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             val projection = mpm.getMediaProjection(result.resultCode, result.data!!)
+            projection.registerCallback(object : android.media.projection.MediaProjection.Callback() {
+                override fun onStop() {
+                    CaptureState.mediaProjection = null
+                }
+            }, null)
             CaptureState.mediaProjection = projection
             if (CaptureState.pendingCaptureRequest) {
                 CaptureState.pendingCaptureRequest = false
