@@ -131,22 +131,38 @@ class AnalysisViewModel : ViewModel() {
 
         val r = recognizer
         try {
+            val step1Mat = BoardUtils.drawBoardRect(r.lastSrc, r.lastBoardRect)
+            val step1Bmp = AndroidImageUtils.matToBitmap(step1Mat)
+            val state1 = _uiState.value
+            if (state1 is UiState.Result) {
+                _uiState.value = state1.copy(stepPreviews = state1.stepPreviews + (1 to step1Bmp))
+            }
+
+            val step2Mat = BoardUtils.drawDetectionsOnly(
+                r.lastSrc, r.lastBoardRect, r.lastDetections, r.lastGrid
+            )
+            val step2Bmp = AndroidImageUtils.matToBitmap(step2Mat)
+            val state2 = _uiState.value
+            if (state2 is UiState.Result) {
+                _uiState.value = state2.copy(stepPreviews = state2.stepPreviews + (2 to step2Bmp))
+            }
+
             val step3Mat = BoardUtils.drawPreview(
                 r.lastSrc, r.lastBoardRect, r.lastDetections, r.lastGrid
             )
             val step3Bmp = AndroidImageUtils.matToBitmap(step3Mat)
-            val state = _uiState.value
-            if (state is UiState.Result) {
-                _uiState.value = state.copy(stepPreviews = state.stepPreviews + (3 to step3Bmp))
+            val state3 = _uiState.value
+            if (state3 is UiState.Result) {
+                _uiState.value = state3.copy(stepPreviews = state3.stepPreviews + (3 to step3Bmp))
             }
 
-            val step4Mat = BoardUtils.drawPreview(
+            val step6Mat = BoardUtils.drawPreview(
                 r.lastSrc, r.lastBoardRect, emptyMap(), r.lastGrid
             )
-            val step4Bmp = AndroidImageUtils.matToBitmap(step4Mat)
-            val state2 = _uiState.value
-            if (state2 is UiState.Result) {
-                _uiState.value = state2.copy(stepPreviews = state2.stepPreviews + (4 to step4Bmp))
+            val step6Bmp = AndroidImageUtils.matToBitmap(step6Mat)
+            val state4 = _uiState.value
+            if (state4 is UiState.Result) {
+                _uiState.value = state4.copy(stepPreviews = state4.stepPreviews + (6 to step6Bmp))
             }
         } catch (_: Exception) {
             // preview generation failure is non-fatal

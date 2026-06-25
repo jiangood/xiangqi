@@ -33,7 +33,7 @@ fun MainScreen(
             .verticalScroll(scrollState),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("中国象棋支招", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text("象棋支招", fontSize = 22.sp, fontWeight = FontWeight.Bold)
 
         Spacer(Modifier.height(16.dp))
 
@@ -59,6 +59,24 @@ fun MainScreen(
                 Text("分析中...")
             }
             is UiState.Result -> {
+                Text("分析步骤", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(Modifier.height(8.dp))
+
+                StepPreviewCard(title = "1. 棋盘定位", bitmap = s.stepPreviews[1])
+                Spacer(Modifier.height(8.dp))
+                StepPreviewCard(title = "2. 棋子检测", bitmap = s.stepPreviews[2])
+                Spacer(Modifier.height(8.dp))
+                StepPreviewCard(title = "3. 棋子分类", bitmap = s.stepPreviews[3])
+                Spacer(Modifier.height(8.dp))
+
+                StepValidationCard(
+                    warnings = s.validationWarnings,
+                    expanded = s.validationWarnings.isNotEmpty()
+                )
+                Spacer(Modifier.height(8.dp))
+
+                Text("5. 引擎分析", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                Spacer(Modifier.height(4.dp))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -88,15 +106,9 @@ fun MainScreen(
                         }
                     }
                 }
-
-                Spacer(Modifier.height(16.dp))
-
-                Text("分析详情", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Spacer(Modifier.height(8.dp))
 
-                StepPreviewCard(title = "棋子识别", bitmap = s.stepPreviews[3])
-                Spacer(Modifier.height(8.dp))
-                StepPreviewCard(title = "网格校准", bitmap = s.stepPreviews[4])
+                StepPreviewCard(title = "6. 走法预览", bitmap = s.stepPreviews[6])
             }
             is UiState.Error -> {
                 Text(s.message, color = MaterialTheme.colorScheme.error)
@@ -130,6 +142,47 @@ private fun StepPreviewCard(title: String, bitmap: Bitmap?) {
                     contentDescription = title,
                     modifier = Modifier.fillMaxWidth().padding(8.dp)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepValidationCard(warnings: List<String>, expanded: Boolean) {
+    var showWarnings by remember { mutableStateOf(expanded) }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column {
+            TextButton(
+                onClick = { showWarnings = !showWarnings },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+            ) {
+                Text(
+                    text = if (showWarnings) "▼ 4. 局面验证" else "▶ 4. 局面验证",
+                    modifier = Modifier.weight(1f),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            AnimatedVisibility(visible = showWarnings) {
+                if (warnings.isEmpty()) {
+                    Text(
+                        text = "✓ 局面验证通过",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
+                    )
+                } else {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        warnings.forEach { w ->
+                            Text(
+                                text = "⚠ $w",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
