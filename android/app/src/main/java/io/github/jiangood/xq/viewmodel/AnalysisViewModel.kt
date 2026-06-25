@@ -23,7 +23,8 @@ sealed class UiState {
     data class Result(
         val moves: List<String>,
         val currentMoveIndex: Int = 0,
-        val stepPreviews: Map<Int, Bitmap> = emptyMap()
+        val stepPreviews: Map<Int, Bitmap> = emptyMap(),
+        val validationWarnings: List<String> = emptyList()
     ) : UiState()
     data class Error(val message: String) : UiState()
 }
@@ -89,11 +90,13 @@ class AnalysisViewModel : ViewModel() {
 
                 val board = fixBoardOrientation(rawBoard)
 
+                val validationWarnings = FenUtil.validatePositionDetails(board)
+
                 val fen = FenUtil.toFen(board)
                 val moves = engineClient?.getTopMoves(fen, 3, 10) ?: emptyList()
                 val chineseMoves = moves.map { NotationConverter.convertToChineseNotation(board, it) }
 
-                _uiState.value = UiState.Result(moves = chineseMoves)
+                _uiState.value = UiState.Result(moves = chineseMoves, validationWarnings = validationWarnings)
 
                 generatePreviews()
             } catch (e: Exception) {

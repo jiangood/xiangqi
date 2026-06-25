@@ -34,7 +34,7 @@
 
 ## Key Conventions
 
-- Pre-commit: verify by running `mvn test` (root multi-module) or `mvn test -pl cli` (CLI module only)
+- Pre-commit: verify by running `mvn test -f cli\pom.xml` (CLI module only)
 - Model output ONNX goes to `cli/models/`; training artifacts to `model-training/data/`
 - YOLO input during inference is 1280; training is 640 — resize mismatch intentional (letterbox padding handles it)
 - `cli/lib/opencv_java4110.dll` must exist at runtime; loaded via `System.load()` in static initializer

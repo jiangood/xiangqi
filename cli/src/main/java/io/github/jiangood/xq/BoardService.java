@@ -72,6 +72,14 @@ public class BoardService {
             convertRedBlack(board);
         }
 
+        var validationWarnings = FenUtil.validatePositionDetails(board);
+        if (!validationWarnings.isEmpty()) {
+            log.warning("局面验证发现 " + validationWarnings.size() + " 个问题:");
+            for (var w : validationWarnings) {
+                log.warning("  " + w);
+            }
+        }
+
         String fen = FenUtil.toFen(board);
 
         String query = engineClient.getBestMove(fen, 10);
