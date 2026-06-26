@@ -82,56 +82,54 @@ fun MainScreen(
                 Text("分析中...")
             }
             is UiState.Result -> {
-                Text("分析步骤", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Spacer(Modifier.height(8.dp))
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("分析结果", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Spacer(Modifier.height(12.dp))
 
-                StepPreviewCard(title = "1. 棋盘定位", bitmap = s.stepPreviews[1])
-                Spacer(Modifier.height(8.dp))
-                StepPreviewCard(title = "2. 棋子检测", bitmap = s.stepPreviews[2])
-                Spacer(Modifier.height(8.dp))
-                StepPreviewCard(title = "3. 棋子分类", bitmap = s.stepPreviews[3])
-                Spacer(Modifier.height(8.dp))
-
-                StepValidationCard(
-                    warnings = s.validationWarnings,
-                    expanded = s.validationWarnings.isNotEmpty()
-                )
-                Spacer(Modifier.height(8.dp))
-
-                Text("5. 引擎分析", fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                Spacer(Modifier.height(4.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("推荐走法", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(4.dp))
                         Text(
                             text = s.moves.getOrElse(s.currentMoveIndex) { "—" },
                             fontSize = 36.sp,
                             fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
                         if (s.moves.size > 1) {
                             Spacer(Modifier.height(8.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                 TextButton(onClick = {
                                     if (s.currentMoveIndex > 0) viewModel.selectMove(s.currentMoveIndex - 1)
                                 }) { Text("◀") }
+                                Spacer(Modifier.weight(1f))
                                 Text("第 ${s.currentMoveIndex + 1}/${s.moves.size} 条")
+                                Spacer(Modifier.weight(1f))
                                 TextButton(onClick = {
                                     if (s.currentMoveIndex < s.moves.size - 1) viewModel.selectMove(s.currentMoveIndex + 1)
                                 }) { Text("▶") }
                             }
                         }
+
+                        s.stepPreviews[6]?.let { bmp ->
+                            Spacer(Modifier.height(12.dp))
+                            Text("走法预览", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                            Spacer(Modifier.height(4.dp))
+                            Image(
+                                bitmap = bmp.asImageBitmap(),
+                                contentDescription = "走法预览",
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+
+                        if (s.validationWarnings.isNotEmpty()) {
+                            Spacer(Modifier.height(12.dp))
+                            s.validationWarnings.forEach { w ->
+                                Text(text = "⚠ $w", fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
+                            }
+                        }
                     }
                 }
-                Spacer(Modifier.height(8.dp))
-
-                StepPreviewCard(title = "6. 走法预览", bitmap = s.stepPreviews[6])
             }
             is UiState.Error -> {
                 Text(s.message, color = MaterialTheme.colorScheme.error)
@@ -194,73 +192,4 @@ private fun RuntimeLogCard(logs: List<String>, isError: Boolean) {
     }
 }
 
-@Composable
-private fun StepPreviewCard(title: String, bitmap: Bitmap?) {
-    var expanded by remember { mutableStateOf(false) }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column {
-            TextButton(
-                onClick = { expanded = !expanded },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-            ) {
-                Text(
-                    text = if (expanded) "▼ $title" else "▶ $title",
-                    modifier = Modifier.weight(1f),
-                    fontWeight = FontWeight.Medium
-                )
-                if (bitmap == null) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                }
-            }
-            AnimatedVisibility(visible = expanded && bitmap != null) {
-                Image(
-                    bitmap = bitmap!!.asImageBitmap(),
-                    contentDescription = title,
-                    modifier = Modifier.fillMaxWidth().padding(8.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun StepValidationCard(warnings: List<String>, expanded: Boolean) {
-    var showWarnings by remember { mutableStateOf(expanded) }
-
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column {
-            TextButton(
-                onClick = { showWarnings = !showWarnings },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-            ) {
-                Text(
-                    text = if (showWarnings) "▼ 4. 局面验证" else "▶ 4. 局面验证",
-                    modifier = Modifier.weight(1f),
-                    fontWeight = FontWeight.Medium
-                )
-            }
-            AnimatedVisibility(visible = showWarnings) {
-                if (warnings.isEmpty()) {
-                    Text(
-                        text = "✓ 局面验证通过",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium
-                    )
-                } else {
-                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                        warnings.forEach { w ->
-                            Text(
-                                text = "⚠ $w",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
