@@ -73,30 +73,38 @@ class MainActivity : ComponentActivity() {
     private val screenCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == RESULT_OK && result.data != null) {
-            AppLog.add("[悬浮窗] 截屏权限已获取")
-            val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            val projection = mpm.getMediaProjection(result.resultCode, result.data!!)
-            projection.registerCallback(object : android.media.projection.MediaProjection.Callback() {
-                override fun onStop() {
-                    AppLog.add("[悬浮窗] mediaProjection 停止")
-                    CaptureState.mediaProjection = null
+        try {
+            if (result.resultCode == RESULT_OK && result.data != null) {
+                AppLog.add("[悬浮窗] 截屏权限已获取")
+                val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                val projection = mpm.getMediaProjection(result.resultCode, result.data!!)
+                if (projection == null) {
+                    AppLog.add("[悬浮窗] getMediaProjection 返回 null")
+                    return@registerForActivityResult
                 }
-            }, null)
-            CaptureState.mediaProjection = projection
-            AppLog.add("[悬浮窗] mediaProjection 已保存")
-            if (CaptureState.pendingCaptureRequest) {
-                AppLog.add("[悬浮窗] 有挂起的截屏请求，立即执行")
-                CaptureState.pendingCaptureRequest = false
-                Intent(this, FloatingBubbleService::class.java).also {
-                    it.action = "CAPTURE_NOW"
-                    startService(it)
+                projection.registerCallback(object : android.media.projection.MediaProjection.Callback() {
+                    override fun onStop() {
+                        AppLog.add("[悬浮窗] mediaProjection 停止")
+                        CaptureState.mediaProjection = null
+                    }
+                }, null)
+                CaptureState.mediaProjection = projection
+                AppLog.add("[悬浮窗] mediaProjection 已保存")
+                if (CaptureState.pendingCaptureRequest) {
+                    AppLog.add("[悬浮窗] 有挂起的截屏请求，立即执行")
+                    CaptureState.pendingCaptureRequest = false
+                    Intent(this, FloatingBubbleService::class.java).also {
+                        it.action = "CAPTURE_NOW"
+                        startService(it)
+                    }
+                } else {
+                    AppLog.add("[悬浮窗] 无挂起截屏请求")
                 }
             } else {
-                AppLog.add("[悬浮窗] 无挂起截屏请求")
+                AppLog.add("[悬浮窗] 用户未授权截屏")
             }
-        } else {
-            AppLog.add("[悬浮窗] 用户未授权截屏")
+        } catch (e: Exception) {
+            AppLog.add("[悬浮窗] 截屏授权回调异常: ${e.message}")
         }
     }
 
