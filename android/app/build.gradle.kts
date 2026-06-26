@@ -9,10 +9,10 @@ android {
 
     defaultConfig {
         applicationId = "io.github.jiangood.xq"
-        minSdk = 26
+        minSdk = 34
         targetSdk = 34
-        versionCode = 19
-        versionName = "2.13"
+        versionCode = 20
+        versionName = "2.14"
         ndk {
             abiFilters += listOf("arm64-v8a")
         }

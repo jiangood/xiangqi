@@ -5,7 +5,7 @@ import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.media.projection.MediaProjection
-import android.os.Build
+import android.media.projection.MediaProjectionManager
 import android.os.IBinder
 import android.util.Log
 import android.view.Gravity
@@ -52,6 +52,23 @@ class FloatingBubbleService : Service() {
                 AppLog.add("[悬浮窗] 收到截屏指令")
                 captureAndAnalyze()
             }
+            "SET_MEDIA_PROJECTION" -> {
+                val resultCode = intent.getIntExtra("result_code", -1)
+                val data = intent.getParcelableExtra("result_data", Intent::class.java)
+                if (data != null) {
+                    AppLog.add("[悬浮窗] 服务内创建 MediaProjection")
+                    val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                    val projection = mpm.getMediaProjection(resultCode, data)
+                    projection.registerCallback(object : MediaProjection.Callback() {
+                        override fun onStop() {
+                            AppLog.add("[悬浮窗] mediaProjection 停止")
+                            CaptureState.mediaProjection = null
+                        }
+                    }, null)
+                    CaptureState.mediaProjection = projection
+                    AppLog.add("[悬浮窗] mediaProjection 已保存")
+                }
+            }
             "STOP" -> {
                 AppLog.add("[悬浮窗] 收到停止指令")
                 stopSelf()
@@ -75,14 +92,12 @@ class FloatingBubbleService : Service() {
     private fun startForegroundSafe(): Boolean {
         return try {
             val channelId = "floating_bubble_channel"
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                AppLog.add("[悬浮窗] 创建通知渠道...")
-                val channel = android.app.NotificationChannel(
-                    channelId, "悬浮窗", NotificationManager.IMPORTANCE_LOW
-                )
-                val nm = getSystemService(NotificationManager::class.java)
-                nm.createNotificationChannel(channel)
-            }
+            AppLog.add("[悬浮窗] 创建通知渠道...")
+            val channel = android.app.NotificationChannel(
+                channelId, "悬浮窗", NotificationManager.IMPORTANCE_LOW
+            )
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.createNotificationChannel(channel)
             AppLog.add("[悬浮窗] 构建通知...")
             val notification = NotificationCompat.Builder(this, channelId)
                 .setContentTitle("象棋支招")
