@@ -14,12 +14,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
-import io.github.jiangood.xq.analysis.AnalysisEngine
 import io.github.jiangood.xq.service.CaptureState
 import io.github.jiangood.xq.service.FloatingBubbleService
 import io.github.jiangood.xq.ui.MainScreen
 import io.github.jiangood.xq.viewmodel.AnalysisViewModel
-import io.github.jiangood.xq.viewmodel.UiState
 
 class MainActivity : ComponentActivity() {
 
@@ -86,7 +84,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         viewModel.initOpenCV(this)
-        viewModel.initAnalysisEngine(this)
+        viewModel.initEngine(this)
 
         handleShareIntent(intent)
         handleRequestCapture(intent)
