@@ -31,15 +31,25 @@ jobs:
           ls -la $(dirname "$SDK_MGR") 2>/dev/null || echo "cmdline-tools not found"
           yes | $SDK_MGR --install "platforms;android-34" "build-tools;34.0.0" || true
 
-      - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > android/app/keystore.jks
+      - name: Setup keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > android/app/keystore.jks
+          else
+            keytool -genkey -v -keystore android/app/keystore.jks \
+              -alias ci -keyalg RSA -keysize 2048 -validity 365 \
+              -storepass android -keypass android \
+              -dname "CN=CI, OU=CI, O=CI, L=CI, ST=CI, C=CN"
+          fi
 
       - name: Build release APK
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/android/app/keystore.jks
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'android' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'ci' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'android' }}
         run: |
           cd android
           chmod +x gradlew
