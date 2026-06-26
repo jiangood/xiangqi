@@ -23,7 +23,6 @@ import kotlinx.coroutines.withContext
 
 object CaptureState {
     var mediaProjection: MediaProjection? = null
-    var pendingCaptureRequest: Boolean = false
 }
 
 class FloatingBubbleService : Service() {
@@ -133,12 +132,7 @@ class FloatingBubbleService : Service() {
 
     private fun onBubbleClick() {
         if (CaptureState.mediaProjection == null) {
-            AppLog.add("[悬浮窗] mediaProjection 为空，发起截屏权限请求")
-            CaptureState.pendingCaptureRequest = true
-            val intent = packageManager.getLaunchIntentForPackage(packageName)
-            intent?.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            intent?.action = "REQUEST_CAPTURE"
-            startActivity(intent)
+            AppLog.add("[悬浮窗] mediaProjection 为空，请先在 app 中开启悬浮窗时授权截屏权限")
         } else {
             AppLog.add("[悬浮窗] mediaProjection 已就绪，直接截屏")
             captureAndAnalyze()

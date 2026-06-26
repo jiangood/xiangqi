@@ -50,12 +50,23 @@ class MainActivity : ComponentActivity() {
                 AppLog.add("[悬浮窗] 需要通知权限，发起请求")
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
-                AppLog.add("[悬浮窗] 通知权限已获取，启动服务")
-                startFloatingService()
+                AppLog.add("[悬浮窗] 通知权限已获取")
+                requestScreenCaptureAndStartService()
             }
         } else {
-            AppLog.add("[悬浮窗] Android < 13，无需通知权限，直接启动服务")
+            AppLog.add("[悬浮窗] Android < 13，无需通知权限")
+            requestScreenCaptureAndStartService()
+        }
+    }
+
+    private fun requestScreenCaptureAndStartService() {
+        if (CaptureState.mediaProjection != null) {
+            AppLog.add("[悬浮窗] 已有截屏权限，直接启动服务")
             startFloatingService()
+        } else {
+            AppLog.add("[悬浮窗] 请求截屏权限")
+            val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            screenCaptureLauncher.launch(mpm.createScreenCaptureIntent())
         }
     }
 
@@ -64,7 +75,7 @@ class MainActivity : ComponentActivity() {
     ) { granted ->
         if (granted) {
             AppLog.add("[悬浮窗] 通知权限已授予")
-            startFloatingService()
+            requestScreenCaptureAndStartService()
         } else {
             AppLog.add("[悬浮窗] 用户未授予通知权限")
         }
@@ -89,19 +100,12 @@ class MainActivity : ComponentActivity() {
                     }
                 }, null)
                 CaptureState.mediaProjection = projection
-                AppLog.add("[悬浮窗] mediaProjection 已保存")
-                if (CaptureState.pendingCaptureRequest) {
-                    AppLog.add("[悬浮窗] 有挂起的截屏请求，立即执行")
-                    CaptureState.pendingCaptureRequest = false
-                    Intent(this, FloatingBubbleService::class.java).also {
-                        it.action = "CAPTURE_NOW"
-                        startService(it)
-                    }
-                } else {
-                    AppLog.add("[悬浮窗] 无挂起截屏请求")
-                }
+                AppLog.add("[悬浮窗] mediaProjection 已保存，启动服务")
+                startFloatingService()
             } else {
                 AppLog.add("[悬浮窗] 用户未授权截屏")
+                Toast.makeText(this, "未授权截屏，截屏分析功能不可用", Toast.LENGTH_SHORT).show()
+                startFloatingService()
             }
         } catch (e: Exception) {
             AppLog.add("[悬浮窗] 截屏授权回调异常: ${e.message}")
@@ -118,7 +122,6 @@ class MainActivity : ComponentActivity() {
         viewModel.initRecognizer(this)
 
         handleShareIntent(intent)
-        handleRequestCapture(intent)
 
         setContent {
             MainScreen(
@@ -150,22 +153,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun checkNotificationPermissionAndStart() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-                startFloatingService()
-            } else {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        } else {
-            startFloatingService()
-        }
-    }
-
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleShareIntent(intent)
-        handleRequestCapture(intent)
     }
 
     private fun handleShareIntent(intent: Intent) {
@@ -179,13 +169,6 @@ class MainActivity : ComponentActivity() {
             if (uri != null) {
                 viewModel.analyze(this, uri)
             }
-        }
-    }
-
-    private fun handleRequestCapture(intent: Intent) {
-        if (intent.action == "REQUEST_CAPTURE") {
-            val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            screenCaptureLauncher.launch(mpm.createScreenCaptureIntent())
         }
     }
 
