@@ -36,7 +36,7 @@ class BubbleView(context: Context) : View(context) {
         val cy = height / 2f
         val radius = minOf(cx, cy) - 6f
         canvas.drawCircle(cx, cy, radius, circlePaint)
-        canvas.drawText("帅", cx, cy + textPaint.textSize / 3, textPaint)
+        canvas.drawText("支", cx, cy + textPaint.textSize / 3, textPaint)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
