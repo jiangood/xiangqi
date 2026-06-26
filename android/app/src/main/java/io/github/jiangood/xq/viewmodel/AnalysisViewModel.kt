@@ -24,6 +24,7 @@ sealed class UiState {
     object Analyzing : UiState()
     data class Result(
         val moves: List<String>,
+        val standardMoves: List<String> = emptyList(),
         val currentMoveIndex: Int = 0,
         val stepPreviews: Map<Int, Bitmap> = emptyMap(),
         val validationWarnings: List<String> = emptyList()
@@ -148,7 +149,7 @@ class AnalysisViewModel : ViewModel() {
                 AppLog.add("引擎返回 ${moves.size} 条走法")
                 val chineseMoves = moves.map { NotationConverter.convertToChineseNotation(board, it) }
 
-                _uiState.value = UiState.Result(moves = chineseMoves, validationWarnings = validationWarnings)
+                _uiState.value = UiState.Result(moves = chineseMoves, standardMoves = moves, validationWarnings = validationWarnings)
 
                 AppLog.add("生成中间步骤预览图...")
                 generatePreviews()
@@ -211,13 +212,19 @@ class AnalysisViewModel : ViewModel() {
                 _uiState.value = state3.copy(stepPreviews = state3.stepPreviews + (3 to step3Bmp))
             }
 
+            val currentState = _uiState.value
+            val currentUciMove = if (currentState is UiState.Result)
+                currentState.standardMoves.getOrNull(currentState.currentMoveIndex) else null
             val step6Mat = BoardUtils.drawPreview(
-                r.lastSrc, r.lastBoardRect, emptyMap(), r.lastGrid
+                r.lastSrc, r.lastBoardRect, r.lastDetections, r.lastGrid
             )
+            if (currentUciMove != null) {
+                BoardUtils.drawMove(step6Mat, r.lastGrid, currentUciMove)
+            }
             val step6Bmp = AndroidImageUtils.matToBitmap(step6Mat)
-            val state4 = _uiState.value
-            if (state4 is UiState.Result) {
-                _uiState.value = state4.copy(stepPreviews = state4.stepPreviews + (6 to step6Bmp))
+            val state6 = _uiState.value
+            if (state6 is UiState.Result) {
+                _uiState.value = state6.copy(stepPreviews = state6.stepPreviews + (6 to step6Bmp))
             }
         } catch (_: Exception) {
             // preview generation failure is non-fatal
@@ -228,7 +235,25 @@ class AnalysisViewModel : ViewModel() {
         val state = _uiState.value
         if (state is UiState.Result && index in state.moves.indices) {
             _uiState.value = state.copy(currentMoveIndex = index)
+            regenerateStepPreview(index)
         }
+    }
+
+    private fun regenerateStepPreview(moveIndex: Int) {
+        val recognizer = boardRecognizer
+        if (recognizer !is YoloPieceRecognizer) return
+        val r = recognizer
+        if (r.lastSrc == null || r.lastGrid == null) return
+        val state = _uiState.value as? UiState.Result ?: return
+        val uciMove = state.standardMoves.getOrNull(moveIndex) ?: return
+        try {
+            val stepMat = BoardUtils.drawPreview(
+                r.lastSrc, r.lastBoardRect, r.lastDetections, r.lastGrid
+            )
+            BoardUtils.drawMove(stepMat, r.lastGrid, uciMove)
+            val bmp = AndroidImageUtils.matToBitmap(stepMat)
+            _uiState.value = state.copy(stepPreviews = state.stepPreviews + (6 to bmp))
+        } catch (_: Exception) {}
     }
 
     override fun onCleared() {

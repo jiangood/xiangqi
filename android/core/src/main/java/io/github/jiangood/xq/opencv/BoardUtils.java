@@ -146,6 +146,19 @@ public class BoardUtils {
         return output;
     }
 
+    public static void drawMove(Mat image, Point[][] grid, String uciMove) {
+        if (uciMove.length() != 4) return;
+        int x1 = uciMove.charAt(0) - 'a';
+        int y1 = uciMove.charAt(1) - '0';
+        int x2 = uciMove.charAt(2) - 'a';
+        int y2 = uciMove.charAt(3) - '0';
+        if (x1 < 0 || x1 > 8 || y1 < 0 || y1 > 9) return;
+        if (x2 < 0 || x2 > 8 || y2 < 0 || y2 > 9) return;
+        Point from = grid[9 - y1][x1];
+        Point to = grid[9 - y2][x2];
+        Imgproc.arrowedLine(image, from, to, new Scalar(255, 255, 0), 3, Imgproc.LINE_AA, 0, 0.3);
+    }
+
     public static Mat drawPreview(Mat src, Rect boardRect, Map<Point, String> detections, Point[][] grid) {
         Mat output = src.clone();
         Scalar gridColor = new Scalar(0, 200, 0);
