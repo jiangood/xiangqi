@@ -48,6 +48,7 @@ cli/bin/Pikafish-20250110/
 android/.gradle/
 android/local.properties
 release-key.jks
+android/app/release.keystore
 *.apk
 
 # Playwright / temp / debug artifacts
