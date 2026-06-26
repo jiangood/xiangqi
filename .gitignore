@@ -49,3 +49,11 @@ android/.gradle/
 android/local.properties
 release-key.jks
 *.apk
+
+# Playwright / temp / debug artifacts
+.playwright-mcp/
+cli/temp/
+advisor-overview
+ci-status
+ci-status-*
+ci-run-detail

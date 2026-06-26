@@ -119,6 +119,33 @@ public class BoardUtils {
         return board;
     }
 
+    public static Mat drawBoardRect(Mat src, Rect boardRect) {
+        Mat output = src.clone();
+        Imgproc.rectangle(output, boardRect.tl(), boardRect.br(), new Scalar(255, 0, 0), 3);
+        return output;
+    }
+
+    public static Mat drawDetectionsOnly(Mat src, Rect boardRect, Map<Point, String> detections, Point[][] grid) {
+        Mat output = src.clone();
+        Imgproc.rectangle(output, boardRect.tl(), boardRect.br(), new Scalar(255, 0, 0), 2);
+
+        double cellW = grid[0][1].x - grid[0][0].x;
+        double cellH = grid[1][0].y - grid[0][0].y;
+        for (Map.Entry<Point, String> e : detections.entrySet()) {
+            Point pt = e.getKey();
+            String name = e.getValue();
+            Scalar color = name.startsWith("r") ? new Scalar(0, 0, 255) : new Scalar(0, 0, 0);
+            double absX = boardRect.x + pt.x;
+            double absY = boardRect.y + pt.y;
+            double x1 = absX - cellW / 2;
+            double y1 = absY - cellH / 2;
+            double x2 = absX + cellW / 2;
+            double y2 = absY + cellH / 2;
+            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), color, 2);
+        }
+        return output;
+    }
+
     public static Mat drawPreview(Mat src, Rect boardRect, Map<Point, String> detections, Point[][] grid) {
         Mat output = src.clone();
         Scalar gridColor = new Scalar(0, 200, 0);
