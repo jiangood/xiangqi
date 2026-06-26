@@ -54,11 +54,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun requestScreenCaptureAndStartService() {
-        startFloatingService()
         if (CaptureState.mediaProjection == null) {
             AppLog.add("[悬浮窗] 请求截屏权限")
             val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             screenCaptureLauncher.launch(mpm.createScreenCaptureIntent())
+        } else {
+            AppLog.add("[悬浮窗] MediaProjection 已存在，直接启动服务")
+            startFloatingService()
         }
     }
 
@@ -85,6 +87,8 @@ class MainActivity : ComponentActivity() {
                     putExtra("result_data", result.data)
                 }
                 startService(intent)
+                // Now start the floating service (or it may already be running)
+                startFloatingService()
             } else {
                 AppLog.add("[悬浮窗] 用户未授权截屏")
                 Toast.makeText(this, "未授权截屏，截屏分析功能不可用", Toast.LENGTH_SHORT).show()

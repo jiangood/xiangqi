@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.viewmodel.AnalysisViewModel
 import io.github.jiangood.xq.viewmodel.UiState
 
@@ -134,27 +135,47 @@ fun MainScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        RuntimeLogCard(logs = viewModel.logs.collectAsState().value, isError = state is UiState.Error)
+        val allLogs = viewModel.logs.collectAsState().value
+        val dividerIdx = allLogs.indexOf("-- 以上为上次日志 --")
+        val historyLogs = if (dividerIdx >= 0) allLogs.subList(0, dividerIdx) else emptyList()
+        val realtimeLogs = if (dividerIdx >= 0) allLogs.subList(dividerIdx + 1, allLogs.size) else allLogs
+
+        LogCard(title = "历史日志", logs = historyLogs)
+        Spacer(Modifier.height(8.dp))
+        LogCard(title = "实时日志", logs = realtimeLogs, autoExpand = state is UiState.Error)
     }
 }
 
 @Composable
-private fun RuntimeLogCard(logs: List<String>, isError: Boolean) {
-    var expanded by remember { mutableStateOf(isError) }
-    LaunchedEffect(isError) { if (isError) expanded = true }
+private fun LogCard(title: String, logs: List<String>, autoExpand: Boolean = false) {
+    var expanded by remember { mutableStateOf(autoExpand) }
+    LaunchedEffect(autoExpand) { if (autoExpand) expanded = true }
 
-    Spacer(Modifier.height(8.dp))
     Card(modifier = Modifier.fillMaxWidth()) {
         Column {
-            TextButton(
-                onClick = { expanded = !expanded },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = if (expanded) "▼ 运行日志 (${logs.size})" else "▶ 运行日志 (${logs.size})",
-                    modifier = Modifier.weight(1f),
-                    fontWeight = FontWeight.Medium
-                )
+                TextButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = if (expanded) "▼ $title (${logs.size})" else "▶ $title (${logs.size})",
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                IconButton(
+                    onClick = { AppLog.clear() },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "清空日志",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             AnimatedVisibility(visible = expanded && logs.isNotEmpty()) {
                 SelectionContainer {

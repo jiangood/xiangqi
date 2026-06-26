@@ -42,7 +42,13 @@ class FloatingBubbleService : Service() {
             return
         }
         AppLog.add("[悬浮窗] 前台服务启动成功")
-        showBubble()
+        // Only show bubble if MediaProjection is already available
+        if (CaptureState.mediaProjection != null) {
+            AppLog.add("[悬浮窗] MediaProjection 已就绪，显示悬浮按钮")
+            showBubble()
+        } else {
+            AppLog.add("[悬浮窗] MediaProjection 尚未就绪，等待授权...")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -67,12 +73,19 @@ class FloatingBubbleService : Service() {
                     }, null)
                     CaptureState.mediaProjection = projection
                     AppLog.add("[悬浮窗] mediaProjection 已保存")
+                    // Show bubble now that MediaProjection is ready
+                    showBubble()
                 }
             }
             "STOP" -> {
                 AppLog.add("[悬浮窗] 收到停止指令")
                 stopSelf()
             }
+        }
+        // If service is restarted (START_STICKY) and MediaProjection is available, show bubble
+        if (intent?.action == null && CaptureState.mediaProjection != null && bubbleView == null) {
+            AppLog.add("[悬浮窗] 服务重启且 MediaProjection 就绪，显示悬浮按钮")
+            showBubble()
         }
         return START_STICKY
     }

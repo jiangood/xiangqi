@@ -179,11 +179,6 @@ public class BoardUtils {
             Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), color, 2);
 
             Point textOrg = new Point(x1, Math.max(y1 - 4, 0));
-            int[] baseline = new int[1];
-            Size textSize = Imgproc.getTextSize(name, Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, 2, baseline);
-            Point bgTl = new Point(textOrg.x, textOrg.y - textSize.height);
-            Point bgBr = new Point(textOrg.x + textSize.width, textOrg.y + baseline[0]);
-            Imgproc.rectangle(output, bgTl, bgBr, new Scalar(255, 255, 255), -1);
             Imgproc.putText(output, name, textOrg,
                     Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, color, 2, Imgproc.LINE_AA, false);
         }
