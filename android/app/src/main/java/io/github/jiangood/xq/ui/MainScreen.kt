@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.sp
 import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.viewmodel.AnalysisViewModel
 import io.github.jiangood.xq.viewmodel.UiState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 
 @Composable
 fun MainScreen(
