@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import io.github.jiangood.xq.service.CaptureState
 import io.github.jiangood.xq.service.FloatingBubbleService
 import io.github.jiangood.xq.ui.MainScreen
+import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.viewmodel.AnalysisViewModel
 
 class MainActivity : ComponentActivity() {
@@ -33,8 +34,10 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this)) {
+            AppLog.add("[悬浮窗] 悬浮窗权限已获取")
             checkAndRequestNotificationPermission()
         } else {
+            AppLog.add("[悬浮窗] 用户未授予悬浮窗权限")
             Toast.makeText(this, "需要悬浮窗权限", Toast.LENGTH_SHORT).show()
         }
     }
@@ -43,11 +46,14 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) {
+                AppLog.add("[悬浮窗] 需要通知权限，发起请求")
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
+                AppLog.add("[悬浮窗] 通知权限已获取，启动服务")
                 startFloatingService()
             }
         } else {
+            AppLog.add("[悬浮窗] Android < 13，无需通知权限，直接启动服务")
             startFloatingService()
         }
     }
@@ -55,28 +61,41 @@ class MainActivity : ComponentActivity() {
     private var notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) startFloatingService()
+        if (granted) {
+            AppLog.add("[悬浮窗] 通知权限已授予")
+            startFloatingService()
+        } else {
+            AppLog.add("[悬浮窗] 用户未授予通知权限")
+        }
     }
 
     private val screenCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == RESULT_OK && result.data != null) {
+            AppLog.add("[悬浮窗] 截屏权限已获取")
             val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             val projection = mpm.getMediaProjection(result.resultCode, result.data!!)
             projection.registerCallback(object : android.media.projection.MediaProjection.Callback() {
                 override fun onStop() {
+                    AppLog.add("[悬浮窗] mediaProjection 停止")
                     CaptureState.mediaProjection = null
                 }
             }, null)
             CaptureState.mediaProjection = projection
+            AppLog.add("[悬浮窗] mediaProjection 已保存")
             if (CaptureState.pendingCaptureRequest) {
+                AppLog.add("[悬浮窗] 有挂起的截屏请求，立即执行")
                 CaptureState.pendingCaptureRequest = false
                 Intent(this, FloatingBubbleService::class.java).also {
                     it.action = "CAPTURE_NOW"
                     startService(it)
                 }
+            } else {
+                AppLog.add("[悬浮窗] 无挂起截屏请求")
             }
+        } else {
+            AppLog.add("[悬浮窗] 用户未授权截屏")
         }
     }
 
@@ -96,16 +115,20 @@ class MainActivity : ComponentActivity() {
                 onPickImage = { pickMedia.launch(ActivityResultContracts.PickVisualMedia.ImageOnly.let { androidx.activity.result.PickVisualMediaRequest(it) }) },
                 onToggleFloating = { enabled ->
                     if (enabled) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-                        val intent = Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:$packageName")
-                        )
-                        overlayPermissionLauncher.launch(intent)
+                        AppLog.add("[悬浮窗] 用户开启悬浮窗")
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+                            AppLog.add("[悬浮窗] 需要悬浮窗权限，跳转设置")
+                            val intent = Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:$packageName")
+                            )
+                            overlayPermissionLauncher.launch(intent)
+                        } else {
+                            AppLog.add("[悬浮窗] 已有悬浮窗权限")
+                            checkAndRequestNotificationPermission()
+                        }
                     } else {
-                        checkAndRequestNotificationPermission()
-                    }
-                    } else {
+                        AppLog.add("[悬浮窗] 用户关闭悬浮窗")
                         Intent(this, FloatingBubbleService::class.java).also {
                             it.action = "STOP"
                             startService(it)

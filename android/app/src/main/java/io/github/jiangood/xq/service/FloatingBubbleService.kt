@@ -13,6 +13,7 @@ import android.view.View
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import io.github.jiangood.xq.analysis.AnalysisEngine
+import io.github.jiangood.xq.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,18 +34,29 @@ class FloatingBubbleService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        AppLog.add("[悬浮窗] onCreate")
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        AppLog.add("[悬浮窗] WindowManager 获取成功")
         if (!startForegroundSafe()) {
+            AppLog.add("[悬浮窗] 前台服务启动失败，停止服务")
             stopSelf()
             return
         }
+        AppLog.add("[悬浮窗] 前台服务启动成功")
         showBubble()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        AppLog.add("[悬浮窗] onStartCommand action=${intent?.action ?: "无"}")
         when (intent?.action) {
-            "CAPTURE_NOW" -> captureAndAnalyze()
-            "STOP" -> stopSelf()
+            "CAPTURE_NOW" -> {
+                AppLog.add("[悬浮窗] 收到截屏指令")
+                captureAndAnalyze()
+            }
+            "STOP" -> {
+                AppLog.add("[悬浮窗] 收到停止指令")
+                stopSelf()
+            }
         }
         return START_STICKY
     }
@@ -52,6 +64,7 @@ class FloatingBubbleService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        AppLog.add("[悬浮窗] onDestroy")
         scope.cancel()
         try {
             resultOverlay?.let { windowManager.removeView(it) }
@@ -64,12 +77,14 @@ class FloatingBubbleService : Service() {
         return try {
             val channelId = "floating_bubble_channel"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                AppLog.add("[悬浮窗] 创建通知渠道...")
                 val channel = android.app.NotificationChannel(
                     channelId, "悬浮窗", NotificationManager.IMPORTANCE_LOW
                 )
                 val nm = getSystemService(NotificationManager::class.java)
                 nm.createNotificationChannel(channel)
             }
+            AppLog.add("[悬浮窗] 构建通知...")
             val notification = NotificationCompat.Builder(this, channelId)
                 .setContentTitle("象棋支招")
                 .setContentText("悬浮窗运行中，点击截图分析")
@@ -77,17 +92,21 @@ class FloatingBubbleService : Service() {
                 .setOngoing(true)
                 .build()
             startForeground(1, notification)
+            AppLog.add("[悬浮窗] startForeground 成功")
             true
         } catch (e: Exception) {
+            AppLog.add("[悬浮窗] startForeground 失败: ${e.message}")
             Log.e("FloatingBubble", "startForeground failed", e)
             false
         }
     }
 
     private fun showBubble() {
+        AppLog.add("[悬浮窗] 显示悬浮按钮...")
         try {
             val density = resources.displayMetrics.density
             val bubbleSize = (56 * density).toInt()
+            AppLog.add("[悬浮窗] 按钮大小: ${bubbleSize}px")
             val params = WindowManager.LayoutParams(
                 bubbleSize, bubbleSize,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -99,42 +118,62 @@ class FloatingBubbleService : Service() {
                 y = resources.displayMetrics.heightPixels / 3
             }
             bubbleView = BubbleView(this).apply {
-                onClick = { onBubbleClick() }
+                onClick = {
+                    AppLog.add("[悬浮窗] 按钮被点击")
+                    onBubbleClick()
+                }
             }
             windowManager.addView(bubbleView, params)
+            AppLog.add("[悬浮窗] 按钮已添加到窗口")
         } catch (e: Exception) {
+            AppLog.add("[悬浮窗] 显示按钮失败: ${e.message}")
             Log.e("FloatingBubble", "showBubble failed", e)
         }
     }
 
     private fun onBubbleClick() {
         if (CaptureState.mediaProjection == null) {
+            AppLog.add("[悬浮窗] mediaProjection 为空，发起截屏权限请求")
             CaptureState.pendingCaptureRequest = true
             val intent = packageManager.getLaunchIntentForPackage(packageName)
             intent?.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             intent?.action = "REQUEST_CAPTURE"
             startActivity(intent)
         } else {
+            AppLog.add("[悬浮窗] mediaProjection 已就绪，直接截屏")
             captureAndAnalyze()
         }
     }
 
     private fun captureAndAnalyze() {
-        val projection = CaptureState.mediaProjection ?: return
+        val projection = CaptureState.mediaProjection
+        if (projection == null) {
+            AppLog.add("[悬浮窗] 截屏失败: mediaProjection 为空")
+            return
+        }
+        AppLog.add("[悬浮窗] 开始截屏...")
         scope.launch {
             try {
                 val file = withContext(Dispatchers.IO) {
                     ScreenCaptureManager.capture(projection, this@FloatingBubbleService)
                 }
                 if (file != null) {
+                    AppLog.add("[悬浮窗] 截屏成功: ${file.name}")
+                    AppLog.add("[悬浮窗] 开始分析...")
                     val result = AnalysisEngine.analyze(this@FloatingBubbleService, file)
                     withContext(Dispatchers.Main) {
                         if (result != null && result.chineseMoves.isNotEmpty()) {
+                            AppLog.add("[悬浮窗] 分析成功: ${result.chineseMoves[0]}")
                             showResult(result.chineseMoves[0], result.fen)
+                        } else {
+                            AppLog.add("[悬浮窗] 分析无结果 (result=${result != null}, moves=${result?.chineseMoves?.size ?: 0})")
                         }
                     }
+                } else {
+                    AppLog.add("[悬浮窗] 截屏失败: ScreenCaptureManager 返回 null")
                 }
             } catch (e: Exception) {
+                AppLog.add("[悬浮窗] 截屏分析异常: ${e.message}")
                 Log.e("FloatingBubble", "captureAndAnalyze failed", e)
                 CaptureState.mediaProjection = null
             }
@@ -142,6 +181,7 @@ class FloatingBubbleService : Service() {
     }
 
     private fun showResult(move: String, fen: String) {
+        AppLog.add("[悬浮窗] 显示结果: $move")
         try {
             resultOverlay?.let { windowManager.removeView(it) }
         } catch (_: Exception) {}
@@ -160,6 +200,7 @@ class FloatingBubbleService : Service() {
         try {
             windowManager.addView(resultOverlay, params)
         } catch (e: Exception) {
+            AppLog.add("[悬浮窗] 显示结果失败: ${e.message}")
             Log.e("FloatingBubble", "showResult addView failed", e)
         }
     }
