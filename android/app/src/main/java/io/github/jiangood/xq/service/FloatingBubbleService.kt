@@ -2,6 +2,7 @@ package io.github.jiangood.xq.service
 
 import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.media.projection.MediaProjection
@@ -28,8 +29,7 @@ object CaptureState {
 class FloatingBubbleService : Service() {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private lateinit var windowManager: WindowManager
-    private var bubbleView: BubbleView? = null
-    private var resultOverlay: View? = null
+    private var unifiedView: UnifiedBubbleView? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -42,13 +42,7 @@ class FloatingBubbleService : Service() {
             return
         }
         AppLog.add("[悬浮窗] 前台服务启动成功")
-        // Only show bubble if MediaProjection is already available
-        if (CaptureState.mediaProjection != null) {
-            AppLog.add("[悬浮窗] MediaProjection 已就绪，显示悬浮按钮")
-            showBubble()
-        } else {
-            AppLog.add("[悬浮窗] MediaProjection 尚未就绪，等待授权...")
-        }
+        showUnifiedView()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -73,19 +67,12 @@ class FloatingBubbleService : Service() {
                     }, null)
                     CaptureState.mediaProjection = projection
                     AppLog.add("[悬浮窗] mediaProjection 已保存")
-                    // Show bubble now that MediaProjection is ready
-                    showBubble()
                 }
             }
             "STOP" -> {
                 AppLog.add("[悬浮窗] 收到停止指令")
                 stopSelf()
             }
-        }
-        // If service is restarted (START_STICKY) and MediaProjection is available, show bubble
-        if (intent?.action == null && CaptureState.mediaProjection != null && bubbleView == null) {
-            AppLog.add("[悬浮窗] 服务重启且 MediaProjection 就绪，显示悬浮按钮")
-            showBubble()
         }
         return START_STICKY
     }
@@ -96,8 +83,7 @@ class FloatingBubbleService : Service() {
         AppLog.add("[悬浮窗] onDestroy")
         scope.cancel()
         try {
-            resultOverlay?.let { windowManager.removeView(it) }
-            bubbleView?.let { windowManager.removeView(it) }
+            unifiedView?.let { windowManager.removeView(it) }
         } catch (_: Exception) {}
         super.onDestroy()
     }
@@ -128,14 +114,14 @@ class FloatingBubbleService : Service() {
         }
     }
 
-    private fun showBubble() {
-        AppLog.add("[悬浮窗] 显示悬浮按钮...")
+    private fun showUnifiedView() {
+        AppLog.add("[悬浮窗] 显示合并悬浮窗...")
         try {
             val density = resources.displayMetrics.density
-            val bubbleSize = (56 * density).toInt()
-            AppLog.add("[悬浮窗] 按钮大小: ${bubbleSize}px")
+            val width = (100 * density).toInt()
+            val height = (92 * density).toInt()
             val params = WindowManager.LayoutParams(
-                bubbleSize, bubbleSize,
+                width, height,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT
@@ -144,25 +130,27 @@ class FloatingBubbleService : Service() {
                 x = 0
                 y = resources.displayMetrics.heightPixels / 3
             }
-            bubbleView = BubbleView(this).apply {
+            unifiedView = UnifiedBubbleView(this).apply {
                 onClick = {
-                    AppLog.add("[悬浮窗] 按钮被点击")
-                    onBubbleClick()
+                    AppLog.add("[悬浮窗] 合并按钮被点击")
+                    onUnifiedClick()
                 }
             }
-            windowManager.addView(bubbleView, params)
-            AppLog.add("[悬浮窗] 按钮已添加到窗口")
+            windowManager.addView(unifiedView, params)
+            AppLog.add("[悬浮窗] 合并悬浮窗已添加到窗口")
         } catch (e: Exception) {
-            AppLog.add("[悬浮窗] 显示按钮失败: ${e.message}")
-            Log.e("FloatingBubble", "showBubble failed", e)
+            AppLog.add("[悬浮窗] 显示合并悬浮窗失败: ${e.message}")
+            Log.e("FloatingBubble", "showUnifiedView failed", e)
         }
     }
 
-    private fun onBubbleClick() {
+    private fun onUnifiedClick() {
         if (CaptureState.mediaProjection == null) {
             AppLog.add("[悬浮窗] mediaProjection 为空，请先在 app 中开启悬浮窗时授权截屏权限")
+            unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "未授权")
         } else {
             AppLog.add("[悬浮窗] mediaProjection 已就绪，直接截屏")
+            unifiedView?.updateState(UnifiedBubbleView.State.PROCESSING)
             captureAndAnalyze()
         }
     }
@@ -171,6 +159,7 @@ class FloatingBubbleService : Service() {
         val projection = CaptureState.mediaProjection
         if (projection == null) {
             AppLog.add("[悬浮窗] 截屏失败: mediaProjection 为空")
+            unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "未授权")
             return
         }
         AppLog.add("[悬浮窗] 开始截屏...")
@@ -186,44 +175,22 @@ class FloatingBubbleService : Service() {
                     withContext(Dispatchers.Main) {
                         if (result != null && result.chineseMoves.isNotEmpty()) {
                             AppLog.add("[悬浮窗] 分析成功: ${result.chineseMoves[0]}")
-                            showResult(result.chineseMoves[0], result.fen)
+                            unifiedView?.updateState(UnifiedBubbleView.State.SUCCESS, move = result.chineseMoves[0])
                         } else {
                             AppLog.add("[悬浮窗] 分析无结果 (result=${result != null}, moves=${result?.chineseMoves?.size ?: 0})")
+                            unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "无结果")
                         }
                     }
                 } else {
                     AppLog.add("[悬浮窗] 截屏失败: ScreenCaptureManager 返回 null")
+                    unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "截屏失败")
                 }
             } catch (e: Exception) {
                 AppLog.add("[悬浮窗] 截屏分析异常: ${e.message}")
                 Log.e("FloatingBubble", "captureAndAnalyze failed", e)
                 CaptureState.mediaProjection = null
+                unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = e.message ?: "异常")
             }
-        }
-    }
-
-    private fun showResult(move: String, fen: String) {
-        AppLog.add("[悬浮窗] 显示结果: $move")
-        try {
-            resultOverlay?.let { windowManager.removeView(it) }
-        } catch (_: Exception) {}
-        resultOverlay = ResultOverlayView(this, move, fen) { view ->
-            try { windowManager.removeView(view) } catch (_: Exception) {}
-            resultOverlay = null
-        }
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
-            PixelFormat.TRANSLUCENT
-        )
-        try {
-            windowManager.addView(resultOverlay, params)
-        } catch (e: Exception) {
-            AppLog.add("[悬浮窗] 显示结果失败: ${e.message}")
-            Log.e("FloatingBubble", "showResult addView failed", e)
         }
     }
 }
