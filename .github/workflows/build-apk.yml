@@ -31,13 +31,19 @@ jobs:
           ls -la $(dirname "$SDK_MGR") 2>/dev/null || echo "cmdline-tools not found"
           yes | $SDK_MGR --install "platforms;android-34" "build-tools;34.0.0" || true
 
-- name: Build release APK
-  run: |
-    cd android
-    chmod +x gradlew
-    # Use test keystore for CI build
-    echo "test.keystore" > app/keystore.jks
-    ./gradlew assembleRelease --no-daemon
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > android/app/keystore.jks
+
+      - name: Build release APK
+        env:
+          KEYSTORE_PATH: android/app/keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
 
       - uses: softprops/action-gh-release@v2
         with:
