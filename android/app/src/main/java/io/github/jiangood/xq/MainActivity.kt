@@ -53,8 +53,12 @@ class MainActivity : ComponentActivity() {
             startFloatingService()
         }
     }
+
+    private var notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) startFloatingService()
     }
-    // Removed duplicate notificationPermissionLauncher declaration
 
     private val screenCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()

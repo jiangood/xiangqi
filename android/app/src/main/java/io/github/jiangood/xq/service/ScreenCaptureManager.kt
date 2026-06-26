@@ -53,7 +53,7 @@ object ScreenCaptureManager {
                 }
             }, null)
 
-            val success = latch.await(CAPTURE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            val success = latch.await(CAPTURE_TIMEOUT_SECONDS.toLong(), TimeUnit.SECONDS)
 
             virtualDisplay.release()
             imageReader.close()
