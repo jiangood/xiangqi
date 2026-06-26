@@ -11,8 +11,8 @@ android {
         applicationId = "io.github.jiangood.xq"
         minSdk = 26
         targetSdk = 34
-        versionCode = 13
-        versionName = "2.6"
+        versionCode = 14
+        versionName = "2.7"
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
@@ -50,10 +50,9 @@ android {
 
     applicationVariants.all {
         val v = versionName
-        val variant = name
         outputs.all {
             this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            outputFileName = "xq-release.apk"
+            outputFileName = "xq-${v}.apk"
         }
     }
 
