@@ -22,7 +22,9 @@ object AppLog {
         try {
             val saved = logFile?.readLines() ?: emptyList()
             if (saved.isNotEmpty()) {
-                _logs.value = saved.takeLast(MAX_LOG_LINES) + listOf("-- 以上为上次日志 --")
+                val kept = saved.takeLast(MAX_LOG_LINES)
+                _logs.value = kept + listOf("-- 以上为上次日志 --")
+                logFile?.writeText(kept.joinToString("\n") + "\n", Charsets.UTF_8)
             }
         } catch (_: Exception) {}
     }
