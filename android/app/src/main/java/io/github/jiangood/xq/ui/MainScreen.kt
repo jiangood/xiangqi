@@ -11,10 +11,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -149,6 +149,48 @@ fun MainScreen(
                 context.startActivity(intent)
             }
         )
+
+        RuntimeLogCard(logs = viewModel.logs.collectAsState().value, isError = state is UiState.Error)
+    }
+}
+
+@Composable
+private fun RuntimeLogCard(logs: List<String>, isError: Boolean) {
+    var expanded by remember { mutableStateOf(isError) }
+    LaunchedEffect(isError) { if (isError) expanded = true }
+
+    Spacer(Modifier.height(8.dp))
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column {
+            TextButton(
+                onClick = { expanded = !expanded },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+            ) {
+                Text(
+                    text = if (expanded) "▼ 运行日志 (${logs.size})" else "▶ 运行日志 (${logs.size})",
+                    modifier = Modifier.weight(1f),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            AnimatedVisibility(visible = expanded && logs.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 300.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    logs.forEach { line ->
+                        Text(
+                            text = line,
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

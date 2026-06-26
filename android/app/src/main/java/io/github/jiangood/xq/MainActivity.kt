@@ -85,6 +85,7 @@ class MainActivity : ComponentActivity() {
 
         viewModel.initOpenCV(this)
         viewModel.initEngine(this)
+        viewModel.initRecognizer(this)
 
         handleShareIntent(intent)
         handleRequestCapture(intent)
