@@ -133,16 +133,15 @@ public class BoardUtils {
         double cellH = grid[1][0].y - grid[0][0].y;
         for (Map.Entry<Point, String> e : detections.entrySet()) {
             Point pt = e.getKey();
-            String cls = e.getValue();
-            boolean isRed = cls.startsWith("r");
-            Scalar boxColor = isRed ? new Scalar(0, 0, 255) : new Scalar(200, 200, 0);
+            String name = e.getValue();
+            Scalar color = name.startsWith("r") ? new Scalar(0, 0, 255) : new Scalar(0, 0, 0);
             double absX = boardRect.x + pt.x;
             double absY = boardRect.y + pt.y;
             double x1 = absX - cellW / 2;
             double y1 = absY - cellH / 2;
             double x2 = absX + cellW / 2;
             double y2 = absY + cellH / 2;
-            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), boxColor, 2);
+            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), color, 2);
         }
         return output;
     }
@@ -160,12 +159,6 @@ public class BoardUtils {
         Imgproc.arrowedLine(image, from, to, new Scalar(255, 255, 0), 3, Imgproc.LINE_AA, 0, 0.3);
     }
 
-    private static String pieceNameToFen(String piece) {
-        return piece.charAt(0) == 'r'
-            ? String.valueOf(Character.toUpperCase(piece.charAt(1)))
-            : String.valueOf(piece.charAt(1));
-    }
-
     public static Mat drawPreview(Mat src, Rect boardRect, Map<Point, String> detections, Point[][] grid) {
         Mat output = src.clone();
         Imgproc.rectangle(output, boardRect.tl(), boardRect.br(), new Scalar(255, 0, 0), 2);
@@ -174,27 +167,25 @@ public class BoardUtils {
         double cellH = grid[1][0].y - grid[0][0].y;
         for (Map.Entry<Point, String> e : detections.entrySet()) {
             Point pt = e.getKey();
-            String cls = e.getValue();
-            String label = pieceNameToFen(cls);
-            boolean isRed = cls.startsWith("r");
-            Scalar boxColor = isRed ? new Scalar(0, 0, 255) : new Scalar(200, 200, 0);
-            Scalar textColor = isRed ? new Scalar(0, 0, 255) : new Scalar(0, 0, 0);
+            String name = e.getValue();
+            boolean isRed = name.startsWith("r");
+            Scalar color = isRed ? new Scalar(0, 0, 255) : new Scalar(0, 0, 0);
             double absX = boardRect.x + pt.x;
             double absY = boardRect.y + pt.y;
             double x1 = absX - cellW / 2;
             double y1 = absY - cellH / 2;
             double x2 = absX + cellW / 2;
             double y2 = absY + cellH / 2;
-            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), boxColor, 2);
+            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), color, 2);
 
             Point textOrg = new Point(x1, Math.max(y1 - 4, 0));
             int[] baseline = new int[1];
-            Size textSize = Imgproc.getTextSize(label, Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, 2, baseline);
+            Size textSize = Imgproc.getTextSize(name, Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, 2, baseline);
             Point bgTl = new Point(textOrg.x, textOrg.y - textSize.height);
             Point bgBr = new Point(textOrg.x + textSize.width, textOrg.y + baseline[0]);
             Imgproc.rectangle(output, bgTl, bgBr, new Scalar(255, 255, 255), -1);
-            Imgproc.putText(output, label, textOrg,
-                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, textColor, 2, Imgproc.LINE_AA, false);
+            Imgproc.putText(output, name, textOrg,
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, color, 2, Imgproc.LINE_AA, false);
         }
         return output;
     }
