@@ -20,6 +20,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -52,7 +53,7 @@ android {
         val variant = name
         outputs.all {
             this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            outputFileName = "xq-${v}-${variant}.apk"
+            outputFileName = "xq-release.apk"
         }
     }
 
