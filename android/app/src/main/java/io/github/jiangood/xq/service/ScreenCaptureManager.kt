@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
+import android.hardware.display.VirtualDisplay
 import android.media.Image
 import android.media.ImageReader
 import android.media.projection.MediaProjection
@@ -15,98 +16,131 @@ import android.view.WindowManager
 import io.github.jiangood.xq.util.AppLog
 import java.io.File
 import java.io.FileOutputStream
-import java.nio.ByteBuffer
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 object ScreenCaptureManager {
     private const val SCREENSHOT_NAME = "floating_screenshot.png"
     private const val CAPTURE_TIMEOUT_SECONDS = 5
 
-    fun capture(mediaProjection: MediaProjection, context: Context): File? {
-        var virtualDisplay: android.hardware.display.VirtualDisplay? = null
-        var imageReader: ImageReader? = null
-        var handlerThread: HandlerThread? = null
-        return try {
-            val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-            val metrics = DisplayMetrics()
-            windowManager.defaultDisplay.getRealMetrics(metrics)
-            val width = metrics.widthPixels
-            val height = metrics.heightPixels
-            val density = metrics.densityDpi
-            AppLog.add("[截屏] 屏幕尺寸: ${width}x${height}, density=$density")
+    private var virtualDisplay: VirtualDisplay? = null
+    private var imageReader: ImageReader? = null
+    private var handlerThread: HandlerThread? = null
+    private var handler: Handler? = null
+    private var ctx: Context? = null
 
-            imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 3)
+    private var inited = false
 
-            val latch = CountDownLatch(1)
-            var bitmap: Bitmap? = null
-            var callbackError: String? = null
+    private val captureRequested = AtomicBoolean(false)
+    private var captureLatch: CountDownLatch? = null
+    private var capturedBitmap: Bitmap? = null
 
-            handlerThread = HandlerThread("ScreenCapture")
-            handlerThread.start()
-            imageReader.setOnImageAvailableListener({ reader ->
-                try {
-                    val image = reader.acquireNextImage()
-                    AppLog.add("[截屏] ImageReader 收到图像: ${image.width}x${image.height}, " +
-                            "format=${image.format}, planes=${image.planes.size}")
-                    bitmap = imageToBitmap(image)
-                    image.close()
-                } catch (e: Exception) {
-                    callbackError = "图像回调异常: ${e.message}"
-                    Log.e("ScreenCapture", "image callback error", e)
-                } finally {
-                    latch.countDown()
+    fun isInitialized(): Boolean = inited
+
+    fun init(mediaProjection: MediaProjection, context: Context): Boolean {
+        release()
+        ctx = context
+
+        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val metrics = DisplayMetrics()
+        windowManager.defaultDisplay.getRealMetrics(metrics)
+        val width = metrics.widthPixels
+        val height = metrics.heightPixels
+        val density = metrics.densityDpi
+        AppLog.add("[截屏] 屏幕尺寸: ${width}x${height}, density=$density")
+
+        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
+        handlerThread = HandlerThread("ScreenCapture").apply { start() }
+        handler = Handler(handlerThread!!.looper)
+
+        imageReader?.setOnImageAvailableListener({ reader ->
+            try {
+                val image = reader.acquireNextImage()
+                if (captureRequested.get()) {
+                    capturedBitmap = imageToBitmap(image)
+                    captureLatch?.countDown()
                 }
-            }, Handler(handlerThread.looper))
-
-            AppLog.add("[截屏] 创建 VirtualDisplay...")
-            virtualDisplay = try {
-                mediaProjection.createVirtualDisplay(
-                    "FloatingCapture",
-                    width, height, density,
-                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                    imageReader.surface, null, null
-                )
-            } catch (e: IllegalStateException) {
-                val msg = "VirtualDisplay 创建失败: ${e.message} (MediaProjection 可能已停止或 token 过期)"
-                Log.e("ScreenCapture", msg, e)
-                AppLog.add("[截屏] $msg")
-                return null
+                image.close()
+            } catch (_: Exception) {
             }
-            AppLog.add("[截屏] VirtualDisplay 已创建")
+        }, handler)
 
+        virtualDisplay = try {
+            mediaProjection.createVirtualDisplay(
+                "FloatingCapture",
+                width, height, density,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                imageReader?.surface, null, null
+            )
+        } catch (e: Exception) {
+            AppLog.add("[截屏] VirtualDisplay 创建失败: ${e.message}")
+            release()
+            return false
+        }
+
+        inited = true
+        AppLog.add("[截屏] ScreenCaptureManager 初始化完成")
+        return true
+    }
+
+    fun capture(): File? {
+        if (!inited) {
+            AppLog.add("[截屏] ScreenCaptureManager 未初始化")
+            return null
+        }
+
+        val latch = CountDownLatch(1)
+        captureLatch = latch
+        captureRequested.set(true)
+        capturedBitmap = null
+
+        try {
             if (!latch.await(CAPTURE_TIMEOUT_SECONDS.toLong(), TimeUnit.SECONDS)) {
-                val msg = "截屏超时 (${CAPTURE_TIMEOUT_SECONDS}s)"
-                Log.e("ScreenCapture", msg)
-                AppLog.add("[截屏] $msg")
+                AppLog.add("[截屏] 截屏超时 (${CAPTURE_TIMEOUT_SECONDS}s)")
                 return null
             }
 
-            if (bitmap == null) {
-                val msg = callbackError ?: "bitmap 为空"
-                Log.e("ScreenCapture", msg)
-                AppLog.add("[截屏] $msg")
+            val bmp = capturedBitmap
+            if (bmp == null) {
+                AppLog.add("[截屏] bitmap 为空")
                 return null
             }
 
-            val bmp = bitmap!!
-            AppLog.add("[截屏] 截屏成功, bitmap=${bmp.width}x${bmp.height}")
-            val file = File(context.cacheDir, SCREENSHOT_NAME)
+            val file = File(ctx!!.cacheDir, SCREENSHOT_NAME)
             FileOutputStream(file).use { out ->
                 bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
-            AppLog.add("[截屏] 已保存: ${file.absolutePath} (${file.length()} bytes)")
-            file
+            AppLog.add("[截屏] 截屏成功: ${file.name} (${file.length()} bytes)")
+            return file
         } catch (e: Exception) {
             val msg = "截屏异常: ${e.message}"
-            Log.e("ScreenCapture", "capture exception", e)
             AppLog.add("[截屏] $msg")
-            null
+            Log.e("ScreenCapture", "capture exception", e)
+            return null
         } finally {
-            virtualDisplay?.release()
-            imageReader?.close()
-            handlerThread?.quitSafely()
+            captureRequested.set(false)
+            captureLatch = null
+            capturedBitmap = null
         }
+    }
+
+    fun release() {
+        inited = false
+        captureLatch?.countDown()
+        captureLatch = null
+        capturedBitmap = null
+        captureRequested.set(false)
+
+        virtualDisplay?.release()
+        imageReader?.close()
+        handlerThread?.quitSafely()
+        virtualDisplay = null
+        imageReader = null
+        handlerThread = null
+        handler = null
+        ctx = null
+        AppLog.add("[截屏] ScreenCaptureManager 已释放")
     }
 
     private fun imageToBitmap(image: Image): Bitmap {
@@ -124,7 +158,6 @@ object ScreenCaptureManager {
             return bitmap
         }
 
-        // 处理 stride 不对齐的情况
         val pixels = IntArray(width * height)
         val row = ByteArray(rowStride)
         for (y in 0 until height) {

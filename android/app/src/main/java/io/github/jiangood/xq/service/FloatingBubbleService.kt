@@ -69,9 +69,11 @@ class FloatingBubbleService : Service() {
                         override fun onStop() {
                             AppLog.add("[悬浮窗] mediaProjection 停止，清理状态")
                             CaptureState.mediaProjection = null
+                            ScreenCaptureManager.release()
                         }
                     }, null)
                     CaptureState.mediaProjection = projection
+                    ScreenCaptureManager.init(projection, this)
                     AppLog.add("[悬浮窗] mediaProjection 已保存")
                 }
             }
@@ -88,6 +90,7 @@ class FloatingBubbleService : Service() {
     override fun onDestroy() {
         AppLog.add("[悬浮窗] onDestroy")
         scope.cancel()
+        ScreenCaptureManager.release()
         try {
             unifiedView?.let { windowManager.removeView(it) }
         } catch (_: Exception) {}
@@ -180,9 +183,11 @@ class FloatingBubbleService : Service() {
                         override fun onStop() {
                             AppLog.add("[悬浮窗] mediaProjection 停止，清理状态")
                             CaptureState.mediaProjection = null
+                            ScreenCaptureManager.release()
                         }
                     }, null)
                     CaptureState.mediaProjection = projection
+                    ScreenCaptureManager.init(projection, this)
                     AppLog.add("[悬浮窗] 从持久化 grant 重建 MediaProjection 成功")
                     unifiedView?.updateState(UnifiedBubbleView.State.PROCESSING)
                     captureAndAnalyze()
@@ -212,12 +217,20 @@ class FloatingBubbleService : Service() {
             unifiedView?.updateState(UnifiedBubbleView.State.IDLE)
             return
         }
+        if (!ScreenCaptureManager.isInitialized()) {
+            AppLog.add("[悬浮窗] ScreenCaptureManager 未初始化，重新 init")
+            if (!ScreenCaptureManager.init(projection, this)) {
+                AppLog.add("[悬浮窗] ScreenCaptureManager.init 失败")
+                unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "初始化失败")
+                return
+            }
+        }
         isAnalyzing = true
-        AppLog.add("[悬浮窗] 开始截屏 (projection=${projection != null})...")
+        AppLog.add("[悬浮窗] 开始截屏...")
         scope.launch {
             try {
                 val file = withContext(Dispatchers.IO) {
-                    ScreenCaptureManager.capture(projection, this@FloatingBubbleService)
+                    ScreenCaptureManager.capture()
                 }
                 if (file != null) {
                     AppLog.add("[悬浮窗] 截屏成功: ${file.name} (${file.length()} bytes)")
