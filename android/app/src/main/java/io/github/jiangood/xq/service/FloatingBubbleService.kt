@@ -30,6 +30,7 @@ class FloatingBubbleService : Service() {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private lateinit var windowManager: WindowManager
     private var unifiedView: UnifiedBubbleView? = null
+    private var isAnalyzing = false
 
     override fun onCreate() {
         super.onCreate()
@@ -62,7 +63,6 @@ class FloatingBubbleService : Service() {
                     projection.registerCallback(object : MediaProjection.Callback() {
                         override fun onStop() {
                             AppLog.add("[悬浮窗] mediaProjection 停止")
-                            CaptureState.mediaProjection = null
                         }
                     }, null)
                     CaptureState.mediaProjection = projection
@@ -145,6 +145,10 @@ class FloatingBubbleService : Service() {
     }
 
     private fun onUnifiedClick() {
+        if (isAnalyzing) {
+            AppLog.add("[悬浮窗] 正在分析中，忽略本次点击")
+            return
+        }
         if (CaptureState.mediaProjection == null) {
             AppLog.add("[悬浮窗] mediaProjection 为空，请先在 app 中开启悬浮窗时授权截屏权限")
             unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "未授权")
@@ -162,6 +166,7 @@ class FloatingBubbleService : Service() {
             unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "未授权")
             return
         }
+        isAnalyzing = true
         AppLog.add("[悬浮窗] 开始截屏...")
         scope.launch {
             try {
@@ -188,8 +193,9 @@ class FloatingBubbleService : Service() {
             } catch (e: Exception) {
                 AppLog.add("[悬浮窗] 截屏分析异常: ${e.message}")
                 Log.e("FloatingBubble", "captureAndAnalyze failed", e)
-                CaptureState.mediaProjection = null
                 unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = e.message ?: "异常")
+            } finally {
+                isAnalyzing = false
             }
         }
     }
