@@ -14,16 +14,18 @@ class UnifiedBubbleView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
 
     enum class State {
-        IDLE("就绪"),
-        PROCESSING("处理中"),
+        IDLE,
+        PROCESSING,
         SUCCESS,
         FAILED
     }
 
+    private val density = resources.displayMetrics.density
+
     private var currentState: State = State.IDLE
     private var successMove: String? = null
     private var failedError: String? = null
-    var onClick: (() -> Unit = {}
+    var onClick: (() -> Unit)? = null
 
     // 尺寸常量
     private val circleRadius = (28f * density)
@@ -58,8 +60,6 @@ class UnifiedBubbleView @JvmOverloads constructor(
     private var initialWindowX = 0
     private var initialWindowY = 0
     private var isDragging = false
-
-    private val density = resources.displayMetrics.density
 
     init {
         setWillNotDraw(false)
@@ -164,7 +164,7 @@ class UnifiedBubbleView @JvmOverloads constructor(
                     // 判断点击区域：圆形按钮范围内
                     val touchY = y - params.y
                     if (touchY < circleDiameter) {
-                        onClick()
+                        onClick?.invoke()
                     }
                 }
                 return true
