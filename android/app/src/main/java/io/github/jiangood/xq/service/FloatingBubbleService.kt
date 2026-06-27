@@ -35,6 +35,7 @@ class FloatingBubbleService : Service() {
     private lateinit var windowManager: WindowManager
     private var unifiedView: UnifiedBubbleView? = null
     private var isAnalyzing = false
+    private val grantStore by lazy { ScreenCaptureGrantStore(this) }
 
     override fun onCreate() {
         super.onCreate()
@@ -157,14 +158,43 @@ class FloatingBubbleService : Service() {
             return
         }
         if (CaptureState.mediaProjection == null) {
-            AppLog.add("[悬浮窗] mediaProjection 为空，需要重新授权截屏权限")
+            AppLog.add("[悬浮窗] mediaProjection 为空，尝试从持久化 grant 恢复")
             unifiedView?.updateState(UnifiedBubbleView.State.IDLE)
-            requestScreenCapturePermission()
+            restoreProjectionOrRequest()
         } else {
             AppLog.add("[悬浮窗] mediaProjection 已就绪，直接截屏")
             unifiedView?.updateState(UnifiedBubbleView.State.PROCESSING)
             captureAndAnalyze()
         }
+    }
+
+    private fun restoreProjectionOrRequest() {
+        val grant = grantStore.loadGrant()
+        if (grant != null) {
+            val (resultCode, data) = grant
+            try {
+                val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                val projection = mpm.getMediaProjection(resultCode, data)
+                if (projection != null) {
+                    projection.registerCallback(object : MediaProjection.Callback() {
+                        override fun onStop() {
+                            AppLog.add("[悬浮窗] mediaProjection 停止，清理状态")
+                            CaptureState.mediaProjection = null
+                        }
+                    }, null)
+                    CaptureState.mediaProjection = projection
+                    AppLog.add("[悬浮窗] 从持久化 grant 重建 MediaProjection 成功")
+                    unifiedView?.updateState(UnifiedBubbleView.State.PROCESSING)
+                    captureAndAnalyze()
+                    return
+                }
+            } catch (e: Exception) {
+                AppLog.add("[悬浮窗] 从持久化 grant 重建失败: ${e.message}")
+                grantStore.clearGrant()
+            }
+        }
+        AppLog.add("[悬浮窗] 无法从持久化 grant 重建，需要重新授权截屏权限")
+        requestScreenCapturePermission()
     }
 
     private fun requestScreenCapturePermission() {

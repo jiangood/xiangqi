@@ -17,6 +17,7 @@ import io.github.jiangood.xq.analysis.AnalysisEngine
 import io.github.jiangood.xq.BuildConfig
 import io.github.jiangood.xq.service.CaptureState
 import io.github.jiangood.xq.service.FloatingBubbleService
+import io.github.jiangood.xq.service.ScreenCaptureGrantStore
 import io.github.jiangood.xq.ui.MainScreen
 import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.viewmodel.AnalysisViewModel
@@ -24,6 +25,8 @@ import io.github.jiangood.xq.viewmodel.AnalysisViewModel
 class MainActivity : ComponentActivity() {
 
     private val viewModel: AnalysisViewModel by viewModels()
+
+    private val grantStore by lazy { ScreenCaptureGrantStore(this) }
 
     private val pickMedia = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
@@ -82,6 +85,7 @@ class MainActivity : ComponentActivity() {
         try {
             if (result.resultCode == RESULT_OK && result.data != null) {
                 AppLog.add("[悬浮窗] 截屏权限已获取，发送至服务")
+                result.data?.let { grantStore.saveGrant(result.resultCode, it) }
                 val intent = Intent(this, FloatingBubbleService::class.java).apply {
                     action = "SET_MEDIA_PROJECTION"
                     putExtra("result_code", result.resultCode)
