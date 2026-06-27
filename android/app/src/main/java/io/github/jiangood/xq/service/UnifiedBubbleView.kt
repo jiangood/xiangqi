@@ -157,9 +157,10 @@ class UnifiedBubbleView @JvmOverloads constructor(
                 // 启动长按检测
                 longPressRunnable = Runnable {
                     isDragging = true
-                    // 长按触发：震动反馈
-                    val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-                    vibrator?.vibrate(50)
+                    try {
+                        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                        vibrator?.vibrate(50)
+                    } catch (_: Exception) {}
                     AppLog.add("[悬浮窗触摸] 长按触发拖动模式")
                     invalidate()
                 }
