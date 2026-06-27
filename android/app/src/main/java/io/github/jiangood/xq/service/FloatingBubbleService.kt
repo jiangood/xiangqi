@@ -19,8 +19,10 @@ import io.github.jiangood.xq.MainActivity
 import io.github.jiangood.xq.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -122,9 +124,9 @@ class FloatingBubbleService : Service() {
         try {
             val density = resources.displayMetrics.density
             val width = (100 * density).toInt()
-            val height = (92 * density).toInt()
+            val height = (100 * density).toInt()
             val params = WindowManager.LayoutParams(
-                width, height,
+                width, WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT
@@ -197,12 +199,18 @@ class FloatingBubbleService : Service() {
                             AppLog.add("[悬浮窗] 原始走法: ${result.standardMoves.joinToString(", ")}")
                             AppLog.add("[悬浮窗] 中文走法: ${result.chineseMoves.joinToString(", ")}")
                             AppLog.add("[悬浮窗] 显示: ${result.chineseMoves[0]}")
+                            unifiedView?.updateState(UnifiedBubbleView.State.SUCCESS, move = result.chineseMoves[0])
+                            delayAutoIdle()
                         } else {
                             AppLog.add("[悬浮窗] 分析无结果 (result=${result != null}, chineseMoves=${result?.chineseMoves?.size ?: 0}, standardMoves=${result?.standardMoves?.size ?: 0})")
+                            unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "无结果")
+                            delayAutoIdle()
                         }
                     }
                 } else {
                     AppLog.add("[悬浮窗] 截屏失败: ScreenCaptureManager 返回 null")
+                    unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "截屏失败")
+                    delayAutoIdle()
                     // MediaProjection may have been stopped, clear it and request new permission
                     CaptureState.mediaProjection = null
                     withContext(Dispatchers.Main) {
@@ -212,10 +220,21 @@ class FloatingBubbleService : Service() {
             } catch (e: Exception) {
                 AppLog.add("[悬浮窗] 截屏分析异常: ${e.message}")
                 Log.e("FloatingBubble", "captureAndAnalyze failed", e)
+                unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = e.message)
+                delayAutoIdle()
             } finally {
                 isAnalyzing = false
-                unifiedView?.updateState(UnifiedBubbleView.State.IDLE)
             }
+        }
+    }
+
+    private var idleJob: kotlinx.coroutines.Job? = null
+
+    private fun delayAutoIdle() {
+        idleJob?.cancel()
+        idleJob = scope.launch {
+            delay(3000)
+            unifiedView?.updateState(UnifiedBubbleView.State.IDLE)
         }
     }
 }

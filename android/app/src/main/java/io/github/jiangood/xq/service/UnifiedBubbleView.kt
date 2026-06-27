@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.*
 import android.os.Vibrator
 import android.util.AttributeSet
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -20,33 +19,50 @@ class UnifiedBubbleView @JvmOverloads constructor(
 
     enum class State {
         IDLE,
-        PROCESSING
+        PROCESSING,
+        SUCCESS,
+        FAILED
     }
 
     private val density = resources.displayMetrics.density
 
     private var currentState: State = State.IDLE
+    private var successMove: String? = null
+    private var failedError: String? = null
     var onClick: (() -> Unit)? = null
 
     // 尺寸常量
     private val circleRadius = (28f * density)
     private val circleDiameter = circleRadius * 2
+    private val gap = (4f * density)
+    private val capsuleHeight = (28f * density)
+    private val capsulePaddingH = (16f * density)
+    private val capsulePaddingV = (4f * density)
 
-    // 画笔
+    // 画笔 - 圆形按钮
     private val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#C19A6B")  // 象棋棋盘木色
+        color = Color.parseColor("#C19A6B")
         style = Paint.Style.FILL
     }
     private val circleBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#8B6914")  // 深木色边框
+        color = Color.parseColor("#8B6914")
         style = Paint.Style.STROKE
         strokeWidth = 2f * density
     }
     private val circleTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FFF8DC")  // 象牙白/米色
+        color = Color.parseColor("#FFF8DC")
         textSize = density * 24
         textAlign = Paint.Align.CENTER
         isFakeBoldText = true
+    }
+    // 画笔 - 胶囊状态条
+    private val capsuleBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xD9FFFFFF.toInt()
+        style = Paint.Style.FILL
+    }
+    private val capsuleTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = density * 14
+        textAlign = Paint.Align.CENTER
     }
 
     // 长按拖拽状态
@@ -56,7 +72,7 @@ class UnifiedBubbleView @JvmOverloads constructor(
     private var initialWindowY = 0
     private var isDragging = false
     private var longPressRunnable: Runnable? = null
-    private val longPressTimeout = ViewConfiguration.getLongPressTimeout()  // 通常 500ms
+    private val longPressTimeout = ViewConfiguration.getLongPressTimeout()
     private val scaledTouchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     init {
@@ -64,28 +80,66 @@ class UnifiedBubbleView @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val size = circleDiameter.toInt()
-        setMeasuredDimension(size, size)
+        val capsuleWidth = measureCapsuleWidth()
+        val w = maxOf(circleDiameter.toInt(), capsuleWidth)
+        val h = (circleDiameter + gap + capsuleHeight).toInt()
+        setMeasuredDimension(w, h)
     }
 
     override fun onDraw(canvas: Canvas) {
         val cx = width / 2f
-        val cy = height / 2f
+        val cyCircle = circleRadius
 
-        // 绘制圆形按钮（木质底 + 边框）
-        canvas.drawCircle(cx, cy, circleRadius - 3f, circlePaint)
-        canvas.drawCircle(cx, cy, circleRadius - 3f, circleBorderPaint)
-
-        // 中央文字
+        // 圆形按钮
+        canvas.drawCircle(cx, cyCircle, circleRadius - 3f, circlePaint)
+        canvas.drawCircle(cx, cyCircle, circleRadius - 3f, circleBorderPaint)
         val circleText = when (currentState) {
             State.PROCESSING -> "⏳"
+            State.SUCCESS -> "✓"
+            State.FAILED -> "✗"
             else -> "支"
         }
-        canvas.drawText(circleText, cx, cy + circleTextPaint.textSize / 3, circleTextPaint)
+        canvas.drawText(circleText, cx, cyCircle + circleTextPaint.textSize / 3, circleTextPaint)
+
+        // 胶囊状态条
+        val capsuleTop = circleDiameter + gap
+        val capsuleBottom = capsuleTop + capsuleHeight
+        val capsuleText = getCapsuleText()
+        val cw = measureCapsuleWidth().toFloat()
+        val capsuleLeft = (width - cw) / 2f
+        val capsuleRight = capsuleLeft + cw
+        val capsuleRect = RectF(capsuleLeft, capsuleTop, capsuleRight, capsuleBottom)
+        canvas.drawRoundRect(capsuleRect, capsuleHeight / 2, capsuleHeight / 2, capsuleBgPaint)
+        val textColor = when (currentState) {
+            State.SUCCESS -> Color.parseColor("#2E7D32")
+            State.FAILED -> Color.parseColor("#C62828")
+            else -> Color.BLACK
+        }
+        capsuleTextPaint.color = textColor
+        canvas.drawText(capsuleText, cx, capsuleTop + capsuleHeight / 2 + capsuleTextPaint.textSize / 3, capsuleTextPaint)
     }
 
-    fun updateState(state: State) {
+    private fun getCapsuleText(): String {
+        return when (currentState) {
+            State.IDLE -> "就绪"
+            State.PROCESSING -> "处理中"
+            State.SUCCESS -> successMove ?: "成功"
+            State.FAILED -> failedError ?: "失败"
+        }
+    }
+
+    private fun measureCapsuleWidth(): Int {
+        val text = getCapsuleText()
+        val bounds = Rect()
+        capsuleTextPaint.getTextBounds(text, 0, text.length, bounds)
+        return bounds.width() + (capsulePaddingH * 2).toInt()
+    }
+
+    fun updateState(state: State, move: String? = null, error: String? = null) {
         currentState = state
+        successMove = move
+        failedError = error
+        requestLayout()
         invalidate()
     }
 
