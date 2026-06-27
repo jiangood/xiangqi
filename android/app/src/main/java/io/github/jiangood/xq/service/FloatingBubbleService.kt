@@ -154,7 +154,7 @@ class FloatingBubbleService : Service() {
         }
         if (CaptureState.mediaProjection == null) {
             AppLog.add("[悬浮窗] mediaProjection 为空，请先在 app 中开启悬浮窗时授权截屏权限")
-            unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "未授权")
+            unifiedView?.updateState(UnifiedBubbleView.State.IDLE)
         } else {
             AppLog.add("[悬浮窗] mediaProjection 已就绪，直接截屏")
             unifiedView?.updateState(UnifiedBubbleView.State.PROCESSING)
@@ -166,7 +166,7 @@ class FloatingBubbleService : Service() {
         val projection = CaptureState.mediaProjection
         if (projection == null) {
             AppLog.add("[悬浮窗] 截屏失败: mediaProjection 为空")
-            unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "未授权")
+            unifiedView?.updateState(UnifiedBubbleView.State.IDLE)
             return
         }
         isAnalyzing = true
@@ -186,22 +186,19 @@ class FloatingBubbleService : Service() {
                             AppLog.add("[悬浮窗] 原始走法: ${result.standardMoves.joinToString(", ")}")
                             AppLog.add("[悬浮窗] 中文走法: ${result.chineseMoves.joinToString(", ")}")
                             AppLog.add("[悬浮窗] 显示: ${result.chineseMoves[0]}")
-                            unifiedView?.updateState(UnifiedBubbleView.State.SUCCESS, move = result.chineseMoves[0])
                         } else {
                             AppLog.add("[悬浮窗] 分析无结果 (result=${result != null}, chineseMoves=${result?.chineseMoves?.size ?: 0}, standardMoves=${result?.standardMoves?.size ?: 0})")
-                            unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "无结果")
                         }
                     }
                 } else {
                     AppLog.add("[悬浮窗] 截屏失败: ScreenCaptureManager 返回 null")
-                    unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "截屏失败")
                 }
             } catch (e: Exception) {
                 AppLog.add("[悬浮窗] 截屏分析异常: ${e.message}")
                 Log.e("FloatingBubble", "captureAndAnalyze failed", e)
-                unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = e.message ?: "异常")
             } finally {
                 isAnalyzing = false
+                unifiedView?.updateState(UnifiedBubbleView.State.IDLE)
             }
         }
     }
