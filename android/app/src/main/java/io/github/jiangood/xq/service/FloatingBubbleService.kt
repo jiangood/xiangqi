@@ -138,8 +138,10 @@ class FloatingBubbleService : Service() {
                 gravity = Gravity.TOP or Gravity.START
                 val metrics = DisplayMetrics()
                 windowManager.defaultDisplay.getRealMetrics(metrics)
-                x = metrics.widthPixels - width - (16 * density).toInt()
-                y = metrics.heightPixels - height - (16 * density).toInt()
+                val rightMarginDp = 80f
+                val bottomMarginDp = 120f
+                x = metrics.widthPixels - width - (rightMarginDp * density).toInt()
+                y = metrics.heightPixels - height - (bottomMarginDp * density).toInt()
             }
             unifiedView = UnifiedBubbleView(this).apply {
                 onClick = {
