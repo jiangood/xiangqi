@@ -1,13 +1,13 @@
 package io.github.jiangood.xq.model.training;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.lang.Assert;
+import io.github.jiangood.xq.opencv.BoardUtils;
+import io.github.jiangood.xq.opencv.TemplateMatchUtil;
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,7 +25,6 @@ import java.util.logging.Logger;
 public class YoloUtil {
 
     private static final Logger log = Logger.getLogger(YoloUtil.class.getName());
-    private static final double DEFAULT_THRESHOLD = 0.65;
 
     private static final Map<String, Integer> PIECE_CLASS_IDS = new LinkedHashMap<>();
     static {
@@ -43,28 +42,6 @@ public class YoloUtil {
         PIECE_CLASS_IDS.put("bn", 11);
         PIECE_CLASS_IDS.put("bc", 12);
         PIECE_CLASS_IDS.put("bp", 13);
-    }
-
-    static {
-        try {
-            System.load(new File("lib/opencv_java4110.dll").getCanonicalPath());
-        } catch (IOException e) {
-            throw new RuntimeException("无法加载 OpenCV 原生库", e);
-        }
-    }
-
-    private final Map<String, Mat> templateMatMap = new LinkedHashMap<>();
-
-    public YoloUtil() {
-        File templateDir = new File("template");
-        File[] files = templateDir.listFiles();
-        if (files != null) {
-            for (File file : files) {
-                Mat templateImage = Imgcodecs.imread(file.getAbsolutePath(), Imgcodecs.IMREAD_GRAYSCALE);
-                templateMatMap.put(FileUtil.mainName(file), templateImage);
-            }
-        }
-        Assert.notEmpty(templateMatMap, "未加载到模板文件");
     }
 
     public void processAll(String rawDir, String imageDir, String labelDir, String previewDir) throws Exception {
@@ -139,7 +116,7 @@ public class YoloUtil {
 
         executor.shutdown();
         executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        log.info("全部完成: 成功 " + ok.get() + " / 失败 " + fail.get() + " / 共 " + imgList.size()
+        log.info("全部完成: 成功 " + ok.get() + " / 失败 " + fail.get() + " / �?" + imgList.size()
                 + " (train " + trainList.size() + " / val " + valList.size() + ")");
     }
 
@@ -152,12 +129,12 @@ public class YoloUtil {
         Mat srcGray = new Mat();
         Imgproc.cvtColor(srcColor, srcGray, Imgproc.COLOR_BGR2GRAY);
 
-        Rect boardRect = locateBoard(srcGray);
+        Rect boardRect = BoardUtils.locateBoard(srcGray);
         log.info("棋盘区域: " + boardRect);
 
         Mat boardColor = new Mat(srcColor, boardRect);
         Mat boardGray = new Mat(srcGray, boardRect);
-        Map<Point, String> matchResult = matchTemplate(boardGray);
+        Map<Point, String> matchResult = TemplateMatchUtil.matchTemplate(boardGray);
         log.info("检测到 " + matchResult.size() + " 个棋子");
 
         // 先将棋盘二值化(Otsu)，再以3通道灰度保存→消除渲染风格差异、保留纯字形
@@ -165,7 +142,7 @@ public class YoloUtil {
         Mat boardGrayBgr = new Mat();
         Imgproc.cvtColor(boardGray, boardGrayBgr, Imgproc.COLOR_GRAY2BGR);
 
-        Point[][] calibratedGrid = calibrateGrid(matchResult, boardRect);
+        Point[][] calibratedGrid = BoardUtils.calibrateGrid(matchResult, boardRect);
         double cellW = calibratedGrid[0][1].x - calibratedGrid[0][0].x;
         double cellH = calibratedGrid[1][0].y - calibratedGrid[0][0].y;
         if (matchResult.size() < 16) {
@@ -197,7 +174,7 @@ public class YoloUtil {
         }
         Path labelOut = Paths.get(labelDir, baseName + ".txt");
         Files.write(labelOut, yoloLines, StandardCharsets.UTF_8);
-        log.info("保存标注: " + labelOut + " (" + yoloLines.size() + " 条)");
+        log.info("保存标注: " + labelOut + " (" + yoloLines.size() + " �?");
 
         Mat preview = boardGrayBgr.clone();
         for (Map.Entry<Point, String> entry : matchResult.entrySet()) {
@@ -220,113 +197,6 @@ public class YoloUtil {
         String previewOut = Paths.get(previewDir, baseName + ".jpg").toString();
         Imgcodecs.imwrite(previewOut, preview);
         log.info("保存预览: " + previewOut);
-    }
-
-    private Rect locateBoard(Mat src) {
-        Mat blurred = new Mat();
-        Imgproc.GaussianBlur(src, blurred, new Size(5, 5), 0);
-        Mat edges = new Mat();
-        Imgproc.Canny(blurred, edges, 30, 100);
-        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
-        Imgproc.dilate(edges, edges, kernel);
-        List<MatOfPoint> contours = new ArrayList<>();
-        Mat hierarchy = new Mat();
-        Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-        Rect largestRect = null;
-        double largestArea = 0;
-        for (int i = 0; i < contours.size(); i++) {
-            MatOfPoint contour = contours.get(i);
-            Rect rect = Imgproc.boundingRect(contour);
-            double area = rect.area();
-            if (area > src.total() * 0.1 && area > largestArea) {
-                largestArea = area;
-                largestRect = rect;
-            }
-        }
-        Assert.notNull(largestRect, "未能定位棋盘区域");
-        return largestRect;
-    }
-
-    private Point[][] calibrateGrid(Map<Point, String> matches, Rect boardRect) {
-        if (matches.size() < 16) {
-            double borderRatio = 0.05;
-            int margin = (int) (Math.min(boardRect.width, boardRect.height) * borderRatio);
-            int gridLeft = boardRect.x + margin;
-            int gridTop = boardRect.y + margin;
-            int gridWidth = boardRect.width - 2 * margin;
-            int gridHeight = boardRect.height - 2 * margin;
-            double cellW = (double) gridWidth / 8.0;
-            double cellH = (double) gridHeight / 9.0;
-            Point[][] grid = new Point[10][9];
-            for (int row = 0; row < 10; row++) {
-                for (int col = 0; col < 9; col++) {
-                    grid[row][col] = new Point(gridLeft + col * cellW, gridTop + row * cellH);
-                }
-            }
-            return grid;
-        }
-        double minY = Double.MAX_VALUE, maxY = -1;
-        double minX = Double.MAX_VALUE, maxX = -1;
-        for (Point p : matches.keySet()) {
-            if (p.y < minY) minY = p.y;
-            if (p.y > maxY) maxY = p.y;
-            if (p.x < minX) minX = p.x;
-            if (p.x > maxX) maxX = p.x;
-        }
-        double cellH = (maxY - minY) / 9.0;
-        double cellW = (maxX - minX) / 8.0;
-        Point[][] grid = new Point[10][9];
-        for (int row = 0; row < 10; row++) {
-            for (int col = 0; col < 9; col++) {
-                grid[row][col] = new Point(boardRect.x + minX + col * cellW, boardRect.y + minY + row * cellH);
-            }
-        }
-        return grid;
-    }
-
-    private Map<Point, String> matchTemplate(Mat src) {
-        Map<Point, String> map = new LinkedHashMap<>();
-        templateMatMap.forEach((name, mat) -> {
-            List<Point> points = matchTemplateSingle(src, mat);
-            for (Point point : points) {
-                map.put(point, name);
-            }
-        });
-        return map;
-    }
-
-    private List<Point> matchTemplateSingle(Mat src, Mat templateImage) {
-        Mat result = new Mat();
-        Imgproc.matchTemplate(src, templateImage, result, Imgproc.TM_CCOEFF_NORMED);
-        List<Point> matches = new ArrayList<>();
-        for (int i = 0; i < result.rows(); i++) {
-            for (int j = 0; j < result.cols(); j++) {
-                double[] value = result.get(i, j);
-                if (value != null && value[0] >= DEFAULT_THRESHOLD) {
-                    Point p = new Point(j, i);
-                    matches.add(new Point(p.x + templateImage.cols() / 2.0, p.y + templateImage.height() / 2.0));
-                }
-            }
-        }
-        if (matches.size() > 1) {
-            List<Point> filtered = new ArrayList<>();
-            boolean[] removed = new boolean[matches.size()];
-            int templateSize = templateImage.cols();
-            for (int i = 0; i < matches.size(); i++) {
-                if (removed[i]) continue;
-                filtered.add(matches.get(i));
-                for (int j = i + 1; j < matches.size(); j++) {
-                    if (removed[j]) continue;
-                    double dx = matches.get(i).x - matches.get(j).x;
-                    double dy = matches.get(i).y - matches.get(j).y;
-                    if (Math.sqrt(dx * dx + dy * dy) < templateSize * 0.7) {
-                        removed[j] = true;
-                    }
-                }
-            }
-            return filtered;
-        }
-        return matches;
     }
 
     public static void main(String[] args) throws Exception {

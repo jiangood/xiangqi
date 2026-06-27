@@ -11,9 +11,11 @@ import java.io.IOException;
 import java.util.*;
 import java.util.logging.Logger;
 
-public class TemplateMatchRecognizer implements PieceRecognizer {
+public class TemplateMatchUtil {
 
-    private static final Logger log = Logger.getLogger(TemplateMatchRecognizer.class.getName());
+    private static final Logger log = Logger.getLogger(TemplateMatchUtil.class.getName());
+    private static final double THRESHOLD = 0.65;
+    private static final Map<String, Mat> TEMPLATE_MAT_MAP = new LinkedHashMap<>();
 
     static {
         try {
@@ -21,49 +23,22 @@ public class TemplateMatchRecognizer implements PieceRecognizer {
         } catch (IOException e) {
             throw new RuntimeException("无法加载 OpenCV 原生库", e);
         }
-    }
-
-    private final Map<String, Mat> templateMatMap = new LinkedHashMap<>();
-
-    public TemplateMatchRecognizer() {
-        log.info("初始化 TemplateMatchRecognizer...");
         File templateDir = new File("template");
-        log.info("模板目录:" + templateDir + " 存在：" + FileUtil.exist(templateDir));
-
         File[] files = templateDir.listFiles();
         if (files != null) {
             for (File file : files) {
-                log.info("文件 " + file.getAbsolutePath() + " " + file.length());
                 Mat templateImage = Imgcodecs.imread(file.getAbsolutePath(), Imgcodecs.IMREAD_GRAYSCALE);
-                templateMatMap.put(FileUtil.mainName(file), templateImage);
+                TEMPLATE_MAT_MAP.put(FileUtil.mainName(file), templateImage);
             }
         }
-        Assert.notEmpty(templateMatMap, "未加载到模板文件");
+        Assert.notEmpty(TEMPLATE_MAT_MAP, "未加载到模板文件");
     }
 
-    @Override
-    public String[][] parseBoard(String imageFile) throws Exception {
-        log.info("加载图像: " + imageFile);
-        Mat src = Imgcodecs.imread(imageFile, Imgcodecs.IMREAD_GRAYSCALE);
+    private TemplateMatchUtil() {}
 
-        Rect boardRect = BoardUtils.locateBoard(src);
-        log.info("棋盘外边框: " + boardRect);
-
-        Mat boardRegion = new Mat(src, boardRect);
-        Map<Point, String> matchResult = matchTemplate(boardRegion);
-        log.info("模板匹配找到 " + matchResult.size() + " 个棋子");
-
-        Point[][] calibratedGrid = BoardUtils.calibrateGrid(matchResult, boardRect);
-        log.info("自校准网格完成");
-
-        BoardUtils.saveVisualization(imageFile, boardRect, matchResult, calibratedGrid);
-
-        return BoardUtils.assignPiecesToGrid(matchResult, calibratedGrid, boardRect);
-    }
-
-    private Map<Point, String> matchTemplate(Mat src) {
+    public static Map<Point, String> matchTemplate(Mat src) {
         Map<Point, String> map = new LinkedHashMap<>();
-        templateMatMap.forEach((name, mat) -> {
+        TEMPLATE_MAT_MAP.forEach((name, mat) -> {
             List<Point> points = matchTemplateSingle(src, mat);
             for (Point point : points) {
                 map.put(point, name);
@@ -72,23 +47,18 @@ public class TemplateMatchRecognizer implements PieceRecognizer {
         return map;
     }
 
-    private List<Point> matchTemplateSingle(Mat src, Mat templateImage) {
+    private static List<Point> matchTemplateSingle(Mat src, Mat templateImage) {
         Mat result = new Mat();
         Imgproc.matchTemplate(src, templateImage, result, Imgproc.TM_CCOEFF_NORMED);
-
-        double threshold = 0.65;
         List<Point> matches = new ArrayList<>();
         for (int i = 0; i < result.rows(); i++) {
             for (int j = 0; j < result.cols(); j++) {
                 double[] value = result.get(i, j);
-                if (value != null && value[0] >= threshold) {
-                    Point p = new Point(j, i);
-                    matches.add(new Point(p.x + templateImage.cols() / 2.0, p.y + templateImage.height() / 2.0));
+                if (value != null && value[0] >= THRESHOLD) {
+                    matches.add(new Point(j + templateImage.cols() / 2.0, i + templateImage.height() / 2.0));
                 }
             }
         }
-
-        // NMS
         if (matches.size() > 1) {
             List<Point> filtered = new ArrayList<>();
             boolean[] removed = new boolean[matches.size()];
@@ -107,7 +77,6 @@ public class TemplateMatchRecognizer implements PieceRecognizer {
             }
             return filtered;
         }
-
         return matches;
     }
 }

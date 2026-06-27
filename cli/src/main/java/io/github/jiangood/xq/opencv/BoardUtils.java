@@ -7,6 +7,7 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,14 @@ import java.util.logging.Logger;
 public class BoardUtils {
 
     private static final Logger log = Logger.getLogger(BoardUtils.class.getName());
+
+    static {
+        try {
+            System.load(new File("lib/opencv_java4110.dll").getCanonicalPath());
+        } catch (IOException e) {
+            throw new RuntimeException("无法加载 OpenCV 原生库", e);
+        }
+    }
 
     public static Rect locateBoard(Mat src) {
         Mat blurred = new Mat();

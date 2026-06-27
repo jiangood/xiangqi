@@ -10,7 +10,7 @@
 ## Architecture
 
 - Entry: `App.java` → `BoardService` → `PieceRecognizer` interface
-- Two recognizers: `YoloPieceRecognizer` (ONNX, `USE_YOLO=true`) / `TemplateMatchRecognizer`
+- Recognizer: `YoloPieceRecognizer` (ONNX); `TemplateMatchUtil` as utility for YOLO training label generation
 - `BoardUtils.locateBoard()`: Canny edge + contour finding; `calibrateGrid()`: piece positions → 10×9 grid
 - `EngineClient`: wraps Pikafish UCI engine at `cli/bin/Pikafish-20250110/`; auto-selects best variant (vnni512→...→ssse3)
 - `FenUtil`: board→FEN (red uppercase, e.g. `K`=帅, `k`=将); `NotationConverter`: engine move→Chinese notation
@@ -28,7 +28,7 @@
 
 ## Tests
 
-- `mvn test` (JUnit 5 via surefire); test class: `ChessboardRecognizerTest`
+- `mvn test` (JUnit 5 via surefire); test class: `YoloRecognizerTest`
 - Test images in `cli/demos/`; expected FENs hardcoded in test file
 - Uses `cn.hutool.core.lang.Assert` (not JUnit assertions) in `assertRecognizer`
 

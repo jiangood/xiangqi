@@ -2,7 +2,6 @@ package io.github.jiangood.xq;
 
 import cn.hutool.system.SystemUtil;
 import io.github.jiangood.xq.opencv.PieceRecognizer;
-import io.github.jiangood.xq.opencv.TemplateMatchRecognizer;
 import io.github.jiangood.xq.opencv.YoloPieceRecognizer;
 import io.github.jiangood.xq.engine.EngineClient;
 import io.github.jiangood.xq.util.FenUtil;
@@ -19,22 +18,15 @@ public class BoardService {
 
     private static final Logger log = Logger.getLogger(BoardService.class.getName());
 
-    private static final boolean USE_YOLO = true;
-
     EngineClient engineClient = new EngineClient();
     PieceRecognizer boardRecognizer;
 
     {
-        if (USE_YOLO) {
-            try {
-                log.info("使用 YOLO 棋子识别");
-                boardRecognizer = new YoloPieceRecognizer("models/xiangqi_yolo.onnx");
-            } catch (Exception e) {
-                throw new RuntimeException("YOLO 模型加载失败", e);
-            }
-        } else {
-            log.info("使用模板匹配棋子识别");
-            boardRecognizer = new TemplateMatchRecognizer();
+        try {
+            log.info("使用 YOLO 棋子识别");
+            boardRecognizer = new YoloPieceRecognizer("models/xiangqi_yolo.onnx");
+        } catch (Exception e) {
+            throw new RuntimeException("YOLO 模型加载失败", e);
         }
     }
 
