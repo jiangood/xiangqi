@@ -1,1 +1,1 @@
-feat: simplify floating button to only show "支" and loading spinner
+chore: bump version to 2.27
