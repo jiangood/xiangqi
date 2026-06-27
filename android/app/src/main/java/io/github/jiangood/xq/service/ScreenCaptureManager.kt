@@ -82,10 +82,11 @@ object ScreenCaptureManager {
                 return null
             }
 
-            AppLog.add("[截屏] 截屏成功, bitmap=${bitmap.width}x${bitmap.height}")
+            val bmp = bitmap!!
+            AppLog.add("[截屏] 截屏成功, bitmap=${bmp.width}x${bmp.height}")
             val file = File(context.cacheDir, SCREENSHOT_NAME)
             FileOutputStream(file).use { out ->
-                bitmap!!.compress(Bitmap.CompressFormat.PNG, 100, out)
+                bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
             AppLog.add("[截屏] 已保存: ${file.absolutePath} (${file.length()} bytes)")
             file
