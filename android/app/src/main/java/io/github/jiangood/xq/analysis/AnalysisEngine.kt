@@ -93,20 +93,46 @@ object AnalysisEngine {
                 }
                 AppLog.add("[引擎] 开始棋盘识别: ${imageFile.name}")
                 val rawBoard = recognizer.parseBoard(imageFile.absolutePath)
-                AppLog.add("[引擎] 棋盘识别完成")
+                AppLog.add("[引擎] 棋盘识别完成, 检测到棋子: ${countPieces(rawBoard)}")
                 val board = fixBoardOrientation(rawBoard)
+                AppLog.add("[引擎] 方向修正后棋子: ${countPieces(board)}")
+                logBoard(board)
                 val fen = FenUtil.toFen(board)
                 AppLog.add("[引擎] FEN: $fen")
                 AppLog.add("[引擎] 引擎分析中...")
                 val moves = engine.getTopMoves(fen, 3, 10)
-                AppLog.add("[引擎] 引擎返回 ${moves.size} 条走法")
-                val chineseMoves = moves.map { NotationConverter.convertToChineseNotation(board, it) }
+                AppLog.add("[引擎] 引擎返回 ${moves.size} 条走法: ${moves.joinToString(", ")}")
+                val chineseMoves = moves.map { move ->
+                    val result = NotationConverter.convertToChineseNotation(board, move)
+                    AppLog.add("[引擎] 翻译: $move -> $result")
+                    result
+                }
                 AnalysisResult(board, fen, moves, chineseMoves)
             } catch (e: Exception) {
                 AppLog.add("[引擎] 分析异常: ${e.message}")
                 null
             }
         }
+    }
+
+    private fun countPieces(board: Array<Array<String?>>): Int {
+        var count = 0
+        for (i in board.indices) {
+            for (j in board[i].indices) {
+                if (board[i][j] != null) count++
+            }
+        }
+        return count
+    }
+
+    private fun logBoard(board: Array<Array<String?>>) {
+        val lines = mutableListOf<String>()
+        lines.add("[引擎] 棋盘状态 (row0=黑方底线):")
+        for (i in board.indices) {
+            val row = board[i].joinToString(" ") { it ?: "--" }
+            lines.add("[引擎]   row$i: $row")
+        }
+        lines.forEach { AppLog.add(it) }
     }
 
     fun fixBoardOrientation(board: Array<Array<String?>>): Array<Array<String?>> {

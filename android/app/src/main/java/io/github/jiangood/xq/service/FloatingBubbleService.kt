@@ -8,6 +8,7 @@ import android.graphics.PixelFormat
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.IBinder
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Gravity
 import android.view.View
@@ -127,8 +128,10 @@ class FloatingBubbleService : Service() {
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
-                x = 0
-                y = resources.displayMetrics.heightPixels / 3
+                val metrics = DisplayMetrics()
+                windowManager.defaultDisplay.getRealMetrics(metrics)
+                x = metrics.widthPixels - width - (16 * density).toInt()
+                y = metrics.heightPixels - height - (16 * density).toInt()
             }
             unifiedView = UnifiedBubbleView(this).apply {
                 onClick = {
@@ -167,22 +170,25 @@ class FloatingBubbleService : Service() {
             return
         }
         isAnalyzing = true
-        AppLog.add("[悬浮窗] 开始截屏...")
+        AppLog.add("[悬浮窗] 开始截屏 (projection=${projection != null})...")
         scope.launch {
             try {
                 val file = withContext(Dispatchers.IO) {
                     ScreenCaptureManager.capture(projection, this@FloatingBubbleService)
                 }
                 if (file != null) {
-                    AppLog.add("[悬浮窗] 截屏成功: ${file.name}")
+                    AppLog.add("[悬浮窗] 截屏成功: ${file.name} (${file.length()} bytes)")
                     AppLog.add("[悬浮窗] 开始分析...")
                     val result = AnalysisEngine.analyze(file)
                     withContext(Dispatchers.Main) {
                         if (result != null && result.chineseMoves.isNotEmpty()) {
-                            AppLog.add("[悬浮窗] 分析成功: ${result.chineseMoves[0]}")
+                            AppLog.add("[悬浮窗] 分析成功, FEN=${result.fen}")
+                            AppLog.add("[悬浮窗] 原始走法: ${result.standardMoves.joinToString(", ")}")
+                            AppLog.add("[悬浮窗] 中文走法: ${result.chineseMoves.joinToString(", ")}")
+                            AppLog.add("[悬浮窗] 显示: ${result.chineseMoves[0]}")
                             unifiedView?.updateState(UnifiedBubbleView.State.SUCCESS, move = result.chineseMoves[0])
                         } else {
-                            AppLog.add("[悬浮窗] 分析无结果 (result=${result != null}, moves=${result?.chineseMoves?.size ?: 0})")
+                            AppLog.add("[悬浮窗] 分析无结果 (result=${result != null}, chineseMoves=${result?.chineseMoves?.size ?: 0}, standardMoves=${result?.standardMoves?.size ?: 0})")
                             unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "无结果")
                         }
                     }
