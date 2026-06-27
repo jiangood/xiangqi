@@ -138,13 +138,8 @@ fun MainScreen(
         Spacer(Modifier.height(8.dp))
 
         val allLogs = viewModel.logs.collectAsState().value
-        val dividerIdx = allLogs.indexOf("-- 以上为上次日志 --")
-        val historyLogs = if (dividerIdx >= 0) allLogs.subList(0, dividerIdx) else emptyList()
-        val realtimeLogs = if (dividerIdx >= 0) allLogs.subList(dividerIdx + 1, allLogs.size) else allLogs
 
-        LogCard(title = "历史日志", logs = historyLogs)
-        Spacer(Modifier.height(8.dp))
-        LogCard(title = "实时日志", logs = realtimeLogs, autoExpand = state is UiState.Error)
+        LogCard(title = "日志", logs = allLogs, autoExpand = state is UiState.Error)
     }
 }
 
