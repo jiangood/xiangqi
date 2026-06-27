@@ -3,9 +3,11 @@ package io.github.jiangood.xq.service
 import android.content.Context
 import android.graphics.*
 import android.util.AttributeSet
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import io.github.jiangood.xq.util.AppLog
 
 class UnifiedBubbleView @JvmOverloads constructor(
     context: Context,
@@ -142,21 +144,20 @@ class UnifiedBubbleView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val params = layoutParams as? WindowManager.LayoutParams ?: return false
-        val x = event.rawX
-        val y = event.rawY
 
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                initialTouchX = x
-                initialTouchY = y
+                initialTouchX = event.rawX
+                initialTouchY = event.rawY
                 initialWindowX = params.x
                 initialWindowY = params.y
                 isDragging = false
+                AppLog.add("[悬浮窗触摸] DOWN: rawY=${event.rawY.toInt()}, viewY=${event.y.toInt()}, params.y=$initialWindowY, circleDiameter=$circleDiameter")
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                val dx = (x - initialTouchX).toInt()
-                val dy = (y - initialTouchY).toInt()
+                val dx = (event.rawX - initialTouchX).toInt()
+                val dy = (event.rawY - initialTouchY).toInt()
                 params.x = initialWindowX + dx
                 params.y = initialWindowY + dy
                 clampPosition(params)
@@ -166,12 +167,18 @@ class UnifiedBubbleView @JvmOverloads constructor(
                 return true
             }
             MotionEvent.ACTION_UP -> {
+                AppLog.add("[悬浮窗触摸] UP: event.y=${event.y.toInt()}, params.y=$params.y, isDragging=$isDragging, circleDiameter=$circleDiameter")
                 if (!isDragging) {
-                    // 判断点击区域：圆形按钮范围内
-                    val touchY = y - params.y
-                    if (touchY < circleDiameter) {
+                    val hit = event.y >= 0 && event.y < circleDiameter
+                    AppLog.add("[悬浮窗触摸] -> 点击检测: event.y=${event.y.toInt()} < circleDiameter=$circleDiameter = $hit")
+                    if (hit) {
+                        AppLog.add("[悬浮窗触摸] -> 触发 onClick!")
                         onClick?.invoke()
+                    } else {
+                        AppLog.add("[悬浮窗触摸] -> 不在圆形范围内")
                     }
+                } else {
+                    AppLog.add("[悬浮窗触摸] -> 拖动结束，忽略点击")
                 }
                 return true
             }
