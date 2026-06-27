@@ -60,12 +60,19 @@ object ScreenCaptureManager {
             }, Handler(handlerThread.looper))
 
             AppLog.add("[截屏] 创建 VirtualDisplay...")
-            virtualDisplay = mediaProjection.createVirtualDisplay(
-                "FloatingCapture",
-                width, height, density,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                imageReader.surface, null, null
-            )
+            virtualDisplay = try {
+                mediaProjection.createVirtualDisplay(
+                    "FloatingCapture",
+                    width, height, density,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    imageReader.surface, null, null
+                )
+            } catch (e: IllegalStateException) {
+                val msg = "VirtualDisplay 创建失败: ${e.message} (MediaProjection 可能已停止或 token 过期)"
+                Log.e("ScreenCapture", msg, e)
+                AppLog.add("[截屏] $msg")
+                return null
+            }
             AppLog.add("[截屏] VirtualDisplay 已创建")
 
             if (!latch.await(CAPTURE_TIMEOUT_SECONDS.toLong(), TimeUnit.SECONDS)) {

@@ -107,7 +107,11 @@ class MainActivity : ComponentActivity() {
         viewModel.initOpenCV(this)
         AnalysisEngine.init(this)
 
-        handleShareIntent(intent)
+        if (intent.action == "REQUEST_SCREEN_CAPTURE") {
+            requestScreenCapturePermission()
+        } else {
+            handleShareIntent(intent)
+        }
 
         setContent {
             MainScreen(
@@ -141,7 +145,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleShareIntent(intent)
+        if (intent.action == "REQUEST_SCREEN_CAPTURE") {
+            requestScreenCapturePermission()
+        } else {
+            handleShareIntent(intent)
+        }
     }
 
     private fun handleShareIntent(intent: Intent) {
@@ -155,5 +163,11 @@ class MainActivity : ComponentActivity() {
 
     private fun startFloatingService() {
         startForegroundService(Intent(this, FloatingBubbleService::class.java))
+    }
+
+    private fun requestScreenCapturePermission() {
+        AppLog.add("[悬浮窗] 请求截屏权限")
+        val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        screenCaptureLauncher.launch(mpm.createScreenCaptureIntent())
     }
 }

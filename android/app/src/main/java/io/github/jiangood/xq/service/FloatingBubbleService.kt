@@ -15,6 +15,7 @@ import android.view.View
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import io.github.jiangood.xq.analysis.AnalysisEngine
+import io.github.jiangood.xq.MainActivity
 import io.github.jiangood.xq.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -63,7 +64,8 @@ class FloatingBubbleService : Service() {
                     val projection = mpm.getMediaProjection(resultCode, data)
                     projection.registerCallback(object : MediaProjection.Callback() {
                         override fun onStop() {
-                            AppLog.add("[悬浮窗] mediaProjection 停止")
+                            AppLog.add("[悬浮窗] mediaProjection 停止，清理状态")
+                            CaptureState.mediaProjection = null
                         }
                     }, null)
                     CaptureState.mediaProjection = projection
@@ -153,13 +155,22 @@ class FloatingBubbleService : Service() {
             return
         }
         if (CaptureState.mediaProjection == null) {
-            AppLog.add("[悬浮窗] mediaProjection 为空，请先在 app 中开启悬浮窗时授权截屏权限")
+            AppLog.add("[悬浮窗] mediaProjection 为空，需要重新授权截屏权限")
             unifiedView?.updateState(UnifiedBubbleView.State.IDLE)
+            requestScreenCapturePermission()
         } else {
             AppLog.add("[悬浮窗] mediaProjection 已就绪，直接截屏")
             unifiedView?.updateState(UnifiedBubbleView.State.PROCESSING)
             captureAndAnalyze()
         }
+    }
+
+    private fun requestScreenCapturePermission() {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            action = "REQUEST_SCREEN_CAPTURE"
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(intent)
     }
 
     private fun captureAndAnalyze() {
@@ -192,6 +203,11 @@ class FloatingBubbleService : Service() {
                     }
                 } else {
                     AppLog.add("[悬浮窗] 截屏失败: ScreenCaptureManager 返回 null")
+                    // MediaProjection may have been stopped, clear it and request new permission
+                    CaptureState.mediaProjection = null
+                    withContext(Dispatchers.Main) {
+                        requestScreenCapturePermission()
+                    }
                 }
             } catch (e: Exception) {
                 AppLog.add("[悬浮窗] 截屏分析异常: ${e.message}")
