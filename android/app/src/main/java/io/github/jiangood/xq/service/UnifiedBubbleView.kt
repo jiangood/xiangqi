@@ -2,7 +2,6 @@ package io.github.jiangood.xq.service
 
 import android.content.Context
 import android.graphics.*
-import android.os.Vibrator
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -157,10 +156,6 @@ class UnifiedBubbleView @JvmOverloads constructor(
                 // 启动长按检测
                 longPressRunnable = Runnable {
                     isDragging = true
-                    try {
-                        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-                        vibrator?.vibrate(50)
-                    } catch (_: Exception) {}
                     AppLog.add("[悬浮窗触摸] 长按触发拖动模式")
                     invalidate()
                 }
