@@ -27,6 +27,8 @@ class UnifiedBubbleView @JvmOverloads constructor(
     private var failedError: String? = null
     var onClick: (() -> Unit)? = null
 
+    private val resetRunnable = Runnable { updateState(State.IDLE) }
+
     // 尺寸常量
     private val circleRadius = (28f * density)
     private val circleDiameter = circleRadius * 2
@@ -127,11 +129,15 @@ class UnifiedBubbleView @JvmOverloads constructor(
     }
 
     fun updateState(state: State, move: String? = null, error: String? = null) {
+        removeCallbacks(resetRunnable)
         currentState = state
         successMove = move
         failedError = error
         requestLayout()  // 宽度可能变化
         invalidate()
+        if (state == State.SUCCESS || state == State.FAILED) {
+            postDelayed(resetRunnable, 3000L)
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
