@@ -8,6 +8,8 @@ import androidx.lifecycle.viewModelScope
 import io.github.jiangood.xq.analysis.AnalysisEngine
 import io.github.jiangood.xq.opencv.*
 import io.github.jiangood.xq.platform.AndroidImageUtils
+import io.github.jiangood.xq.service.AnalysisHistoryStore
+import io.github.jiangood.xq.service.HistoryEntry
 import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.util.FenUtil
 import io.github.jiangood.xq.util.NotationConverter
@@ -101,6 +103,11 @@ class AnalysisViewModel : ViewModel() {
                 val chineseMoves = moves.map { NotationConverter.convertToChineseNotation(fixedBoard, it) }
 
                 _uiState.value = UiState.Result(moves = chineseMoves, standardMoves = moves, validationWarnings = validationWarnings)
+
+                if (chineseMoves.isNotEmpty()) {
+                    AnalysisHistoryStore.addEntry(context, HistoryEntry(fen, chineseMoves[0], moves[0], System.currentTimeMillis()))
+                    AppLog.add("已保存历史记录: $fen -> ${chineseMoves[0]}")
+                }
 
                 AppLog.add("生成中间步骤预览图...")
                 generatePreviews()

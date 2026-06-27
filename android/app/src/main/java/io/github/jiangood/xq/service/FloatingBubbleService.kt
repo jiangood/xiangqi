@@ -243,6 +243,8 @@ class FloatingBubbleService : Service() {
                             AppLog.add("[悬浮窗] 中文走法: ${result.chineseMoves.joinToString(", ")}")
                             AppLog.add("[悬浮窗] 显示: ${result.chineseMoves[0]}")
                             unifiedView?.updateState(UnifiedBubbleView.State.SUCCESS, move = result.chineseMoves[0])
+                            AnalysisHistoryStore.addEntry(this@FloatingBubbleService, HistoryEntry(result.fen, result.chineseMoves[0], result.standardMoves[0], System.currentTimeMillis()))
+                            AppLog.add("[悬浮窗] 已保存历史记录")
                             delayAutoIdle()
                         } else {
                             AppLog.add("[悬浮窗] 分析无结果 (result=${result != null}, chineseMoves=${result?.chineseMoves?.size ?: 0}, standardMoves=${result?.standardMoves?.size ?: 0})")

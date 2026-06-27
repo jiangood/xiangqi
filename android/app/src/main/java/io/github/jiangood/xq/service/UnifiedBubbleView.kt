@@ -32,7 +32,7 @@ class UnifiedBubbleView @JvmOverloads constructor(
     var onClick: (() -> Unit)? = null
 
     // 尺寸常量
-    private val circleRadius = (28f * density)
+    private val circleRadius = (22f * density)
     private val circleDiameter = circleRadius * 2
     private val gap = (4f * density)
     private val capsuleHeight = (28f * density)
@@ -51,7 +51,7 @@ class UnifiedBubbleView @JvmOverloads constructor(
     }
     private val circleTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#FFF8DC")
-        textSize = density * 24
+        textSize = density * 18
         textAlign = Paint.Align.CENTER
         isFakeBoldText = true
     }
