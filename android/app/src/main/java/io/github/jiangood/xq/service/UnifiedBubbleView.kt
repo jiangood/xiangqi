@@ -2,12 +2,15 @@ package io.github.jiangood.xq.service
 
 import android.content.Context
 import android.graphics.*
+import android.os.Vibrator
 import android.util.AttributeSet
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import io.github.jiangood.xq.util.AppLog
+import kotlin.math.abs
 
 class UnifiedBubbleView @JvmOverloads constructor(
     context: Context,
@@ -41,29 +44,39 @@ class UnifiedBubbleView @JvmOverloads constructor(
 
     // 画笔
     private val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#E53935")
+        color = Color.parseColor("#C19A6B")  // 象棋棋盘木色
         style = Paint.Style.FILL
     }
+    private val circleBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#8B6914")  // 深木色边框
+        style = Paint.Style.STROKE
+        strokeWidth = 2f * density
+    }
     private val circleTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = Color.parseColor("#FFF8DC")  // 象牙白/米色
         textSize = density * 24
         textAlign = Paint.Align.CENTER
+        isFakeBoldText = true
     }
     private val capsuleBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xD9FFFFFF.toInt()  // 白色 85% 不透明
+        color = Color.parseColor("#8B6914")  // 深木色
         style = Paint.Style.FILL
     }
     private val capsuleTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = density * 14
         textAlign = Paint.Align.CENTER
+        isFakeBoldText = true
     }
 
-    // 拖拽状态
+    // 长按拖拽状态
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var initialWindowX = 0
     private var initialWindowY = 0
     private var isDragging = false
+    private var longPressRunnable: Runnable? = null
+    private val longPressTimeout = ViewConfiguration.getLongPressTimeout()  // 通常 500ms
+    private val scaledTouchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     init {
         setWillNotDraw(false)
@@ -83,8 +96,9 @@ class UnifiedBubbleView @JvmOverloads constructor(
         val cx = width / 2f
         val cyCircle = circleRadius
 
-        // 1. 绘制上半圆形按钮
+        // 1. 绘制上半圆形按钮（木质底 + 边框）
         canvas.drawCircle(cx, cyCircle, circleRadius - 3f, circlePaint)
+        canvas.drawCircle(cx, cyCircle, circleRadius - 3f, circleBorderPaint)
         val circleText = when (currentState) {
             State.PROCESSING -> "⏳"
             State.SUCCESS -> "✓"
@@ -105,9 +119,9 @@ class UnifiedBubbleView @JvmOverloads constructor(
         // 3. 绘制状态文本
         val text = getStateText()
         val textColor = when (currentState) {
-            State.SUCCESS -> Color.parseColor("#2E7D32")
-            State.FAILED -> Color.parseColor("#C62828")
-            else -> Color.BLACK
+            State.SUCCESS -> Color.parseColor("#8FCE00")  // 翠绿
+            State.FAILED -> Color.parseColor("#E53935")   // 红色
+            else -> Color.parseColor("#FFF8DC")           // 象牙白
         }
         capsuleTextPaint.color = textColor
         canvas.drawText(text, cx, capsuleTop + capsuleHeight / 2 + capsuleTextPaint.textSize / 3, capsuleTextPaint)
@@ -152,23 +166,54 @@ class UnifiedBubbleView @JvmOverloads constructor(
                 initialWindowX = params.x
                 initialWindowY = params.y
                 isDragging = false
-                AppLog.add("[悬浮窗触摸] DOWN: rawY=${event.rawY.toInt()}, viewY=${event.y.toInt()}, params.y=$initialWindowY, circleDiameter=$circleDiameter")
+
+                // 启动长按检测
+                longPressRunnable = Runnable {
+                    isDragging = true
+                    // 长按触发：震动反馈
+                    val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                    vibrator?.vibrate(50)
+                    AppLog.add("[悬浮窗触摸] 长按触发拖动模式")
+                    invalidate()  // 可选：视觉反馈
+                }
+                postDelayed(longPressRunnable!!, longPressTimeout.toLong())
+
+                AppLog.add("[悬浮窗触摸] DOWN: rawY=${event.rawY.toInt()}, viewY=${event.y.toInt()}, params.y=$initialWindowY")
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                val dx = (event.rawX - initialTouchX).toInt()
-                val dy = (event.rawY - initialTouchY).toInt()
-                params.x = initialWindowX + dx
-                params.y = initialWindowY + dy
-                clampPosition(params)
-                (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)
-                    ?.updateViewLayout(this, params)
-                isDragging = true
+                // 如果还没进入拖动模式，检查是否移动超过 touchSlop（取消长按）
+                if (!isDragging && longPressRunnable != null) {
+                    val dx = event.rawX - initialTouchX
+                    val dy = event.rawY - initialTouchY
+                    if (abs(dx) > scaledTouchSlop || abs(dy) > scaledTouchSlop) {
+                        removeCallbacks(longPressRunnable!!)
+                        longPressRunnable = null
+                        AppLog.add("[悬浮窗触摸] 移动超过 touchSlop，取消长按检测")
+                    }
+                }
+
+                // 仅在拖动模式下移动窗口
+                if (isDragging) {
+                    val dx = (event.rawX - initialTouchX).toInt()
+                    val dy = (event.rawY - initialTouchY).toInt()
+                    params.x = initialWindowX + dx
+                    params.y = initialWindowY + dy
+                    clampPosition(params)
+                    (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)
+                        ?.updateViewLayout(this, params)
+                }
                 return true
             }
-            MotionEvent.ACTION_UP -> {
-                AppLog.add("[悬浮窗触摸] UP: event.y=${event.y.toInt()}, params.y=$params.y, isDragging=$isDragging, circleDiameter=$circleDiameter")
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                // 清理长按检测
+                longPressRunnable?.let { removeCallbacks(it) }
+                longPressRunnable = null
+
+                AppLog.add("[悬浮窗触摸] UP: event.y=${event.y.toInt()}, isDragging=$isDragging")
+
                 if (!isDragging) {
+                    // 点击：判断是否在圆形区域内
                     val hit = event.y >= 0 && event.y < circleDiameter
                     AppLog.add("[悬浮窗触摸] -> 点击检测: event.y=${event.y.toInt()} < circleDiameter=$circleDiameter = $hit")
                     if (hit) {
@@ -178,7 +223,9 @@ class UnifiedBubbleView @JvmOverloads constructor(
                         AppLog.add("[悬浮窗触摸] -> 不在圆形范围内")
                     }
                 } else {
-                    AppLog.add("[悬浮窗触摸] -> 拖动结束，忽略点击")
+                    AppLog.add("[悬浮窗触摸] -> 拖动结束")
+                    isDragging = false
+                    invalidate()
                 }
                 return true
             }
