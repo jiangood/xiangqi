@@ -176,7 +176,7 @@ class FloatingBubbleService : Service() {
                 if (file != null) {
                     AppLog.add("[悬浮窗] 截屏成功: ${file.name}")
                     AppLog.add("[悬浮窗] 开始分析...")
-                    val result = AnalysisEngine.analyze(this@FloatingBubbleService, file)
+                    val result = AnalysisEngine.analyze(file)
                     withContext(Dispatchers.Main) {
                         if (result != null && result.chineseMoves.isNotEmpty()) {
                             AppLog.add("[悬浮窗] 分析成功: ${result.chineseMoves[0]}")

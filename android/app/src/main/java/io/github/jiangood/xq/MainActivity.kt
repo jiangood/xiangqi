@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
+import io.github.jiangood.xq.analysis.AnalysisEngine
 import io.github.jiangood.xq.BuildConfig
 import io.github.jiangood.xq.service.CaptureState
 import io.github.jiangood.xq.service.FloatingBubbleService
@@ -104,8 +105,7 @@ class MainActivity : ComponentActivity() {
         AppLog.init(this)
         AppLog.add("版本: v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
         viewModel.initOpenCV(this)
-        viewModel.initEngine(this)
-        viewModel.initRecognizer(this)
+        AnalysisEngine.init(this)
 
         handleShareIntent(intent)
 

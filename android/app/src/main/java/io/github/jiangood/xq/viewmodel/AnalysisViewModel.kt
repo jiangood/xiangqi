@@ -5,13 +5,12 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.jiangood.xq.engine.AndroidEngineClient
+import io.github.jiangood.xq.analysis.AnalysisEngine
 import io.github.jiangood.xq.opencv.*
 import io.github.jiangood.xq.platform.AndroidImageUtils
 import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.util.FenUtil
 import io.github.jiangood.xq.util.NotationConverter
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,10 +37,6 @@ class AnalysisViewModel : ViewModel() {
 
     val logs: StateFlow<List<String>> = AppLog.logs
 
-    private var engineClient: AndroidEngineClient? = null
-    private var boardRecognizer: PieceRecognizer? = null
-    private val recognizerReady = CompletableDeferred<Unit>()
-
     fun initOpenCV(context: Context) {
         AppLog.add("OpenCV 初始化...")
         if (!OpenCVLoader.initDebug()) {
@@ -52,65 +47,21 @@ class AnalysisViewModel : ViewModel() {
         }
     }
 
-    fun initEngine(context: Context) {
-        AppLog.add("初始化引擎...")
-        val nnueFile = File(context.filesDir, "pikafish.nnue")
-        if (!nnueFile.exists()) {
-            try {
-                AppLog.add("解压 NNUE 权重文件...")
-                context.assets.open("pikafish.nnue").use { input ->
-                    nnueFile.outputStream().use { output -> input.copyTo(output) }
-                }
-                AppLog.add("NNUE 权重文件解压完成")
-            } catch (e: Exception) {
-                AppLog.add("NNUE 解压跳过: ${e.message}")
-            }
-        } else {
-            AppLog.add("NNUE 权重文件已存在")
-        }
-        val engine = AndroidEngineClient(context)
-        AppLog.add("启动引擎...")
-        if (engine.start()) {
-            engineClient = engine
-            AppLog.add("引擎启动成功")
-        } else {
-            AppLog.add("引擎启动失败")
-            _uiState.value = UiState.Error("引擎启动失败")
-        }
-    }
-
-    fun initRecognizer(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val modelFile = File(context.cacheDir, "xiangqi_yolo.onnx")
-                if (!modelFile.exists()) {
-                    AppLog.add("解压 ONNX 模型文件...")
-                    context.assets.open("xiangqi_yolo.onnx").use { input ->
-                        modelFile.outputStream().use { output -> input.copyTo(output) }
-                    }
-                    AppLog.add("ONNX 模型文件解压完成")
-                } else {
-                    AppLog.add("ONNX 模型文件已存在")
-                }
-                AppLog.add("加载 ONNX 模型...")
-                boardRecognizer = YoloPieceRecognizer(modelFile.absolutePath)
-                recognizerReady.complete(Unit)
-                AppLog.add("ONNX 模型加载完成")
-            } catch (e: Exception) {
-                AppLog.add("识别模型加载失败: ${e.message}")
-                recognizerReady.completeExceptionally(e)
-                _uiState.value = UiState.Error("识别模型加载失败: ${e.message}")
-            }
-        }
-    }
-
     fun analyze(context: Context, imageUri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = UiState.Analyzing
             try {
-                AppLog.add("等待识别模型就绪...")
-                recognizerReady.await()
-                AppLog.add("识别模型就绪")
+                AppLog.add("等待引擎与识别模型就绪...")
+                AnalysisEngine.awaitInitialized()
+                AppLog.add("引擎与识别模型就绪")
+
+                val board = AnalysisEngine.boardRecognizer
+                val engine = AnalysisEngine.engineClient
+                if (board == null || engine == null) {
+                    AppLog.add("引擎或识别模型未就绪")
+                    _uiState.value = UiState.Error("引擎或识别模型初始化失败")
+                    return@launch
+                }
 
                 AppLog.add("复制输入图片到缓存...")
                 val tempFile = File(context.cacheDir, "input_${System.nanoTime()}.jpg")
@@ -126,13 +77,13 @@ class AnalysisViewModel : ViewModel() {
                 AppLog.add("图片已保存到: ${tempFile.name}")
 
                 AppLog.add("开始棋盘识别...")
-                val rawBoard = boardRecognizer!!.parseBoard(tempFile.absolutePath)
+                val rawBoard = board.parseBoard(tempFile.absolutePath)
                 AppLog.add("棋盘识别完成")
 
-                val board = fixBoardOrientation(rawBoard)
+                val fixedBoard = AnalysisEngine.fixBoardOrientation(rawBoard)
                 AppLog.add("方向修正完成")
 
-                val validationWarnings = FenUtil.validatePositionDetails(board)
+                val validationWarnings = FenUtil.validatePositionDetails(fixedBoard)
                 if (validationWarnings.isEmpty()) {
                     AppLog.add("局面验证通过")
                 } else {
@@ -141,13 +92,13 @@ class AnalysisViewModel : ViewModel() {
                 }
 
                 AppLog.add("生成 FEN...")
-                val fen = FenUtil.toFen(board)
+                val fen = FenUtil.toFen(fixedBoard)
                 AppLog.add("FEN: $fen")
 
                 AppLog.add("引擎分析中...")
-                val moves = engineClient?.getTopMoves(fen, 3, 10) ?: emptyList()
+                val moves = engine.getTopMoves(fen, 3, 10)
                 AppLog.add("引擎返回 ${moves.size} 条走法")
-                val chineseMoves = moves.map { NotationConverter.convertToChineseNotation(board, it) }
+                val chineseMoves = moves.map { NotationConverter.convertToChineseNotation(fixedBoard, it) }
 
                 _uiState.value = UiState.Result(moves = chineseMoves, standardMoves = moves, validationWarnings = validationWarnings)
 
@@ -161,28 +112,8 @@ class AnalysisViewModel : ViewModel() {
         }
     }
 
-    private fun fixBoardOrientation(board: Array<Array<String?>>): Array<Array<String?>> {
-        var blackTop = false
-        for (i in 0..2) {
-            for (j in 3..5) {
-                if (board[i][j] == "bk") blackTop = true
-            }
-        }
-        if (!blackTop) {
-            for (i in board.indices) {
-                for (j in board[i].indices) {
-                    val p = board[i][j]
-                    if (p != null) {
-                        board[i][j] = if (p[0] == 'r') "b${p[1]}" else "r${p[1]}"
-                    }
-                }
-            }
-        }
-        return board
-    }
-
     private suspend fun generatePreviews() {
-        val recognizer = boardRecognizer ?: return
+        val recognizer = AnalysisEngine.boardRecognizer ?: return
         if (recognizer !is YoloPieceRecognizer) return
 
         val r = recognizer
@@ -240,7 +171,7 @@ class AnalysisViewModel : ViewModel() {
     }
 
     private fun regenerateStepPreview(moveIndex: Int) {
-        val recognizer = boardRecognizer
+        val recognizer = AnalysisEngine.boardRecognizer
         if (recognizer !is YoloPieceRecognizer) return
         val r = recognizer
         if (r.lastSrc == null || r.lastGrid == null) return
@@ -254,10 +185,5 @@ class AnalysisViewModel : ViewModel() {
             val bmp = AndroidImageUtils.matToBitmap(stepMat)
             _uiState.value = state.copy(stepPreviews = state.stepPreviews + (6 to bmp))
         } catch (_: Exception) {}
-    }
-
-    override fun onCleared() {
-        engineClient?.close()
-        super.onCleared()
     }
 }
