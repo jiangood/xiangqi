@@ -24,7 +24,6 @@ sealed class UiState {
     data class Result(
         val moves: List<String>,
         val standardMoves: List<String> = emptyList(),
-        val currentMoveIndex: Int = 0,
         val stepPreviews: Map<Int, Bitmap> = emptyMap(),
         val validationWarnings: List<String> = emptyList()
     ) : UiState()
@@ -96,7 +95,7 @@ class AnalysisViewModel : ViewModel() {
                 AppLog.add("FEN: $fen")
 
                 AppLog.add("引擎分析中...")
-                val moves = engine.getTopMoves(fen, 3, 10)
+                val moves = engine.getBestMove(fen, 20)
                 AppLog.add("引擎返回 ${moves.size} 条走法")
                 val chineseMoves = moves.map { NotationConverter.convertToChineseNotation(fixedBoard, it) }
 
@@ -143,9 +142,7 @@ class AnalysisViewModel : ViewModel() {
                 _uiState.value = state3.copy(stepPreviews = state3.stepPreviews + (3 to step3Bmp))
             }
 
-            val currentState = _uiState.value
-            val currentUciMove = if (currentState is UiState.Result)
-                currentState.standardMoves.getOrNull(currentState.currentMoveIndex) else null
+            val currentUciMove = state3.standardMoves.firstOrNull()
             val step6Mat = BoardUtils.drawPreview(
                 r.lastSrc, r.lastBoardRect, r.lastDetections, r.lastGrid
             )
@@ -162,28 +159,7 @@ class AnalysisViewModel : ViewModel() {
         }
     }
 
-    fun selectMove(index: Int) {
-        val state = _uiState.value
-        if (state is UiState.Result && index in state.moves.indices) {
-            _uiState.value = state.copy(currentMoveIndex = index)
-            regenerateStepPreview(index)
-        }
-    }
-
-    private fun regenerateStepPreview(moveIndex: Int) {
-        val recognizer = AnalysisEngine.boardRecognizer
-        if (recognizer !is YoloPieceRecognizer) return
-        val r = recognizer
-        if (r.lastSrc == null || r.lastGrid == null) return
-        val state = _uiState.value as? UiState.Result ?: return
-        val uciMove = state.standardMoves.getOrNull(moveIndex) ?: return
-        try {
-            val stepMat = BoardUtils.drawPreview(
-                r.lastSrc, r.lastBoardRect, r.lastDetections, r.lastGrid
-            )
-            BoardUtils.drawMove(stepMat, r.lastGrid, uciMove)
-            val bmp = AndroidImageUtils.matToBitmap(stepMat)
-            _uiState.value = state.copy(stepPreviews = state.stepPreviews + (6 to bmp))
-        } catch (_: Exception) {}
+    fun selectMove(@Suppress("UNUSED_PARAMETER") index: Int) {
+        // single move only, no-op
     }
 }

@@ -130,15 +130,15 @@ class AndroidEngineClient(private val context: Context) {
         }
     }
 
-    fun getTopMoves(fen: String, multiPv: Int = 3, depth: Int = 10): List<String> {
-        AppLog.add("[引擎] getTopMoves: isReady=$isReady, processAlive=${isProcessAlive()}")
+    fun getBestMove(fen: String, depth: Int = 20): List<String> {
+        AppLog.add("[引擎] getBestMove: isReady=$isReady, processAlive=${isProcessAlive()}")
         if (!isReady) {
-            AppLog.add("[引擎] getTopMoves: 引擎未就绪，返回空列表")
+            AppLog.add("[引擎] getBestMove: 引擎未就绪，返回空列表")
             return emptyList()
         }
         if (!isProcessAlive()) {
             val exitVal = try { process?.exitValue() } catch (_: Exception) { -1 }
-            AppLog.add("[引擎] getTopMoves: 引擎进程已退出, exitValue=$exitVal")
+            AppLog.add("[引擎] getBestMove: 引擎进程已退出, exitValue=$exitVal")
             isReady = false
             return emptyList()
         }
@@ -146,8 +146,7 @@ class AndroidEngineClient(private val context: Context) {
         return try {
             AppLog.add("[引擎] 发送棋局: position fen $fen")
             send("position fen $fen")
-            AppLog.add("[引擎] 设置 MultiPV=$multiPv")
-            send("setoption name MultiPV value $multiPv")
+            send("setoption name MultiPV value 1")
             AppLog.add("[引擎] 开始分析 depth=$depth")
             send("go depth $depth")
 
@@ -185,16 +184,16 @@ class AndroidEngineClient(private val context: Context) {
             if (moves.isEmpty()) {
                 val timedOut = System.currentTimeMillis() >= deadline
                 if (timedOut) {
-                    AppLog.add("[引擎] getTopMoves: 超时! 读取了 $lineCount 行, 最后一行: $lastLine")
+                    AppLog.add("[引擎] getBestMove: 超时! 读取了 $lineCount 行, 最后一行: $lastLine")
                 } else {
-                    AppLog.add("[引擎] getTopMoves: 无走法, 读取了 $lineCount 行, reader 已关闭")
+                    AppLog.add("[引擎] getBestMove: 无走法, 读取了 $lineCount 行, reader 已关闭")
                 }
             }
-            AppLog.add("[引擎] getTopMoves 完成: ${moves.size} 条走法")
+            AppLog.add("[引擎] getBestMove 完成: ${moves.size} 条走法")
             moves
         } catch (e: Exception) {
-            AppLog.add("[引擎] getTopMoves 异常: ${e.javaClass.simpleName}: ${e.message}")
-            Log.e(TAG, "getTopMoves failed", e)
+            AppLog.add("[引擎] getBestMove 异常: ${e.javaClass.simpleName}: ${e.message}")
+            Log.e(TAG, "getBestMove failed", e)
             emptyList()
         }
     }

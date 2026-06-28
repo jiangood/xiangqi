@@ -100,7 +100,7 @@ object AnalysisEngine {
                 val fen = FenUtil.toFen(board)
                 AppLog.add("[引擎] FEN: $fen")
                 AppLog.add("[引擎] 引擎分析中...")
-                val moves = engine.getTopMoves(fen, 1, 20)
+                val moves = engine.getBestMove(fen, 20)
                 AppLog.add("[引擎] 引擎返回 ${moves.size} 条走法: ${moves.joinToString(", ")}")
                 val chineseMoves = moves.map { move ->
                     val result = NotationConverter.convertToChineseNotation(board, move)

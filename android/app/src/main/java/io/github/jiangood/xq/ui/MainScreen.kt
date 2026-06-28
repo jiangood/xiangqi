@@ -89,26 +89,12 @@ fun MainScreen(
                         Text("推荐走法", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = s.moves.getOrElse(s.currentMoveIndex) { "—" },
+                            text = s.moves.firstOrNull() ?: "—",
                             fontSize = 36.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
                         )
-                        if (s.moves.size > 1) {
-                            Spacer(Modifier.height(8.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                TextButton(onClick = {
-                                    if (s.currentMoveIndex > 0) viewModel.selectMove(s.currentMoveIndex - 1)
-                                }) { Text("◀") }
-                                Spacer(Modifier.weight(1f))
-                                Text("第 ${s.currentMoveIndex + 1}/${s.moves.size} 条")
-                                Spacer(Modifier.weight(1f))
-                                TextButton(onClick = {
-                                    if (s.currentMoveIndex < s.moves.size - 1) viewModel.selectMove(s.currentMoveIndex + 1)
-                                }) { Text("▶") }
-                            }
-                        }
 
                         s.stepPreviews[6]?.let { bmp ->
                             Spacer(Modifier.height(12.dp))
