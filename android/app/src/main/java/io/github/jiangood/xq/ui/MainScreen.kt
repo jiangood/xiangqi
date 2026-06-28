@@ -29,6 +29,7 @@ fun MainScreen(
     viewModel: AnalysisViewModel,
     onPickImage: () -> Unit,
     onToggleFloating: (Boolean) -> Unit,
+    onReparseLast: () -> Unit,
     onOpenSettings: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -66,9 +67,20 @@ fun MainScreen(
                     onToggleFloating(it)
                 }
             )
-            Spacer(Modifier.width(12.dp))
-            Button(onClick = onPickImage) {
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(onClick = onPickImage, modifier = Modifier.weight(1f)) {
                 Text("选择图片")
+            }
+            OutlinedButton(onClick = onReparseLast, modifier = Modifier.weight(1f)) {
+                Text("解析上次截图")
             }
         }
 
