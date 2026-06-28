@@ -52,8 +52,9 @@
 ## Android
 
 - Android project at `android/`; build with `.\gradlew assembleDebug` (from `android/`)
-- CI: `.github/workflows/build-apk.yml` — triggers on `v*` tag, runs tests, builds release APK, creates GitHub Release
+- CI: `.github/workflows/build-apk.yml` — triggers on `v*` tag, builds full+thin release APKs, creates GitHub Release
 - Release APK requires `KEYSTORE_B64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` secrets
 - ABIs: `arm64-v8a` only in release; debug keeps all for emulator testing
-- APK naming: `xq-{versionName}.apk`
+- APK naming: `xq-{versionName}-full.apk` (含 NNUE) / `xq-{versionName}-thin.apk` (不含 NNUE)
+- Thin build: `.\gradlew assembleRelease -Pthin` — excludes `pikafish.nnue` from assets via `aaptOptions.ignoreAssetsPattern`
 - Model/data files not committed for Android; must be bundled separately

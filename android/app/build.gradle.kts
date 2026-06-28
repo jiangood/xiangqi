@@ -11,8 +11,8 @@ android {
         applicationId = "io.github.jiangood.xq"
         minSdk = 34
         targetSdk = 34
-        versionCode = 48
-        versionName = "3.3.2"
+        versionCode = 49
+        versionName = "3.3.3"
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
@@ -50,10 +50,15 @@ android {
 
     applicationVariants.all {
         val v = versionName
+        val suffix = if (gradle.hasProperty("thin")) "-thin" else "-full"
         outputs.all {
             this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            outputFileName = "xq-${v}.apk"
+            outputFileName = "xq-${v}${suffix}.apk"
         }
+    }
+
+    aaptOptions {
+        ignoreAssetsPattern = if (gradle.hasProperty("thin")) "!pikafish.nnue:" else ""
     }
 
     packaging {

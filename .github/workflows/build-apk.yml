@@ -59,7 +59,7 @@ jobs:
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > android/app/keystore.jks
 
-      - name: Build release APK
+      - name: Build full APK
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/android/app/keystore.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -69,6 +69,16 @@ jobs:
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
+
+      - name: Build thin APK
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/android/app/keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon -Pthin
 
       - uses: softprops/action-gh-release@v2
         with:

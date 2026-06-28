@@ -42,11 +42,18 @@ object AnalysisEngine {
                             nnueFile.outputStream().use { output -> input.copyTo(output) }
                         }
                         AppLog.add("[引擎] NNUE 解压完成")
+                    } catch (e: java.io.FileNotFoundException) {
+                        AppLog.add("[引擎] NNUE 权重文件不存在（thin 包），请先安装完整版")
                     } catch (e: Exception) {
                         AppLog.add("[引擎] NNUE 解压跳过: ${e.message}")
                     }
                 } else {
                     AppLog.add("[引擎] NNUE 已存在")
+                }
+                if (!nnueFile.exists()) {
+                    AppLog.add("[引擎] NNUE 权重文件缺失，跳过引擎启动")
+                    initComplete.complete(Unit)
+                    return@launch
                 }
                 AppLog.add("[引擎] 启动引擎进程...")
                 val engine = AndroidEngineClient(context)
