@@ -4,22 +4,31 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.viewmodel.AnalysisViewModel
 import io.github.jiangood.xq.viewmodel.UiState
@@ -134,6 +143,8 @@ fun MainScreen(
                             Text("处理过程（共 ${s.stepPreviews.size} 步）", fontWeight = FontWeight.Medium, fontSize = 13.sp)
                             Spacer(Modifier.height(8.dp))
 
+                            var selectedImage by remember { mutableStateOf<Bitmap?>(null) }
+
                             val stepNames = listOf(
                                 "中心裁剪", "灰度图", "Canny 边缘检测", "轮廓检测",
                                 "棋盘定位", "棋盘裁剪", "二值化", "水平线检测",
@@ -152,14 +163,23 @@ fun MainScreen(
                                     )
                                     Spacer(Modifier.height(2.dp))
                                     val bitmap = remember(path) { BitmapFactory.decodeFile(path) }
-                                    bitmap?.let {
+                                    bitmap?.let { bmp ->
                                         Image(
-                                            bitmap = it.asImageBitmap(),
+                                            bitmap = bmp.asImageBitmap(),
                                             contentDescription = label,
-                                            modifier = Modifier.fillMaxWidth()
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable { selectedImage = bmp }
                                         )
                                     }
                                 }
+                            }
+
+                            selectedImage?.let { bmp ->
+                                ZoomableImageDialog(
+                                    bitmap = bmp,
+                                    onDismiss = { selectedImage = null }
+                                )
                             }
                         }
 
@@ -235,6 +255,58 @@ private fun LogCard(title: String, logs: List<String>, autoExpand: Boolean = fal
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ZoomableImageDialog(bitmap: Bitmap, onDismiss: () -> Unit) {
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .clickable(onClick = onDismiss)
+        ) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offsetX,
+                        translationY = offsetY
+                    )
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            scale = (scale * zoom).coerceIn(1f, 5f)
+                            offsetX += pan.x
+                            offsetY += pan.y
+                        }
+                    }
+            )
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "关闭",
+                    tint = Color.White
+                )
             }
         }
     }
