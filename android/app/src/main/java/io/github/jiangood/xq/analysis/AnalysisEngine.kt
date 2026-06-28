@@ -66,11 +66,17 @@ object AnalysisEngine {
                 AppLog.add("[引擎] 加载 ONNX 模型...")
                 val modelFile = File(context.filesDir, "xiangqi_yolo.onnx")
                 if (!modelFile.exists()) {
-                    AppLog.add("[引擎] 解压 ONNX 模型...")
-                    context.assets.open("xiangqi_yolo.onnx").use { input ->
-                        modelFile.outputStream().use { output -> input.copyTo(output) }
+                    try {
+                        AppLog.add("[引擎] 解压 ONNX 模型...")
+                        context.assets.open("xiangqi_yolo.onnx").use { input ->
+                            modelFile.outputStream().use { output -> input.copyTo(output) }
+                        }
+                        AppLog.add("[引擎] ONNX 解压完成")
+                    } catch (e: java.io.FileNotFoundException) {
+                        AppLog.add("[引擎] ONNX 模型文件不存在（thin 包），请先安装完整版或手动下载")
+                    } catch (e: Exception) {
+                        AppLog.add("[引擎] ONNX 解压跳过: ${e.message}")
                     }
-                    AppLog.add("[引擎] ONNX 解压完成")
                 } else {
                     AppLog.add("[引擎] ONNX 模型已存在")
                 }
