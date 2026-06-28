@@ -7,6 +7,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
+import io.github.jiangood.xq.settings.SettingsManager
 import kotlin.math.abs
 
 class UnifiedBubbleView @JvmOverloads constructor(
@@ -196,6 +197,7 @@ class UnifiedBubbleView @JvmOverloads constructor(
                     }
                 } else {
                     isDragging = false
+                    SettingsManager.setFloatPosition(params.x, params.y)
                     invalidate()
                 }
                 return true

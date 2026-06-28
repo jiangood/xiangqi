@@ -16,6 +16,7 @@ import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import io.github.jiangood.xq.analysis.AnalysisEngine
 import io.github.jiangood.xq.MainActivity
+import io.github.jiangood.xq.settings.SettingsManager
 import io.github.jiangood.xq.util.AppLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -128,6 +129,8 @@ class FloatingBubbleService : Service() {
             val density = resources.displayMetrics.density
             val width = (100 * density).toInt()
             val height = (100 * density).toInt()
+            val savedX = SettingsManager.getFloatX()
+            val savedY = SettingsManager.getFloatY()
             val params = WindowManager.LayoutParams(
                 width, WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -135,12 +138,17 @@ class FloatingBubbleService : Service() {
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
-                val metrics = DisplayMetrics()
-                windowManager.defaultDisplay.getRealMetrics(metrics)
-                val rightMarginDp = 80f
-                val bottomMarginDp = 120f
-                x = metrics.widthPixels - width - (rightMarginDp * density).toInt()
-                y = metrics.heightPixels - height - (bottomMarginDp * density).toInt()
+                if (savedX >= 0 && savedY >= 0) {
+                    x = savedX
+                    y = savedY
+                } else {
+                    val metrics = DisplayMetrics()
+                    windowManager.defaultDisplay.getRealMetrics(metrics)
+                    val rightMarginDp = 80f
+                    val bottomMarginDp = 120f
+                    x = metrics.widthPixels - width - (rightMarginDp * density).toInt()
+                    y = metrics.heightPixels - height - (bottomMarginDp * density).toInt()
+                }
             }
             unifiedView = UnifiedBubbleView(this).apply {
                 onClick = {

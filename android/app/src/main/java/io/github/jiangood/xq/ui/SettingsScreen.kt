@@ -8,6 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import io.github.jiangood.xq.settings.SettingsManager
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,12 +25,12 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text("设置") },
                 navigationIcon = {
-                    TextButton(onClick = {
+                    IconButton(onClick = {
                         SettingsManager.setDepth(depth)
                         SettingsManager.setThreads(threads)
                         onBack()
                     }) {
-                        Text("返回")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
                     }
                 }
             )

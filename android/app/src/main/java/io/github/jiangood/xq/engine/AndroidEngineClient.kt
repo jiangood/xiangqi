@@ -145,10 +145,12 @@ class AndroidEngineClient(private val context: Context) {
         }
 
         return try {
+            val currentThreads = io.github.jiangood.xq.settings.SettingsManager.getThreads()
             AppLog.add("[引擎] 发送棋局: position fen $fen")
             send("position fen $fen")
             send("setoption name MultiPV value 1")
-            AppLog.add("[引擎] 开始分析 depth=$depth")
+            send("setoption name Threads value $currentThreads")
+            AppLog.add("[引擎] 开始分析 depth=$depth, threads=$currentThreads")
             send("go depth $depth")
 
             val moves = mutableListOf<String>()

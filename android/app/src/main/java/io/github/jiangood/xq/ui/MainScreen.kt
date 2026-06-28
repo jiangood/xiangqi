@@ -9,6 +9,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.viewmodel.AnalysisViewModel
 import io.github.jiangood.xq.viewmodel.UiState
+import androidx.compose.material3.IconButton
 
 @Composable
 fun MainScreen(
@@ -45,8 +47,8 @@ fun MainScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("象棋支招", fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            TextButton(onClick = onOpenSettings) {
-                Text("设置")
+            IconButton(onClick = onOpenSettings) {
+                Icon(Icons.Default.Settings, contentDescription = "设置")
             }
         }
 
