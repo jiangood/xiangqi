@@ -39,34 +39,87 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         log.info("加载图像: " + imageFile);
         Mat srcColor = Imgcodecs.imread(imageFile, Imgcodecs.IMREAD_COLOR);
         srcColor = BoardUtils.cropCenter(srcColor);
-        Mat srcGray = new Mat();
-        Imgproc.cvtColor(srcColor, srcGray, Imgproc.COLOR_BGR2GRAY);
+        Mat srcGrayMat = new Mat();
+        Imgproc.cvtColor(srcColor, srcGrayMat, Imgproc.COLOR_BGR2GRAY);
 
-        Rect boardRect = BoardUtils.locateBoard(srcGray);
-        log.info("棋盘外边框: " + boardRect);
+        // Canny edges
+        Mat srcCannyMat = new Mat();
+        Mat blurred = new Mat();
+        Imgproc.GaussianBlur(srcGrayMat, blurred, new Size(5, 5), 0);
+        Imgproc.Canny(blurred, srcCannyMat, 30, 100);
 
-        // 裁切棋盘区域后推理：灰度→二值化(Otsu)→3通道，与训练数据一致
-        Mat boardColor = new Mat(srcColor, boardRect).clone();
+        // Dilated edges + contours
+        Mat srcCannyDilated = new Mat();
+        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
+        Imgproc.dilate(srcCannyMat, srcCannyDilated, kernel);
+        List<MatOfPoint> contours = new ArrayList<>();
+        Mat hierarchy = new Mat();
+        Imgproc.findContours(srcCannyDilated, contours, hierarchy,
+                Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+
+        // Board rect
+        Rect boardRect = BoardUtils.locateBoard(srcGrayMat);
+
+        // Crop board
+        Mat boardCroppedMat = new Mat(srcColor, boardRect).clone();
+
+        // Otsu binary
         Mat inferGray = new Mat();
-        Imgproc.cvtColor(boardColor, inferGray, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.threshold(inferGray, inferGray, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+        Imgproc.cvtColor(boardCroppedMat, inferGray, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.threshold(inferGray, inferGray, 0, 255,
+                Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
         Mat binaryBoard = inferGray.clone();
-        Imgproc.cvtColor(inferGray, boardColor, Imgproc.COLOR_GRAY2BGR);
-        Map<Point, String> detections = runYoloInference(boardColor);
-        log.info("YOLO 检测到 " + detections.size() + " 个棋子");
 
-        correctColorsFromOriginal(detections, srcColor, boardRect);
+        // YOLO inference on board crop
+        Imgproc.cvtColor(inferGray, boardCroppedMat, Imgproc.COLOR_GRAY2BGR);
+        Map<Point, String> rawDets = runYoloInference(boardCroppedMat);
 
-        Point[][] calibratedGrid = BoardUtils.calibrateGrid(detections, boardRect, binaryBoard);
-        binaryBoard.release();
-        log.info("自校准网格完成");
+        // Color correction (clone raw detections to preserve originals)
+        Map<Point, String> correctedDets = new LinkedHashMap<>();
+        for (Map.Entry<Point, String> e : rawDets.entrySet()) {
+            correctedDets.put(e.getKey().clone(), e.getValue());
+        }
+        correctColorsFromOriginal(correctedDets, srcColor, boardRect);
 
+        // Grid calibration — detect lines + calibrate
+        double cellSizeEst = binaryBoard.width() / 9.0;
+        int[][] detectedLines = BoardUtils.detectGridLines(binaryBoard, cellSizeEst);
+        int[] hLinePos = detectedLines[0];
+        int[] vLinePos = detectedLines[1];
+
+        double[] riverLine = null;
+        if (hLinePos != null && hLinePos.length >= 6) {
+            double hCenter = binaryBoard.height() / 2.0;
+            riverLine = BoardUtils.detectRiver(hLinePos, cellSizeEst, hCenter);
+        }
+
+        Point[][] calibratedGrid = BoardUtils.calibrateGrid(correctedDets, boardRect, binaryBoard);
+
+        // Populate intermediate result
+        IntermediateResult ir = new IntermediateResult();
+        ir.srcOriginal = srcColor;
+        ir.srcGray = srcGrayMat;
+        ir.srcCanny = srcCannyMat;
+        ir.srcCannyDilated = srcCannyDilated;
+        ir.contours = contours;
+        ir.boardRect = boardRect;
+        ir.boardCropped = boardCroppedMat;
+        ir.boardBinary = binaryBoard;
+        ir.hLinePositions = hLinePos;
+        ir.vLinePositions = vLinePos;
+        ir.riverLine = riverLine;
+        ir.grid = calibratedGrid;
+        ir.rawDetections = rawDets;
+        ir.correctedDetections = correctedDets;
+        this.lastIntermediate = ir;
+
+        // Existing fields for backward compat
         this.lastSrc = srcColor;
         this.lastBoardRect = boardRect;
-        this.lastDetections = detections;
+        this.lastDetections = correctedDets;
         this.lastGrid = calibratedGrid;
 
-        return BoardUtils.assignPiecesToGrid(detections, calibratedGrid, boardRect);
+        return BoardUtils.assignPiecesToGrid(correctedDets, calibratedGrid, boardRect);
     }
 
     private Map<Point, String> runYoloInference(Mat boardRegion) throws OrtException {
@@ -227,6 +280,7 @@ public class YoloPieceRecognizer implements PieceRecognizer {
     public Rect lastBoardRect;
     public Map<Point, String> lastDetections;
     public Point[][] lastGrid;
+    public IntermediateResult lastIntermediate;
 
     private static class Detection {
         float x1, y1, x2, y2, score;

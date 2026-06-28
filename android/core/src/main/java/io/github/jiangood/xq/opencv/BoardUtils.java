@@ -253,7 +253,7 @@ public class BoardUtils {
         return result;
     }
 
-    private static int[][] detectGridLines(Mat binaryImg, double cellSize) {
+    public static int[][] detectGridLines(Mat binaryImg, double cellSize) {
         int h = binaryImg.rows();
         int w = binaryImg.cols();
 
@@ -329,7 +329,7 @@ public class BoardUtils {
         return Math.max(0, Math.min(10 - N, (int) Math.round((10 - N) / 2.0)));
     }
 
-    private static double[] detectRiver(int[] hChain, double cellSize, double cropCenterY) {
+    public static double[] detectRiver(int[] hChain, double cellSize, double cropCenterY) {
         if (hChain == null || hChain.length < 6) return null;
 
         int N = hChain.length;
