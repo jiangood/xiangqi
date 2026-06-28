@@ -40,6 +40,7 @@ cli/bin/Pikafish-20250110/
 /docs/superpowers/
 /docs/superpowers/specs/
 **/tmp/
+**/output/
 /model-training/data/raw/
 /model-training.rar
 # ONNX models tracked via LFS - not in .gitignore
