@@ -163,21 +163,11 @@ class AndroidEngineClient(private val context: Context) {
                 AppLog.add("[引擎] >> $line")
                 if (line.startsWith("bestmove")) {
                     val best = line.split(" ").getOrNull(1)
-                    if (best != null && best !in moves) {
+                    if (best != null) {
                         moves.add(best)
                         AppLog.add("[引擎] 解析 bestmove: $best")
                     }
                     break
-                }
-                if (line.contains(" pv ")) {
-                    val parts = line.split(" pv ")
-                    if (parts.size > 1) {
-                        val move = parts[1].trim().split(" ").first()
-                        if (move !in moves) {
-                            moves.add(move)
-                            AppLog.add("[引擎] 解析 PV 走法: $move")
-                        }
-                    }
                 }
             }
 
