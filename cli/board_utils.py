@@ -44,19 +44,33 @@ def _extract_groups(cnt, threshold, gap):
     return np.array(groups)
 
 
-def _longest_chain(groups, cell_size, max_err=0.2):
-    if groups is None or len(groups) < 3:
+def _find_best_line_chain(groups, cell_size, max_err=0.2, min_chain=4):
+    if groups is None or len(groups) < 2:
         return None
-    chain = [groups[0]]
-    for i in range(1, len(groups)):
-        d = groups[i] - groups[i - 1]
-        if abs(d / cell_size - 1) < max_err:
-            chain.append(groups[i])
-        elif len(chain) >= 4:
-            break
-        else:
-            chain = [groups[i]]
-    return np.array(chain)
+    best_chain = []
+    n = len(groups)
+    for i in range(n - 1):
+        d = groups[i+1] - groups[i]
+        if abs(d / cell_size - 1) >= max_err:
+            continue
+        chain = [groups[i], groups[i+1]]
+        expected = groups[i+1] + d
+        for k in range(i+2, n):
+            if abs(groups[k] - expected) <= cell_size * max_err:
+                chain.append(groups[k])
+                expected = groups[k] + d
+            elif groups[k] > expected + cell_size * max_err:
+                break
+        expected = groups[i] - d
+        for k in range(i-1, -1, -1):
+            if abs(groups[k] - expected) <= cell_size * max_err:
+                chain.insert(0, groups[k])
+                expected = groups[k] - d
+            elif groups[k] < expected - cell_size * max_err:
+                break
+        if len(chain) > len(best_chain):
+            best_chain = chain
+    return np.array(best_chain) if len(best_chain) >= min_chain else None
 
 
 def detect_grid_lines(binary_img, cell_size):
@@ -72,45 +86,104 @@ def detect_grid_lines(binary_img, cell_size):
     h_lines = cv2.dilate(h_lines, hk)
     h_cnt = np.count_nonzero(h_lines, axis=1)
     h_groups = _extract_groups(h_cnt, th, gap)
-    h_chain = _longest_chain(h_groups, cell_size) if h_groups is not None else None
+    h_chain = _find_best_line_chain(h_groups, cell_size) if h_groups is not None else None
 
     vk = cv2.getStructuringElement(cv2.MORPH_RECT, (1, k_len))
     v_lines = cv2.erode(fg, vk)
     v_lines = cv2.dilate(v_lines, vk)
     v_cnt = np.count_nonzero(v_lines, axis=0)
     v_groups = _extract_groups(v_cnt, h * 0.15, gap)
-    v_chain = _longest_chain(v_groups, cell_size) if v_groups is not None else None
+    v_chain = _find_best_line_chain(v_groups, cell_size) if v_groups is not None else None
 
     return h_chain, v_chain
 
 
+def _estimate_start_row(h_chain, cs):
+    N = len(h_chain)
+    if N == 10:
+        return 0
+    spacings = h_chain[1:] - h_chain[:-1]
+    first_sp, last_sp = spacings[0], spacings[-1]
+    thresh = max(cs * 0.88, cs - 15)
+    last_c = last_sp < thresh
+    first_c = first_sp < thresh
+
+    if N == 9:
+        if last_c and not first_c:
+            return 1
+        if first_c and not last_c:
+            return 0
+        return None
+    if N == 8:
+        if last_c and not first_c:
+            return 2
+        if first_c and not last_c:
+            return 0
+        return 1
+    return max(0, min(10 - N, round((10 - N) / 2)))
+
+
+def _detect_river(h_chain, cell_size, crop_center_y):
+    if h_chain is None or len(h_chain) < 6:
+        return None
+    spacings = h_chain[1:] - h_chain[:-1]
+    cs = np.median(spacings)
+    N = len(h_chain)
+
+    R = _estimate_start_row(h_chain, cs)
+    if R is not None:
+        idx = 4 - R
+        if 0 <= idx < N - 1:
+            y4, y5 = h_chain[idx], h_chain[idx + 1]
+            return (y4, y5, y5 - y4)
+
+    best_pair = None
+    best_score = float('inf')
+    for i in range(N - 1):
+        y1, y2 = h_chain[i], h_chain[i+1]
+        spacing = y2 - y1
+        midpoint = (y1 + y2) / 2.0
+        dist_from_center = abs(midpoint - crop_center_y)
+        spacing_deviation = abs(spacing / cs - 1)
+        score = dist_from_center / max(crop_center_y, 1) + spacing_deviation
+        if score < best_score:
+            best_score = score
+            best_pair = (y1, y2, spacing)
+    return best_pair
+
+
 def calibrate_grid(matches, board_rect, binary_img=None, img_size=None):
-    # board_rect 是 locate_board 返回的外接矩形（含边框装饰），非精确网格边界
-    # cell_size 基于外接矩形宽度估算，后续通过图像中心假设校准
     bx, by, bw, bh = board_rect
     cell_size = bw / 9.0
 
-    if binary_img is not None and img_size is not None:
+    if binary_img is not None:
         h_chain, v_chain = detect_grid_lines(binary_img, cell_size)
-        if h_chain is not None and len(h_chain) >= 6:
-            spacings = h_chain[1:] - h_chain[:-1]
-            cs = np.median(spacings)
-            # 假设棋盘在图像中大致居中，用图像中心推导网格原点
-            cx, cy = img_size[0] / 2.0, img_size[1] / 2.0
-            origin_x = cx - 4 * cs
-            origin_y = cy - 4.5 * cs
-            rows = [origin_y + r * cs for r in range(10)]
-            cols = [origin_x + c * cs for c in range(9)]
 
-            if v_chain is not None and len(v_chain) >= 5:
+        if h_chain is not None and len(h_chain) >= 6:
+            h_center = (h_chain[0] + h_chain[-1]) / 2.0
+            river = _detect_river(h_chain, cell_size, h_center)
+
+            if river is not None:
+                y4, y5, cs_h = river
+                origin_y = y4 - 4 * cs_h
+            else:
+                spacings = h_chain[1:] - h_chain[:-1]
+                cs_h = np.median(spacings)
+                origin_y = h_center - 4.5 * cs_h
+
+            if v_chain is not None and len(v_chain) >= 4:
                 v_spacings = v_chain[1:] - v_chain[:-1]
-                v_cs = np.median(v_spacings)
-                v_first = int(v_chain[0] / v_cs + 0.3)
-                origins = [bx + v_chain[i] - (v_first + i) * cs for i in range(len(v_chain))]
+                cs_w = np.median(v_spacings)
+                v_first = max(0, int(v_chain[0] / cs_w + 0.3))
+                origins = [v_chain[i] - (v_first + i) * cs_w for i in range(len(v_chain))]
                 origin_x = np.median(origins)
-            rows = [origin_y + r * cs for r in range(10)]
-            cols = [origin_x + c * cs for c in range(9)]
-            return [[(cols[c], rows[r]) for c in range(9)] for r in range(10)]
+            else:
+                cs_w = cs_h
+                origin_x = bw / 2.0 - 4 * cs_h
+
+            rows = [origin_y + r * cs_h for r in range(10)]
+            cols = [origin_x + c * cs_w for c in range(9)]
+            return [[(cols[c] + bx, rows[r] + by) for c in range(9)] for r in range(10)]
 
     # 回退：假设网格从外边框向内偏移 cell_size/2（近似值）
     origin_x = bx + cell_size / 2.0

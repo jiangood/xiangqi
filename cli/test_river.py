@@ -29,22 +29,27 @@ def test_river(image_path):
     if h_chain is not None and len(h_chain) >= 6:
         spacings = h_chain[1:] - h_chain[:-1]
         cs = np.median(spacings)
-        center = bh / 2.0
-        # find the pair closest to original image center
+        center = (h_chain[0] + h_chain[-1]) / 2.0
+        # find the pair closest to the chain span center
         best = None
-        best_off = float('inf')
+        best_score = float('inf')
         for i in range(len(h_chain) - 1):
-            off = abs(h_chain[i] + h_chain[i+1] - 2 * center)
-            if off < best_off:
-                best_off = off
-                best = (h_chain[i], h_chain[i+1], cs)
+            y1, y2 = h_chain[i], h_chain[i+1]
+            spacing = y2 - y1
+            midpoint = (y1 + y2) / 2.0
+            dist = abs(midpoint - center)
+            spacing_dev = abs(spacing / cs - 1)
+            score = dist / max(center, 1) + spacing_dev
+            if score < best_score:
+                best_score = score
+                best = (y1, y2, spacing)
         if best:
-            y1, y2, cs = best
+            y1, y2, river_cs = best
             cv2.line(vis, (bx, by+y1), (bx+bw, by+y1), (0, 255, 0), 3)
             cv2.line(vis, (bx, by+y2), (bx+bw, by+y2), (0, 255, 255), 3)
-            cv2.putText(vis, f"river dist={cs:.0f} prior={cell_size_prior:.1f}", (bx, by+y1-10),
+            cv2.putText(vis, f"river dist={river_cs:.0f} prior={cell_size_prior:.1f}", (bx, by+y1-10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            result = f"PASS: y1={y1} y2={y2} dist={cs:.0f}"
+            result = f"PASS: y1={y1} y2={y2} dist={river_cs:.0f}"
         else:
             result = "FAIL: no valid river pair"
     else:
