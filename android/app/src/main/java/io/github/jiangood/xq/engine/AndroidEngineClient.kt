@@ -101,6 +101,9 @@ class AndroidEngineClient(private val context: Context) {
                     AppLog.add("[引擎] 设置 NNUE: ${nnueFile.absolutePath}")
                     send("setoption name EvalFile value ${nnueFile.absolutePath}")
                 }
+                AppLog.add("[引擎] 设置 Hash=128, Threads=4")
+                send("setoption name Hash value 128")
+                send("setoption name Threads value 4")
                 send("isready")
                 val readyDeadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10)
                 while (System.currentTimeMillis() < readyDeadline) {
