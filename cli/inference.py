@@ -184,7 +184,20 @@ def to_fen(board):
         if empty:
             buf.append(str(empty))
         rows.append(''.join(buf))
-    return '/'.join(rows) + ' w'
+
+    active = 'w'
+    for i in range(9, 6, -1):
+        found = False
+        for j in range(9):
+            p = board[i][j]
+            if p and len(p) == 2 and p[1] == 'k':
+                active = 'w' if p[0] == 'r' else 'b'
+                found = True
+                break
+        if found:
+            break
+
+    return '/'.join(rows) + ' ' + active
 
 
 def validate_position(board):
@@ -233,22 +246,6 @@ def print_board(board):
     print("黑方：将 士 象 车 马 炮 卒")
 
 
-def is_black_top(board):
-    for i in range(3):
-        for j in range(3, 6):
-            if board[i][j] == "bk":
-                return True
-    return False
-
-
-def convert_red_black(board):
-    for i in range(10):
-        for j in range(9):
-            p = board[i][j]
-            if p and len(p) == 2:
-                board[i][j] = ('b' + p[1:]) if p[0] == 'r' else ('r' + p[1:])
-
-
 def main():
     if len(sys.argv) < 2:
         print("Usage: python inference.py <image-file>", file=sys.stderr)
@@ -258,9 +255,6 @@ def main():
 
     recognizer = YoloRecognizer("models/xiangqi_yolo.onnx")
     board = recognizer.parse_board(image_path)
-
-    if not is_black_top(board):
-        convert_red_black(board)
 
     warnings = validate_position(board)
     if warnings:

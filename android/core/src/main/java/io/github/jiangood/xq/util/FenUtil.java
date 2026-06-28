@@ -98,10 +98,19 @@ public class FenUtil {
 
         String boardFEN = String.join("/", fenRows);
 
-        // 2. 当前走子方（假设红方先行）
-        String activeColor = "w"; // w表示红方，b表示黑方
+        // 2. 从底部半场（row 7-9）找帅/将，确定走子方
+        String activeColor = "w";
+        outer:
+        for (int i = 9; i >= 7; i--) {
+            for (int j = 0; j < 9; j++) {
+                String p = board[i][j];
+                if (p != null && p.length() == 2 && p.charAt(1) == 'k') {
+                    activeColor = (p.charAt(0) == 'r') ? "w" : "b";
+                    break outer;
+                }
+            }
+        }
 
-        // 3. 组合成完整FEN（简化版，实际FEN可能包含更多信息）
         return boardFEN + " " + activeColor;
     }
 

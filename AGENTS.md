@@ -15,7 +15,7 @@
 - `EngineClient`: wraps Pikafish UCI engine at `cli/bin/Pikafish-20250110/`; auto-selects best variant (vnni512→...→ssse3)
 - `to_fen()`: board→FEN (red uppercase, e.g. `K`=帅, `k`=将)
 - `convert_to_chinese_notation()`: engine UCI move→Chinese notation
-- Board convention: **black-on-top, red-on-bottom** assumed; `is_black_top()` check auto-swaps colors if violated
+- Board convention: natural orientation; FEN active color determined by king (k) in bottom 3 rows
 
 ## YOLO Model
 

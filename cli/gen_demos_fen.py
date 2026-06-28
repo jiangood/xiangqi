@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 import logging
 
-from inference import YoloRecognizer, to_fen, is_black_top, convert_red_black, validate_position
+from inference import YoloRecognizer, to_fen, validate_position
 
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(levelname)s: %(message)s')
 
@@ -85,10 +85,6 @@ def main():
     for img_path in image_files:
         board = recognizer.parse_board(str(img_path))
 
-        black_top = is_black_top(board)
-        if not black_top:
-            convert_red_black(board)
-
         warnings = validate_position(board)
         if warnings:
             for w in warnings:
@@ -98,9 +94,7 @@ def main():
         board_str = board_to_str(board)
 
         txt_path = img_path.with_suffix('.txt')
-        direction = "黑方在上（顶部），红方在下（底部）" if black_top else "红方在上（顶部），黑方在下（底部）"
         content = (f"{fen}\n{'=' * 40}\n{board_str}\n\n"
-                   f"方向：{direction}\n\n"
                    f"FEN说明：大写=红方 小写=黑方 | "
                    f"K/k=将帅 A/a=仕士 B/b=相象\n"
                    f"R/r=车 N/n=马 C/c=炮 P/p=兵卒 | "

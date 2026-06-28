@@ -94,8 +94,7 @@ object AnalysisEngine {
                 AppLog.add("[引擎] 开始棋盘识别: ${imageFile.name}")
                 val rawBoard = recognizer.parseBoard(imageFile.absolutePath)
                 AppLog.add("[引擎] 棋盘识别完成, 检测到棋子: ${countPieces(rawBoard)}")
-                val board = fixBoardOrientation(rawBoard)
-                AppLog.add("[引擎] 方向修正后棋子: ${countPieces(board)}")
+                val board = rawBoard
                 logBoard(board)
                 val fen = FenUtil.toFen(board)
                 AppLog.add("[引擎] FEN: $fen")
@@ -133,26 +132,6 @@ object AnalysisEngine {
             lines.add("[引擎]   row$i: $row")
         }
         lines.forEach { AppLog.add(it) }
-    }
-
-    fun fixBoardOrientation(board: Array<Array<String?>>): Array<Array<String?>> {
-        var blackTop = false
-        for (i in 0..2) {
-            for (j in 3..5) {
-                if (board[i][j] == "bk") blackTop = true
-            }
-        }
-        if (!blackTop) {
-            for (i in board.indices) {
-                for (j in board[i].indices) {
-                    val p = board[i][j]
-                    if (p != null) {
-                        board[i][j] = if (p[0] == 'r') "b${p[1]}" else "r${p[1]}"
-                    }
-                }
-            }
-        }
-        return board
     }
 
     fun release() {

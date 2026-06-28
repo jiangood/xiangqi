@@ -79,8 +79,7 @@ class AnalysisViewModel : ViewModel() {
                 val rawBoard = board.parseBoard(tempFile.absolutePath)
                 AppLog.add("棋盘识别完成")
 
-                val fixedBoard = AnalysisEngine.fixBoardOrientation(rawBoard)
-                AppLog.add("方向修正完成")
+                val fixedBoard = rawBoard
 
                 val validationWarnings = FenUtil.validatePositionDetails(fixedBoard)
                 if (validationWarnings.isEmpty()) {
