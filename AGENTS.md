@@ -11,7 +11,7 @@
 
 - `inference.py`: YOLO ONNX inference → board grid → FEN → Pikafish UCI engine → Chinese notation
 - `generate_labels.py`: template-matches raw screenshots → YOLO-format labels for training
-- `board_utils.py`: shared — `locateBoard()` (Canny+contour), `calibrateGrid()`, grid assignment, visualization
+ - `board_utils.py`: shared — `locateBoard()` (Canny+contour), `calibrateGrid()` (river-based grid), grid assignment, visualization
 - `EngineClient`: wraps Pikafish UCI engine at `cli/bin/Pikafish-20250110/`; auto-selects best variant (vnni512→...→ssse3)
 - `to_fen()`: board→FEN (red uppercase, e.g. `K`=帅, `k`=将)
 - `convert_to_chinese_notation()`: engine UCI move→Chinese notation
@@ -29,13 +29,23 @@
 
 ## Tests
 
-- `cd cli && pytest test_inference.py -v`
-- Test images in `cli/demos/`; expected FENs hardcoded in test file
-- Set `XQ_SAVE_RESULT=1` env var to save debug visualizations to `demos/tmp/`
+- `python test_grid.py` generates grid overlay images in `demos/output/`
+- Each image shows detected grid intersections + avg piece offset
+- Test images in `cli/demos/`
+
+## Grid Calibration
+
+- **Primary**: Detect 楚河汉界 (river) via morphological horizontal line detection
+  - Otsu binary → bitwise_not → erode+dilate with long horizontal kernel → find line groups
+  - Search for adjacent line pair near `5*cell_size` from crop top, spacing ≈ `cell_size`
+  - First river line = row 4, second = row 5 → derive `origin_y`, `cell_size`
+- **Fallback**: Geometric prior — `cell_size = bw/9`, grid starts at `cell_size/2` from board edge
+  - Used when binary image unavailable or river detection fails
+- **Validated by**: `test_grid.py` computes `avg_off` (avg pixel distance from pieces to grid intersections)
 
 ## Key Conventions
 
-- Pre-commit: verify by running `cd cli && pytest test_inference.py -v`
+- Pre-commit: verify by running `cd cli && python test_grid.py | grep avg_off`
 - Model output ONNX goes to `cli/models/`; training artifacts to `model-training/data/`
 - `.gitignore` ignores: `__pycache__/`, training outputs (`model-training/data/images/`, labels, preview, runs), YOLO weights, raw data, `cli/logs/`
 

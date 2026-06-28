@@ -147,15 +147,15 @@ class YoloRecognizer:
         board_crop = src_color[by:by + bh, bx:bx + bw].copy()
 
         infer_gray = cv2.cvtColor(board_crop, cv2.COLOR_BGR2GRAY)
-        _, infer_gray = cv2.threshold(infer_gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-        board_crop = cv2.cvtColor(infer_gray, cv2.COLOR_GRAY2BGR)
+        _, binary_img = cv2.threshold(infer_gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+        board_crop = cv2.cvtColor(binary_img, cv2.COLOR_GRAY2BGR)
 
         detections = self.run_inference(board_crop)
         log.info("YOLO 检测到 %d 个棋子", len(detections))
 
         self._correct_colors(detections, src_color, board_rect)
 
-        calibrated_grid = calibrate_grid(detections, board_rect)
+        calibrated_grid = calibrate_grid(detections, board_rect, binary_img, src_color.shape[:2][::-1])
         log.info("自校准网格完成")
 
         save_visualization(image_path, board_rect, detections, calibrated_grid, img=src_color)

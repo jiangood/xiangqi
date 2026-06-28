@@ -39,29 +39,90 @@ def locate_board(img):
     return largest
 
 
-def calibrate_grid(matches, board_rect):
+def _extract_groups(cnt, threshold, gap):
+    lr = np.where(cnt > threshold)[0]
+    if len(lr) < 5:
+        return None
+    groups = []
+    st = lr[0]
+    for i in range(1, len(lr)):
+        if lr[i] - lr[i - 1] > gap:
+            groups.append(int((st + lr[i - 1]) / 2.0))
+            st = lr[i]
+    groups.append(int((st + lr[-1]) / 2.0))
+    return np.array(groups)
+
+
+def _longest_chain(groups, cell_size, max_err=0.2):
+    if groups is None or len(groups) < 3:
+        return None
+    chain = [groups[0]]
+    for i in range(1, len(groups)):
+        d = groups[i] - groups[i - 1]
+        if abs(d / cell_size - 1) < max_err:
+            chain.append(groups[i])
+        elif len(chain) >= 4:
+            break
+        else:
+            chain = [groups[i]]
+    return np.array(chain)
+
+
+def detect_grid_lines(binary_img, cell_size):
+    h, w = binary_img.shape[:2]
+    fg = cv2.bitwise_not(binary_img) if np.count_nonzero(binary_img) > w * h * 0.5 else binary_img
+
+    k_len = max(int(cell_size * 0.8), 1)
+    gap = int(cell_size * 0.1)
+    th = w * 0.15
+
+    hk = cv2.getStructuringElement(cv2.MORPH_RECT, (k_len, 1))
+    h_lines = cv2.erode(fg, hk)
+    h_lines = cv2.dilate(h_lines, hk)
+    h_cnt = np.count_nonzero(h_lines, axis=1)
+    h_groups = _extract_groups(h_cnt, th, gap)
+    h_chain = _longest_chain(h_groups, cell_size) if h_groups is not None else None
+
+    vk = cv2.getStructuringElement(cv2.MORPH_RECT, (1, k_len))
+    v_lines = cv2.erode(fg, vk)
+    v_lines = cv2.dilate(v_lines, vk)
+    v_cnt = np.count_nonzero(v_lines, axis=0)
+    v_groups = _extract_groups(v_cnt, h * 0.15, gap)
+    v_chain = _longest_chain(v_groups, cell_size) if v_groups is not None else None
+
+    return h_chain, v_chain
+
+
+def calibrate_grid(matches, board_rect, binary_img=None, img_size=None):
     bx, by, bw, bh = board_rect
+    cell_size = bw / 9.0
 
-    if len(matches) < 16:
-        margin = int(min(bw, bh) * 0.05)
-        gl = bx + margin
-        gt = by + margin
-        gw = bw - 2 * margin
-        gh = bh - 2 * margin
-        cw = gw / 8.0
-        ch = gh / 9.0
-        return [[(gl + c * cw, gt + r * ch) for c in range(9)] for r in range(10)]
+    if binary_img is not None and img_size is not None:
+        h_chain, v_chain = detect_grid_lines(binary_img, cell_size)
+        if h_chain is not None and len(h_chain) >= 6:
+            spacings = h_chain[1:] - h_chain[:-1]
+            cs = np.median(spacings)
+            cx, cy = img_size[0] / 2.0, img_size[1] / 2.0
+            origin_x = cx - 4 * cs
+            origin_y = cy - 4.5 * cs
+            rows = [origin_y + r * cs for r in range(10)]
+            cols = [origin_x + c * cs for c in range(9)]
 
-    points = list(matches.keys())
-    min_y = min(p[1] for p in points)
-    max_y = max(p[1] for p in points)
-    min_x = min(p[0] for p in points)
-    max_x = max(p[0] for p in points)
+            if v_chain is not None and len(v_chain) >= 5:
+                v_spacings = v_chain[1:] - v_chain[:-1]
+                v_cs = np.median(v_spacings)
+                v_first = int(v_chain[0] / v_cs + 0.3)
+                origins = [bx + v_chain[i] - (v_first + i) * cs for i in range(len(v_chain))]
+                origin_x = np.median(origins)
+            rows = [origin_y + r * cs for r in range(10)]
+            cols = [origin_x + c * cs for c in range(9)]
+            return [[(cols[c], rows[r]) for c in range(9)] for r in range(10)]
 
-    cell_h = (max_y - min_y) / 9.0
-    cell_w = (max_x - min_x) / 8.0
-
-    return [[(bx + min_x + c * cell_w, by + min_y + r * cell_h) for c in range(9)] for r in range(10)]
+    origin_x = bx + cell_size / 2.0
+    origin_y = by + cell_size / 2.0
+    rows = [origin_y + r * cell_size for r in range(10)]
+    cols = [origin_x + c * cell_size for c in range(9)]
+    return [[(cols[c], rows[r]) for c in range(9)] for r in range(10)]
 
 
 def assign_pieces_to_grid(match_result, calibrated_grid, board_rect):
