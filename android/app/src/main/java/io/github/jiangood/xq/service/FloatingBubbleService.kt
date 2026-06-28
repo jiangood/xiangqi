@@ -35,7 +35,6 @@ class FloatingBubbleService : Service() {
     private lateinit var windowManager: WindowManager
     private var unifiedView: UnifiedBubbleView? = null
     private var isAnalyzing = false
-    private val grantStore by lazy { ScreenCaptureGrantStore(this) }
 
     override fun onCreate() {
         super.onCreate()
@@ -174,33 +173,7 @@ class FloatingBubbleService : Service() {
     }
 
     private fun restoreProjectionOrRequest() {
-        val grant = grantStore.loadGrant()
-        if (grant != null) {
-            val (resultCode, data) = grant
-            try {
-                val mpm = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-                val projection = mpm.getMediaProjection(resultCode, data)
-                if (projection != null) {
-                    projection.registerCallback(object : MediaProjection.Callback() {
-                        override fun onStop() {
-                            AppLog.add("[悬浮窗] mediaProjection 停止，清理状态")
-                            CaptureState.mediaProjection = null
-                            ScreenCaptureManager.release()
-                        }
-                    }, null)
-                    CaptureState.mediaProjection = projection
-                    ScreenCaptureManager.init(projection, this)
-                    AppLog.add("[悬浮窗] 从持久化 grant 重建 MediaProjection 成功")
-                    unifiedView?.updateState(UnifiedBubbleView.State.PROCESSING)
-                    captureAndAnalyze()
-                    return
-                }
-            } catch (e: Exception) {
-                AppLog.add("[悬浮窗] 从持久化 grant 重建失败: ${e.message}")
-                grantStore.clearGrant()
-            }
-        }
-        AppLog.add("[悬浮窗] 无法从持久化 grant 重建，需要重新授权截屏权限")
+        AppLog.add("[悬浮窗] mediaProjection 不可用，请求截屏授权")
         requestScreenCapturePermission()
     }
 
@@ -280,7 +253,7 @@ class FloatingBubbleService : Service() {
     private fun delayAutoIdle() {
         idleJob?.cancel()
         idleJob = scope.launch {
-            delay(3000)
+            delay(5000)
             unifiedView?.updateState(UnifiedBubbleView.State.IDLE)
         }
     }
