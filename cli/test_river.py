@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from pathlib import Path
-from board_utils import locate_board, detect_grid_lines, crop_center
+from board_utils import locate_board, detect_grid_lines
 
 DEMOS_DIR = Path(__file__).parent / "demos"
 OUTPUT_DIR = DEMOS_DIR / "output"
@@ -10,11 +10,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def test_river(image_path):
     stem = image_path.stem
-    orig = cv2.imread(str(image_path))
-    orig_h = orig.shape[0]
-    src_color, crop_y = crop_center(orig)
-    if src_color is None:
-        return f"FAIL: cannot read"
+    src_color = cv2.imread(str(image_path))
 
     src_gray = cv2.cvtColor(src_color, cv2.COLOR_BGR2GRAY)
     board_rect = locate_board(src_gray)
@@ -25,7 +21,6 @@ def test_river(image_path):
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 
     cell_size_prior = bw / 9.0
-    img_center_y = orig_h / 2.0 - crop_y
     h_chain, v_chain = detect_grid_lines(binary, cell_size_prior)
 
     vis = src_color.copy()
@@ -34,7 +29,7 @@ def test_river(image_path):
     if h_chain is not None and len(h_chain) >= 6:
         spacings = h_chain[1:] - h_chain[:-1]
         cs = np.median(spacings)
-        center = img_center_y - by
+        center = bh / 2.0
         # find the pair closest to original image center
         best = None
         best_off = float('inf')

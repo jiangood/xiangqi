@@ -8,7 +8,7 @@ import sys
 import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from board_utils import locate_board, calibrate_grid, crop_center
+from board_utils import locate_board, calibrate_grid
 
 log = logging.getLogger('generate_labels')
 
@@ -67,7 +67,6 @@ def match_template_all(src_gray, templates):
 
 def process_one(image_path, image_dir, label_dir, preview_dir, base_name, templates):
     src_color = cv2.imread(image_path)
-    src_color, _ = crop_center(src_color)
     src_gray = cv2.cvtColor(src_color, cv2.COLOR_BGR2GRAY)
 
     board_rect = locate_board(src_gray)

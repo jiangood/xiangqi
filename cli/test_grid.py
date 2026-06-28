@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from pathlib import Path
-from board_utils import locate_board, calibrate_grid, crop_center
+from board_utils import locate_board, calibrate_grid
 
 DEMOS_DIR = Path(__file__).parent / "demos"
 OUTPUT_DIR = DEMOS_DIR / "output"
@@ -9,7 +9,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def draw_grid(image_path):
-    src_color, _ = crop_center(cv2.imread(str(image_path)))
+    src_color = cv2.imread(str(image_path))
     src_gray = cv2.cvtColor(src_color, cv2.COLOR_BGR2GRAY)
 
     board_rect = locate_board(src_gray)

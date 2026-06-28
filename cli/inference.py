@@ -6,7 +6,7 @@ from pathlib import Path
 import logging
 import sys
 
-from board_utils import locate_board, calibrate_grid, assign_pieces_to_grid, save_visualization, crop_center
+from board_utils import locate_board, calibrate_grid, assign_pieces_to_grid, save_visualization
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 log = logging.getLogger('inference')
@@ -137,7 +137,6 @@ class YoloRecognizer:
     def parse_board(self, image_path):
         log.info("加载图像: %s", image_path)
         src_color = cv2.imread(image_path)
-        src_color, _ = crop_center(src_color)
         src_gray = cv2.cvtColor(src_color, cv2.COLOR_BGR2GRAY)
 
         board_rect = locate_board(src_gray)

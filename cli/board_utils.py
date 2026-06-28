@@ -7,15 +7,6 @@ import os
 log = logging.getLogger(__name__)
 
 
-def crop_center(img, ratio=4/3):
-    h, w = img.shape[:2]
-    if h / w <= ratio:
-        return img, 0
-    crop_h = int(w * ratio)
-    y = (h - crop_h) // 2
-    return img[y:y + crop_h, :], y
-
-
 def locate_board(img):
     blurred = cv2.GaussianBlur(img, (5, 5), 0)
     edges = cv2.Canny(blurred, 30, 100)
@@ -36,7 +27,7 @@ def locate_board(img):
 
     if largest is None:
         raise RuntimeError("未能定位棋盘区域")
-    return largest
+    return largest  # (x,y,w,h) 棋盘外接矩形，含边框/装饰，非精确网格边界
 
 
 def _extract_groups(cnt, threshold, gap):
@@ -94,6 +85,8 @@ def detect_grid_lines(binary_img, cell_size):
 
 
 def calibrate_grid(matches, board_rect, binary_img=None, img_size=None):
+    # board_rect 是 locate_board 返回的外接矩形（含边框装饰），非精确网格边界
+    # cell_size 基于外接矩形宽度估算，后续通过图像中心假设校准
     bx, by, bw, bh = board_rect
     cell_size = bw / 9.0
 
@@ -102,6 +95,7 @@ def calibrate_grid(matches, board_rect, binary_img=None, img_size=None):
         if h_chain is not None and len(h_chain) >= 6:
             spacings = h_chain[1:] - h_chain[:-1]
             cs = np.median(spacings)
+            # 假设棋盘在图像中大致居中，用图像中心推导网格原点
             cx, cy = img_size[0] / 2.0, img_size[1] / 2.0
             origin_x = cx - 4 * cs
             origin_y = cy - 4.5 * cs
@@ -118,6 +112,7 @@ def calibrate_grid(matches, board_rect, binary_img=None, img_size=None):
             cols = [origin_x + c * cs for c in range(9)]
             return [[(cols[c], rows[r]) for c in range(9)] for r in range(10)]
 
+    # 回退：假设网格从外边框向内偏移 cell_size/2（近似值）
     origin_x = bx + cell_size / 2.0
     origin_y = by + cell_size / 2.0
     rows = [origin_y + r * cell_size for r in range(10)]
