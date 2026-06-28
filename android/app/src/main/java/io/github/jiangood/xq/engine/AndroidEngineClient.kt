@@ -146,11 +146,9 @@ class AndroidEngineClient(private val context: Context) {
 
         return try {
             val currentThreads = io.github.jiangood.xq.settings.SettingsManager.getThreads()
-            AppLog.add("[引擎] 发送棋局: position fen $fen")
             send("position fen $fen")
             send("setoption name MultiPV value 1")
             send("setoption name Threads value $currentThreads")
-            AppLog.add("[引擎] 开始分析 depth=$depth, threads=$currentThreads")
             send("go depth $depth")
 
             val moves = mutableListOf<String>()
@@ -163,12 +161,10 @@ class AndroidEngineClient(private val context: Context) {
                 line = reader?.readLine() ?: break
                 lineCount++
                 lastLine = line
-                AppLog.add("[引擎] >> $line")
                 if (line.startsWith("bestmove")) {
                     val best = line.split(" ").getOrNull(1)
                     if (best != null) {
                         moves.add(best)
-                        AppLog.add("[引擎] 解析 bestmove: $best")
                     }
                     break
                 }
@@ -182,7 +178,6 @@ class AndroidEngineClient(private val context: Context) {
                     AppLog.add("[引擎] getBestMove: 无走法, 读取了 $lineCount 行, reader 已关闭")
                 }
             }
-            AppLog.add("[引擎] getBestMove 完成: ${moves.size} 条走法")
             moves
         } catch (e: Exception) {
             AppLog.add("[引擎] getBestMove 异常: ${e.javaClass.simpleName}: ${e.message}")

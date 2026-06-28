@@ -116,8 +116,6 @@ class MainActivity : ComponentActivity() {
 
         if (intent.action == "REQUEST_SCREEN_CAPTURE") {
             requestScreenCapturePermission()
-        } else {
-            handleShareIntent(intent)
         }
 
         setContent {
@@ -152,24 +150,6 @@ class MainActivity : ComponentActivity() {
                     },
                     onOpenSettings = { showSettings = true }
                 )
-            }
-        }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        if (intent.action == "REQUEST_SCREEN_CAPTURE") {
-            requestScreenCapturePermission()
-        } else {
-            handleShareIntent(intent)
-        }
-    }
-
-    private fun handleShareIntent(intent: Intent) {
-        if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("image/") == true) {
-            val uri: Uri? = intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
-            if (uri != null) {
-                viewModel.analyze(this, uri)
             }
         }
     }

@@ -52,7 +52,7 @@ fun MainScreen(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -66,12 +66,10 @@ fun MainScreen(
                     onToggleFloating(it)
                 }
             )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Button(onClick = onPickImage) {
-            Text("选择图片")
+            Spacer(Modifier.width(12.dp))
+            Button(onClick = onPickImage) {
+                Text("选择图片")
+            }
         }
 
         Spacer(Modifier.height(12.dp))
