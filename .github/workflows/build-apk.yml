@@ -70,6 +70,10 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
 
+      - name: Save full APK (before thin build overwrites output dir)
+        run: |
+          cp android/app/build/outputs/apk/release/xq-*-full.apk /tmp/
+
       - name: Build thin APK
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/android/app/keystore.jks
@@ -79,6 +83,7 @@ jobs:
         run: |
           cd android
           ./gradlew assembleRelease --no-daemon -Pthin
+          cp /tmp/xq-*-full.apk app/build/outputs/apk/release/
 
       - uses: softprops/action-gh-release@v2
         with:
