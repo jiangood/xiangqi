@@ -745,12 +745,6 @@ public class BoardUtils {
             }
         }
 
-        // River text
-        Imgproc.putText(img, "楚  河", new Point(pad + cellSize / 2, pad + 4 * cellSize + cellSize / 2 + 5),
-                Imgproc.FONT_HERSHEY_SIMPLEX, 0.8, BLACK, 2);
-        Imgproc.putText(img, "汉  界", new Point(pad + 5 * cellSize + cellSize / 2, pad + 4 * cellSize + cellSize / 2 + 5),
-                Imgproc.FONT_HERSHEY_SIMPLEX, 0.8, BLACK, 2);
-
         return img;
     }
 }
