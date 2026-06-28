@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.opencv.android.OpenCVLoader
+import org.opencv.core.Mat
 import java.io.File
 
 sealed class UiState {
@@ -181,28 +182,25 @@ class AnalysisViewModel : ViewModel() {
         if (recognizer !is YoloPieceRecognizer) return
         val ir = recognizer.lastIntermediate ?: return
 
-        val state = _uiState.value
-        if (state is UiState.Result) {
-            ir.bestUciMove = state.standardMoves.firstOrNull()
-        }
+        val state = _uiState.value as? UiState.Result ?: return
+        ir.bestUciMove = state.standardMoves.firstOrNull()
 
         val cacheDir = File(context.cacheDir, "analysis_${System.nanoTime()}")
         cacheDir.mkdirs()
 
         try {
-            val stepLabels = listOf(
+            val stepLabels = mutableListOf(
                 "01_original", "02_crop_center", "03_gray", "04_canny",
                 "05_contours", "06_board_rect", "07_board_crop", "08_binary",
                 "09_h_lines", "10_v_lines", "11_river", "12_grid_full",
                 "13_refined_crop", "14_raw_detections", "15_color_correction",
-                "16_detections_labeled", "17_pieces_snapped", "18_fen_text",
-                "19_board_layout", "20_best_move"
+                "16_detections_labeled", "17_pieces_snapped", "18_validation"
             )
 
-            val board = BoardUtils.assignPiecesToGrid(ir.correctedDetections, ir.grid, ir.boardRect)
-            val fen = FenUtil.toFen(board)
+            val stepMats = mutableListOf<Mat>()
 
-            val stepMats = listOf(
+            // Always add steps 1-16
+            stepMats.addAll(listOf(
                 ir.srcOriginal,
                 BoardUtils.drawCropCenter(ir),
                 BoardUtils.toBgr(ir.srcGray),
@@ -219,11 +217,25 @@ class AnalysisViewModel : ViewModel() {
                 BoardUtils.drawRawDetections(ir),
                 BoardUtils.drawColorCorrection(ir),
                 BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid),
-                BoardUtils.drawPiecesSnapped(ir),
-                BoardUtils.drawFenImage(fen),
-                BoardUtils.drawBoardLayout(board),
-                BoardUtils.drawMoveArrow(ir)
-            )
+                BoardUtils.drawPiecesSnapped(ir)
+            ))
+
+            // Validation step
+            val valid = state.validationWarnings.isEmpty()
+            stepMats.add(BoardUtils.drawValidationImage(state.validationWarnings))
+            stepLabels.add("18_validation")
+
+            // Only add FEN, board layout, best move if validation passed
+            if (valid) {
+                val board = BoardUtils.assignPiecesToGrid(ir.correctedDetections, ir.grid, ir.boardRect)
+                val fen = FenUtil.toFen(board)
+                stepMats.add(BoardUtils.drawFenImage(fen))
+                stepLabels.add("19_fen_text")
+                stepMats.add(BoardUtils.drawBoardLayout(board))
+                stepLabels.add("20_board_layout")
+                stepMats.add(BoardUtils.drawMoveArrow(ir))
+                stepLabels.add("21_best_move")
+            }
 
             val paths = mutableMapOf<Int, String>()
 

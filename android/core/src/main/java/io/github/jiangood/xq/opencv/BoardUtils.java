@@ -703,6 +703,26 @@ public class BoardUtils {
         return img;
     }
 
+    public static Mat drawValidationImage(List<String> warnings) {
+        boolean valid = warnings == null || warnings.isEmpty();
+        int h = valid ? 100 : 60 + warnings.size() * 40;
+        Mat img = new Mat(h, 800, CvType.CV_8UC3, new Scalar(255, 255, 255));
+        if (valid) {
+            Imgproc.putText(img, "局面验证通过", new Point(30, 60),
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 1.2, new Scalar(0, 128, 0), 2);
+        } else {
+            Imgproc.putText(img, "局面验证失败:", new Point(30, 50),
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.8, new Scalar(0, 0, 255), 2);
+            int y = 90;
+            for (String w : warnings) {
+                Imgproc.putText(img, "  - " + w, new Point(30, y),
+                        Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, new Scalar(200, 0, 0), 1);
+                y += 35;
+            }
+        }
+        return img;
+    }
+
     public static Mat drawBoardLayout(String[][] board) {
         int cellSize = 64;
         int pad = 48;
