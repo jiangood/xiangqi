@@ -121,7 +121,7 @@ class AndroidEngineClient(private val context: Context) {
 
     private fun isProcessAlive(): Boolean {
         return try {
-            process?.let { it.alive && it.exitValue() == 0 } ?: false
+            process?.let { it.isAlive() && it.exitValue() == 0 } ?: false
         } catch (_: IllegalThreadStateException) {
             true // process is still running
         }

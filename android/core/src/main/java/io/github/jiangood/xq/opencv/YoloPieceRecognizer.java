@@ -50,13 +50,15 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         Mat inferGray = new Mat();
         Imgproc.cvtColor(boardColor, inferGray, Imgproc.COLOR_BGR2GRAY);
         Imgproc.threshold(inferGray, inferGray, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+        Mat binaryBoard = inferGray.clone();
         Imgproc.cvtColor(inferGray, boardColor, Imgproc.COLOR_GRAY2BGR);
         Map<Point, String> detections = runYoloInference(boardColor);
         log.info("YOLO 检测到 " + detections.size() + " 个棋子");
 
         correctColorsFromOriginal(detections, srcColor, boardRect);
 
-        Point[][] calibratedGrid = BoardUtils.calibrateGrid(detections, boardRect);
+        Point[][] calibratedGrid = BoardUtils.calibrateGrid(detections, boardRect, binaryBoard);
+        binaryBoard.release();
         log.info("自校准网格完成");
 
         this.lastSrc = srcColor;
