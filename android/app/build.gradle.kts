@@ -50,7 +50,7 @@ android {
 
     applicationVariants.all {
         val v = versionName
-        val suffix = if (gradle.hasProperty("thin")) "-thin" else "-full"
+        val suffix = if (project.hasProperty("thin")) "-thin" else "-full"
         outputs.all {
             this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
             outputFileName = "xq-${v}${suffix}.apk"
@@ -58,7 +58,7 @@ android {
     }
 
     aaptOptions {
-        ignoreAssetsPattern = if (gradle.hasProperty("thin")) "!pikafish.nnue:" else ""
+        ignoreAssetsPattern = if (project.hasProperty("thin")) "!pikafish.nnue:" else ""
     }
 
     packaging {
