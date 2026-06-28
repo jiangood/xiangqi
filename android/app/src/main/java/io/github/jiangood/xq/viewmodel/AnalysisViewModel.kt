@@ -189,12 +189,15 @@ class AnalysisViewModel : ViewModel() {
         cacheDir.mkdirs()
 
         try {
+            val board = BoardUtils.assignPiecesToGrid(ir.correctedDetections, ir.grid, ir.boardRect)
+
             val stepLabels = mutableListOf(
                 "01_original", "02_crop_center", "03_gray", "04_canny",
                 "05_contours", "06_board_rect", "07_board_crop", "08_binary",
                 "09_h_lines", "10_v_lines", "11_river", "12_grid_full",
                 "13_refined_crop", "14_raw_detections", "15_color_correction",
-                "16_detections_labeled", "17_pieces_snapped", "18_validation"
+                "16_detections_labeled", "17_pieces_snapped", "18_board_array",
+                "19_validation"
             )
 
             val stepMats = mutableListOf<Mat>()
@@ -217,24 +220,24 @@ class AnalysisViewModel : ViewModel() {
                 BoardUtils.drawRawDetections(ir),
                 BoardUtils.drawColorCorrection(ir),
                 BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid),
-                BoardUtils.drawPiecesSnapped(ir)
+                BoardUtils.drawPiecesSnapped(ir),
+                BoardUtils.drawBoardAsText(board)
             ))
 
             // Validation step
             val valid = state.validationWarnings.isEmpty()
             stepMats.add(BoardUtils.drawValidationImage(state.validationWarnings))
-            stepLabels.add("18_validation")
+            stepLabels.add("19_validation")
 
             // Only add FEN, board layout, best move if validation passed
             if (valid) {
-                val board = BoardUtils.assignPiecesToGrid(ir.correctedDetections, ir.grid, ir.boardRect)
                 val fen = FenUtil.toFen(board)
                 stepMats.add(BoardUtils.drawFenImage(fen))
-                stepLabels.add("19_fen_text")
+                stepLabels.add("20_fen_text")
                 stepMats.add(BoardUtils.drawBoardLayout(board))
-                stepLabels.add("20_board_layout")
+                stepLabels.add("21_board_layout")
                 stepMats.add(BoardUtils.drawMoveArrow(ir))
-                stepLabels.add("21_best_move")
+                stepLabels.add("22_best_move")
             }
 
             val paths = mutableMapOf<Int, String>()
