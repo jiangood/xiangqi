@@ -7,7 +7,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
-import io.github.jiangood.xq.util.AppLog
 import kotlin.math.abs
 
 class UnifiedBubbleView @JvmOverloads constructor(
@@ -156,12 +155,10 @@ class UnifiedBubbleView @JvmOverloads constructor(
                 // 启动长按检测
                 longPressRunnable = Runnable {
                     isDragging = true
-                    AppLog.add("[悬浮窗触摸] 长按触发拖动模式")
                     invalidate()
                 }
                 postDelayed(longPressRunnable!!, longPressTimeout.toLong())
 
-                AppLog.add("[悬浮窗触摸] DOWN: rawY=${event.rawY.toInt()}, viewY=${event.y.toInt()}, params.y=$initialWindowY")
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
@@ -172,7 +169,6 @@ class UnifiedBubbleView @JvmOverloads constructor(
                     if (abs(dx) > scaledTouchSlop || abs(dy) > scaledTouchSlop) {
                         removeCallbacks(longPressRunnable!!)
                         longPressRunnable = null
-                        AppLog.add("[悬浮窗触摸] 移动超过 touchSlop，取消长按检测")
                     }
                 }
 
@@ -193,20 +189,12 @@ class UnifiedBubbleView @JvmOverloads constructor(
                 longPressRunnable?.let { removeCallbacks(it) }
                 longPressRunnable = null
 
-                AppLog.add("[悬浮窗触摸] UP: event.y=${event.y.toInt()}, isDragging=$isDragging")
-
                 if (!isDragging) {
-                    // 点击：判断是否在圆形区域内
                     val hit = event.y >= 0 && event.y < circleDiameter
-                    AppLog.add("[悬浮窗触摸] -> 点击检测: event.y=${event.y.toInt()} < circleDiameter=$circleDiameter = $hit")
                     if (hit) {
-                        AppLog.add("[悬浮窗触摸] -> 触发 onClick!")
                         onClick?.invoke()
-                    } else {
-                        AppLog.add("[悬浮窗触摸] -> 不在圆形范围内")
                     }
                 } else {
-                    AppLog.add("[悬浮窗触摸] -> 拖动结束")
                     isDragging = false
                     invalidate()
                 }
