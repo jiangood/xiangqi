@@ -63,25 +63,14 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         // Crop board
         Mat boardCroppedMat = new Mat(srcColor, boardRect).clone();
 
-        // Otsu binary
+        // Otsu binary on full board crop
         Mat inferGray = new Mat();
         Imgproc.cvtColor(boardCroppedMat, inferGray, Imgproc.COLOR_BGR2GRAY);
         Imgproc.threshold(inferGray, inferGray, 0, 255,
                 Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
         Mat binaryBoard = inferGray.clone();
 
-        // YOLO inference on board crop
-        Imgproc.cvtColor(inferGray, boardCroppedMat, Imgproc.COLOR_GRAY2BGR);
-        Map<Point, String> rawDets = runYoloInference(boardCroppedMat);
-
-        // Color correction (clone raw detections to preserve originals)
-        Map<Point, String> correctedDets = new LinkedHashMap<>();
-        for (Map.Entry<Point, String> e : rawDets.entrySet()) {
-            correctedDets.put(e.getKey().clone(), e.getValue());
-        }
-        correctColorsFromOriginal(correctedDets, srcColor, boardRect);
-
-        // Grid calibration — detect lines + calibrate
+        // Grid calibration BEFORE YOLO — detect lines from binary board crop
         double cellSizeEst = binaryBoard.width() / 9.0;
         int[][] detectedLines = BoardUtils.detectGridLines(binaryBoard, cellSizeEst);
         int[] hLinePos = detectedLines[0];
@@ -93,7 +82,39 @@ public class YoloPieceRecognizer implements PieceRecognizer {
             riverLine = BoardUtils.detectRiver(hLinePos, cellSizeEst, hCenter);
         }
 
-        Point[][] calibratedGrid = BoardUtils.calibrateGrid(correctedDets, boardRect, binaryBoard, hLinePos, vLinePos);
+        // Compute grid from detected lines (no detections needed for primary path)
+        Point[][] calibratedGrid = BoardUtils.calibrateGrid(
+                new LinkedHashMap<Point, String>(), boardRect, binaryBoard, hLinePos, vLinePos);
+
+        // Refined crop — recrop to grid boundaries + margin to remove decorative borders
+        Rect refinedRect = BoardUtils.computeRefinedRect(calibratedGrid, boardRect);
+        Mat boardRefinedMat = new Mat(srcColor, refinedRect).clone();
+
+        // Otsu binary on refined board crop
+        Mat refinedGray = new Mat();
+        Imgproc.cvtColor(boardRefinedMat, refinedGray, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.threshold(refinedGray, refinedGray, 0, 255,
+                Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+        Mat refinedBinary = refinedGray.clone();
+
+        // YOLO inference on refined crop (convert binary back to 3-channel)
+        Imgproc.cvtColor(refinedGray, boardRefinedMat, Imgproc.COLOR_GRAY2BGR);
+        Map<Point, String> rawDetsInRefined = runYoloInference(boardRefinedMat);
+
+        // Convert detections from refined-crop coords to board-crop coords
+        int dx = refinedRect.x - boardRect.x;
+        int dy = refinedRect.y - boardRect.y;
+        Map<Point, String> rawDets = new LinkedHashMap<>();
+        for (Map.Entry<Point, String> e : rawDetsInRefined.entrySet()) {
+            rawDets.put(new Point(e.getKey().x + dx, e.getKey().y + dy), e.getValue());
+        }
+
+        // Color correction (works with board-crop coords)
+        Map<Point, String> correctedDets = new LinkedHashMap<>();
+        for (Map.Entry<Point, String> e : rawDets.entrySet()) {
+            correctedDets.put(e.getKey().clone(), e.getValue());
+        }
+        correctColorsFromOriginal(correctedDets, srcColor, boardRect);
 
         // Populate intermediate result
         IntermediateResult ir = new IntermediateResult();
@@ -105,6 +126,8 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         ir.boardRect = boardRect;
         ir.boardCropped = boardCroppedMat;
         ir.boardBinary = binaryBoard;
+        ir.boardRefined = boardRefinedMat;
+        ir.refineRect = refinedRect;
         ir.hLinePositions = hLinePos;
         ir.vLinePositions = vLinePos;
         ir.riverLine = riverLine;
@@ -119,9 +142,11 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         this.lastDetections = correctedDets;
         this.lastGrid = calibratedGrid;
 
+        // Cleanup
         blurred.release();
         kernel.release();
         hierarchy.release();
+        refinedBinary.release();
 
         return BoardUtils.assignPiecesToGrid(correctedDets, calibratedGrid, boardRect);
     }

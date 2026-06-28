@@ -678,4 +678,21 @@ public class BoardUtils {
         }
         return output;
     }
+
+    public static Rect computeRefinedRect(Point[][] grid, Rect boardRect) {
+        if (grid == null) return boardRect;
+        double cellH = grid[1][0].y - grid[0][0].y;
+        double cellW = grid[0][1].x - grid[0][0].x;
+        double cellSize = Math.max(cellH, cellW);
+        int margin = Math.max((int)(cellSize * 0.2), 5);
+        int x = (int)grid[0][0].x - margin;
+        int y = (int)grid[0][0].y - margin;
+        int right = (int)grid[9][8].x + margin;
+        int bottom = (int)grid[9][8].y + margin;
+        x = Math.max(boardRect.x, x);
+        y = Math.max(boardRect.y, y);
+        right = Math.min(boardRect.x + boardRect.width, right);
+        bottom = Math.min(boardRect.y + boardRect.height, bottom);
+        return new Rect(x, y, right - x, bottom - y);
+    }
 }

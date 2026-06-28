@@ -19,6 +19,8 @@ public class IntermediateResult {
     public Point[][] grid;
     public Map<Point, String> rawDetections;
     public Map<Point, String> correctedDetections;
+    public Mat boardRefined;       // Refined crop (to grid boundaries + margin)
+    public Rect refineRect;        // The refined crop rectangle
     public String boardFen;
     public String bestUciMove;
 }

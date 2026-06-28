@@ -192,9 +192,9 @@ class AnalysisViewModel : ViewModel() {
             val stepLabels = listOf(
                 "01_crop_center", "02_gray", "03_canny", "04_contours",
                 "05_board_rect", "06_board_crop", "07_binary", "08_h_lines",
-                "09_v_lines", "10_river", "11_grid_full", "12_raw_detections",
-                "13_color_correction", "14_detections_labeled", "15_pieces_snapped",
-                "16_best_move"
+                "09_v_lines", "10_river", "11_grid_full", "12_refined_crop",
+                "13_raw_detections", "14_color_correction", "15_detections_labeled",
+                "16_pieces_snapped", "17_best_move"
             )
 
             val stepMats = listOf(
@@ -209,6 +209,7 @@ class AnalysisViewModel : ViewModel() {
                 BoardUtils.drawVLines(ir),
                 BoardUtils.drawRiver(ir),
                 BoardUtils.drawGridFull(ir),
+                ir.boardRefined,                              // NEW STEP 12
                 BoardUtils.drawRawDetections(ir),
                 BoardUtils.drawColorCorrection(ir),
                 BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid),
