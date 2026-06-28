@@ -146,10 +146,11 @@ fun MainScreen(
                             var selectedImage by remember { mutableStateOf<Bitmap?>(null) }
 
                             val stepNames = listOf(
-                                "中心裁剪", "灰度图", "Canny 边缘检测", "轮廓检测",
-                                "棋盘定位", "棋盘裁剪", "二值化", "水平线检测",
-                                "垂直线检测", "楚河汉界检测", "网格红线标注", "精裁棋盘",
-                                "YOLO 原始检测", "颜色修正", "棋子识别", "棋子归位", "最佳走法"
+                                "原图", "中心裁剪", "灰度图", "Canny 边缘检测",
+                                "轮廓检测", "棋盘定位", "棋盘裁剪", "二值化",
+                                "水平线检测", "垂直线检测", "楚河汉界检测", "网格红线标注",
+                                "精裁棋盘", "YOLO 原始检测", "颜色修正", "棋子识别",
+                                "棋子归位", "FEN 识别", "棋盘布局", "最佳走法"
                             )
 
                             s.stepPreviews.toSortedMap().forEach { (step, path) ->

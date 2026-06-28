@@ -695,4 +695,62 @@ public class BoardUtils {
         bottom = Math.min(boardRect.y + boardRect.height, bottom);
         return new Rect(x, y, right - x, bottom - y);
     }
+
+    public static Mat drawFenImage(String fen) {
+        Mat img = new Mat(120, 1000, CvType.CV_8UC3, new Scalar(255, 255, 255));
+        Imgproc.putText(img, "FEN: " + fen, new Point(20, 70),
+                Imgproc.FONT_HERSHEY_SIMPLEX, 1.2, new Scalar(0, 0, 0), 2);
+        return img;
+    }
+
+    public static Mat drawBoardLayout(String[][] board) {
+        int cellSize = 64;
+        int pad = 48;
+        int w = 8 * cellSize + 2 * pad;
+        int h = 9 * cellSize + 2 * pad;
+        Mat img = new Mat(h, w, CvType.CV_8UC3, new Scalar(248, 222, 176));
+        Scalar BLACK = new Scalar(0, 0, 0);
+
+        // Horizontal lines
+        for (int r = 0; r < 10; r++) {
+            int y = pad + r * cellSize;
+            Imgproc.line(img, new Point(pad, y), new Point(pad + 8 * cellSize, y), BLACK, 1);
+        }
+        // Vertical lines
+        for (int c = 0; c < 9; c++) {
+            int x = pad + c * cellSize;
+            Imgproc.line(img, new Point(x, pad), new Point(x, pad + 4 * cellSize), BLACK, 1);
+            Imgproc.line(img, new Point(x, pad + 5 * cellSize), new Point(x, pad + 9 * cellSize), BLACK, 1);
+            if (c == 0 || c == 8) {
+                Imgproc.line(img, new Point(x, pad + 4 * cellSize), new Point(x, pad + 5 * cellSize), BLACK, 1);
+            }
+        }
+
+        // Pieces at intersections
+        for (int r = 0; r < 10; r++) {
+            for (int c = 0; c < 9; c++) {
+                String p = board[r][c];
+                if (p == null || p.length() != 2) continue;
+                int cx = pad + c * cellSize;
+                int cy = pad + r * cellSize;
+                boolean isRed = p.charAt(0) == 'r';
+                Scalar color = isRed ? new Scalar(0, 0, 255) : new Scalar(0, 0, 0);
+                String symbol = isRed ? String.valueOf(Character.toUpperCase(p.charAt(1)))
+                                      : String.valueOf(Character.toLowerCase(p.charAt(1)));
+
+                Imgproc.circle(img, new Point(cx, cy), cellSize / 2 - 4, new Scalar(255, 255, 255), -1);
+                Imgproc.circle(img, new Point(cx, cy), cellSize / 2 - 4, color, 1);
+                Imgproc.putText(img, symbol, new Point(cx - 8, cy + 7),
+                        Imgproc.FONT_HERSHEY_SIMPLEX, 0.7, color, 2);
+            }
+        }
+
+        // River text
+        Imgproc.putText(img, "楚  河", new Point(pad + cellSize / 2, pad + 4 * cellSize + cellSize / 2 + 5),
+                Imgproc.FONT_HERSHEY_SIMPLEX, 0.8, BLACK, 2);
+        Imgproc.putText(img, "汉  界", new Point(pad + 5 * cellSize + cellSize / 2, pad + 4 * cellSize + cellSize / 2 + 5),
+                Imgproc.FONT_HERSHEY_SIMPLEX, 0.8, BLACK, 2);
+
+        return img;
+    }
 }

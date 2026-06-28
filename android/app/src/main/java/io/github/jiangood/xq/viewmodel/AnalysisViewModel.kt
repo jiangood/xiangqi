@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.jiangood.xq.analysis.AnalysisEngine
 import io.github.jiangood.xq.opencv.*
 import io.github.jiangood.xq.platform.AndroidImageUtils
+import io.github.jiangood.xq.opencv.BoardUtils
 import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.util.FenUtil
 import io.github.jiangood.xq.util.NotationConverter
@@ -190,14 +191,19 @@ class AnalysisViewModel : ViewModel() {
 
         try {
             val stepLabels = listOf(
-                "01_crop_center", "02_gray", "03_canny", "04_contours",
-                "05_board_rect", "06_board_crop", "07_binary", "08_h_lines",
-                "09_v_lines", "10_river", "11_grid_full", "12_refined_crop",
-                "13_raw_detections", "14_color_correction", "15_detections_labeled",
-                "16_pieces_snapped", "17_best_move"
+                "01_original", "02_crop_center", "03_gray", "04_canny",
+                "05_contours", "06_board_rect", "07_board_crop", "08_binary",
+                "09_h_lines", "10_v_lines", "11_river", "12_grid_full",
+                "13_refined_crop", "14_raw_detections", "15_color_correction",
+                "16_detections_labeled", "17_pieces_snapped", "18_fen_text",
+                "19_board_layout", "20_best_move"
             )
 
+            val board = BoardUtils.assignPiecesToGrid(ir.correctedDetections, ir.grid, ir.boardRect)
+            val fen = FenUtil.toFen(board)
+
             val stepMats = listOf(
+                ir.srcOriginal,
                 BoardUtils.drawCropCenter(ir),
                 BoardUtils.toBgr(ir.srcGray),
                 BoardUtils.drawCanny(ir),
@@ -209,11 +215,13 @@ class AnalysisViewModel : ViewModel() {
                 BoardUtils.drawVLines(ir),
                 BoardUtils.drawRiver(ir),
                 BoardUtils.drawGridFull(ir),
-                ir.boardRefined,                              // NEW STEP 12
+                ir.boardRefined,
                 BoardUtils.drawRawDetections(ir),
                 BoardUtils.drawColorCorrection(ir),
                 BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid),
                 BoardUtils.drawPiecesSnapped(ir),
+                BoardUtils.drawFenImage(fen),
+                BoardUtils.drawBoardLayout(board),
                 BoardUtils.drawMoveArrow(ir)
             )
 
