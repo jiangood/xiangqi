@@ -25,7 +25,8 @@ sealed class UiState {
         val moves: List<String>,
         val standardMoves: List<String> = emptyList(),
         val stepPreviews: Map<Int, Bitmap> = emptyMap(),
-        val validationWarnings: List<String> = emptyList()
+        val validationWarnings: List<String> = emptyList(),
+        val elapsedMs: Long = 0L
     ) : UiState()
     data class Error(val message: String) : UiState()
 }
@@ -94,11 +95,13 @@ class AnalysisViewModel : ViewModel() {
                 AppLog.add("FEN: $fen")
 
                 AppLog.add("引擎分析中...")
-                val moves = engine.getBestMove(fen, 20)
-                AppLog.add("引擎返回 ${moves.size} 条走法")
+                val startTime = System.currentTimeMillis()
+                val moves = engine.getBestMove(fen)
+                val elapsedMs = System.currentTimeMillis() - startTime
+                AppLog.add("引擎返回 ${moves.size} 条走法，耗时 ${elapsedMs}ms")
                 val chineseMoves = moves.map { NotationConverter.convertToChineseNotation(fixedBoard, it) }
 
-                _uiState.value = UiState.Result(moves = chineseMoves, standardMoves = moves, validationWarnings = validationWarnings)
+                _uiState.value = UiState.Result(moves = chineseMoves, standardMoves = moves, validationWarnings = validationWarnings, elapsedMs = elapsedMs)
 
                 AppLog.add("生成中间步骤预览图...")
                 generatePreviews()

@@ -26,7 +26,8 @@ import io.github.jiangood.xq.viewmodel.UiState
 fun MainScreen(
     viewModel: AnalysisViewModel,
     onPickImage: () -> Unit,
-    onToggleFloating: (Boolean) -> Unit
+    onToggleFloating: (Boolean) -> Unit,
+    onOpenSettings: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
@@ -39,7 +40,15 @@ fun MainScreen(
             .verticalScroll(scrollState),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("象棋支招", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("象棋支招", fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            TextButton(onClick = onOpenSettings) {
+                Text("设置")
+            }
+        }
 
         Spacer(Modifier.height(16.dp))
 
@@ -83,7 +92,18 @@ fun MainScreen(
             is UiState.Result -> {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("分析结果", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("分析结果", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(
+                                text = "耗时 ${"%.1f".format(s.elapsedMs / 1000.0)}s",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         Spacer(Modifier.height(12.dp))
 
                         Text("推荐走法", fontWeight = FontWeight.Bold, fontSize = 14.sp)

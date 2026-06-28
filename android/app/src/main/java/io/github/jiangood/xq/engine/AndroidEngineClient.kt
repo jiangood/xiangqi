@@ -101,9 +101,10 @@ class AndroidEngineClient(private val context: Context) {
                     AppLog.add("[引擎] 设置 NNUE: ${nnueFile.absolutePath}")
                     send("setoption name EvalFile value ${nnueFile.absolutePath}")
                 }
-                AppLog.add("[引擎] 设置 Hash=128, Threads=4")
+                val threads = io.github.jiangood.xq.settings.SettingsManager.getThreads()
+                AppLog.add("[引擎] 设置 Hash=128, Threads=$threads")
                 send("setoption name Hash value 128")
-                send("setoption name Threads value 4")
+                send("setoption name Threads value $threads")
                 send("isready")
                 val readyDeadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10)
                 while (System.currentTimeMillis() < readyDeadline) {
@@ -130,7 +131,7 @@ class AndroidEngineClient(private val context: Context) {
         }
     }
 
-    fun getBestMove(fen: String, depth: Int = 20): List<String> {
+    fun getBestMove(fen: String, depth: Int = io.github.jiangood.xq.settings.SettingsManager.getDepth()): List<String> {
         AppLog.add("[引擎] getBestMove: isReady=$isReady, processAlive=${isProcessAlive()}")
         if (!isReady) {
             AppLog.add("[引擎] getBestMove: 引擎未就绪，返回空列表")
