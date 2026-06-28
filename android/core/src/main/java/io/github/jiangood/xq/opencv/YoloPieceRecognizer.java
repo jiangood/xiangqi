@@ -38,6 +38,7 @@ public class YoloPieceRecognizer implements PieceRecognizer {
     public String[][] parseBoard(String imageFile) throws Exception {
         log.info("加载图像: " + imageFile);
         Mat srcColor = Imgcodecs.imread(imageFile, Imgcodecs.IMREAD_COLOR);
+        srcColor = BoardUtils.cropCenter(srcColor);
         Mat srcGray = new Mat();
         Imgproc.cvtColor(srcColor, srcGray, Imgproc.COLOR_BGR2GRAY);
 

@@ -51,9 +51,15 @@ release-key.jks
 android/app/release.keystore
 *.apk
 
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
 # Playwright / temp / debug artifacts
 .playwright-mcp/
 cli/temp/
+cli/logs/
 advisor-overview
 ci-status
 ci-status-*

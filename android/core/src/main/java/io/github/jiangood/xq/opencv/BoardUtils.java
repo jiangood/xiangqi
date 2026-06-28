@@ -12,6 +12,21 @@ public class BoardUtils {
 
     private static final Logger log = Logger.getLogger(BoardUtils.class.getName());
 
+    public static Mat cropCenter(Mat src) {
+        return cropCenter(src, 4.0 / 3.0);
+    }
+
+    public static Mat cropCenter(Mat src, double ratio) {
+        int h = src.rows();
+        int w = src.cols();
+        if ((double) h / w <= ratio) {
+            return src;
+        }
+        int cropH = (int) (w * ratio);
+        int y = (h - cropH) / 2;
+        return new Mat(src, new Rect(0, y, w, cropH));
+    }
+
     public static Rect locateBoard(Mat src) {
         Mat blurred = new Mat();
         Imgproc.GaussianBlur(src, blurred, new Size(5, 5), 0);
