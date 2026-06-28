@@ -10,7 +10,7 @@
 ## Architecture
 
 - `inference.py`: YOLO ONNX inference → board grid → FEN → Pikafish UCI engine → Chinese notation
- - **Refined crop**: grid calibration runs before YOLO; board is recropped to outermost grid lines + half piece radius (margin = cell_size × 0.2) to remove decorative borders, improving recognition accuracy
+ - **Refined crop**: grid calibration runs before YOLO; board is recropped to outermost grid lines + half piece margin (margin = cell_size × 0.5) to remove decorative borders, improving recognition accuracy
 - `generate_labels.py`: template-matches raw screenshots → YOLO-format labels for training
  - `board_utils.py`: shared — `locateBoard()` (Canny+contour), `calibrateGrid()` (river-based grid), grid assignment, visualization
 - `EngineClient`: wraps Pikafish UCI engine at `cli/bin/Pikafish-20250110/`; auto-selects best variant (vnni512→...→ssse3)

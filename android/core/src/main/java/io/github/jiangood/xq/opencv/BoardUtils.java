@@ -684,7 +684,7 @@ public class BoardUtils {
         double cellH = grid[1][0].y - grid[0][0].y;
         double cellW = grid[0][1].x - grid[0][0].x;
         double cellSize = Math.max(cellH, cellW);
-        int margin = Math.max((int)(cellSize * 0.2), 5);
+        int margin = Math.max((int)(cellSize * 0.5), 10);
         int x = (int)grid[0][0].x - margin;
         int y = (int)grid[0][0].y - margin;
         int right = (int)grid[9][8].x + margin;
