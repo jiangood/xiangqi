@@ -77,67 +77,74 @@ public class BoardUtils {
      * @return 10x9 grid in full-image coordinates
      */
     public static Point[][] calibrateGrid(Map<Point, String> matches, Rect boardRect, Mat binaryBoard) {
+        if (binaryBoard != null) {
+            double cellSize = boardRect.width / 9.0;
+            int[][] lines = detectGridLines(binaryBoard, cellSize);
+            return calibrateGrid(matches, boardRect, binaryBoard, lines[0], lines[1]);
+        }
+        // Fallback: piece-based adaptive then geometric
+        if (matches.size() >= 16) {
+            return calibrateGridAdaptive(matches, boardRect);
+        }
+        return calibrateGridFallback(boardRect);
+    }
+
+    public static Point[][] calibrateGrid(Map<Point, String> matches, Rect boardRect, Mat binaryBoard, int[] hChain, int[] vChain) {
         double bw = boardRect.width, bh = boardRect.height;
         double cellSize = bw / 9.0;
 
-        if (binaryBoard != null) {
-            int[][] lines = detectGridLines(binaryBoard, cellSize);
-            int[] hChain = lines[0];
-            int[] vChain = lines[1];
+        if (hChain != null && hChain.length >= 6) {
+            double hCenter = (hChain[0] + hChain[hChain.length - 1]) / 2.0;
+            double[] river = detectRiver(hChain, cellSize, hCenter);
 
-            if (hChain != null && hChain.length >= 6) {
-                double hCenter = (hChain[0] + hChain[hChain.length - 1]) / 2.0;
-                double[] river = detectRiver(hChain, cellSize, hCenter);
+            double cs_h;
+            double originY;
 
-                double cs_h;
-                double originY;
-
-                if (river != null) {
-                    double y4 = river[0], csRiver = river[2];
-                    cs_h = csRiver;
-                    originY = y4 - 4 * cs_h;
-                } else {
-                    double[] hSpacings = new double[hChain.length - 1];
-                    for (int i = 0; i < hChain.length - 1; i++) {
-                        hSpacings[i] = hChain[i + 1] - hChain[i];
-                    }
-                    Arrays.sort(hSpacings);
-                    cs_h = hSpacings[hSpacings.length / 2];
-                    originY = hCenter - 4.5 * cs_h;
+            if (river != null) {
+                double y4 = river[0], csRiver = river[2];
+                cs_h = csRiver;
+                originY = y4 - 4 * cs_h;
+            } else {
+                double[] hSpacings = new double[hChain.length - 1];
+                for (int i = 0; i < hChain.length - 1; i++) {
+                    hSpacings[i] = hChain[i + 1] - hChain[i];
                 }
-
-                double cs_w;
-                double originX;
-
-                if (vChain != null && vChain.length >= 4) {
-                    double[] vSpacings = new double[vChain.length - 1];
-                    for (int i = 0; i < vChain.length - 1; i++) {
-                        vSpacings[i] = vChain[i + 1] - vChain[i];
-                    }
-                    Arrays.sort(vSpacings);
-                    cs_w = vSpacings[vSpacings.length / 2];
-
-                    int vFirst = Math.max(0, (int) (vChain[0] / cs_w + 0.3));
-                    double[] origins = new double[vChain.length];
-                    for (int i = 0; i < vChain.length; i++) {
-                        origins[i] = vChain[i] - (vFirst + i) * cs_w;
-                    }
-                    Arrays.sort(origins);
-                    originX = origins[origins.length / 2];
-                } else {
-                    cs_w = cs_h;
-                    originX = bw / 2.0 - 4 * cs_h;
-                }
-
-                Point[][] grid = new Point[10][9];
-                for (int r = 0; r < 10; r++) {
-                    for (int c = 0; c < 9; c++) {
-                        grid[r][c] = new Point(boardRect.x + originX + c * cs_w,
-                                               boardRect.y + originY + r * cs_h);
-                    }
-                }
-                return grid;
+                Arrays.sort(hSpacings);
+                cs_h = hSpacings[hSpacings.length / 2];
+                originY = hCenter - 4.5 * cs_h;
             }
+
+            double cs_w;
+            double originX;
+
+            if (vChain != null && vChain.length >= 4) {
+                double[] vSpacings = new double[vChain.length - 1];
+                for (int i = 0; i < vChain.length - 1; i++) {
+                    vSpacings[i] = vChain[i + 1] - vChain[i];
+                }
+                Arrays.sort(vSpacings);
+                cs_w = vSpacings[vSpacings.length / 2];
+
+                int vFirst = Math.max(0, (int) (vChain[0] / cs_w + 0.3));
+                double[] origins = new double[vChain.length];
+                for (int i = 0; i < vChain.length; i++) {
+                    origins[i] = vChain[i] - (vFirst + i) * cs_w;
+                }
+                Arrays.sort(origins);
+                originX = origins[origins.length / 2];
+            } else {
+                cs_w = cs_h;
+                originX = bw / 2.0 - 4 * cs_h;
+            }
+
+            Point[][] grid = new Point[10][9];
+            for (int r = 0; r < 10; r++) {
+                for (int c = 0; c < 9; c++) {
+                    grid[r][c] = new Point(boardRect.x + originX + c * cs_w,
+                                           boardRect.y + originY + r * cs_h);
+                }
+            }
+            return grid;
         }
 
         // Fallback: piece-based adaptive then geometric
@@ -462,6 +469,111 @@ public class BoardUtils {
             Point textOrg = new Point(x1, Math.max(y1 - 4, 0));
             Imgproc.putText(output, name, textOrg,
                     Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, color, 2, Imgproc.LINE_AA, false);
+        }
+        return output;
+    }
+
+    public static Mat drawCropCenter(IntermediateResult ir) {
+        Mat output = ir.srcOriginal.clone();
+        int h = ir.srcOriginal.rows();
+        int w = ir.srcOriginal.cols();
+        double ratio = 4.0 / 3.0;
+        if ((double) h / w <= ratio) return output;
+        int cropH = (int) (w * ratio);
+        int y = (h - cropH) / 2;
+        Imgproc.rectangle(output, new Point(0, y), new Point(w, y + cropH),
+                new Scalar(255, 255, 0), 2, Imgproc.LINE_8, 0);
+        return output;
+    }
+
+    public static Mat toBgr(Mat singleChannel) {
+        Mat bgr = new Mat();
+        Imgproc.cvtColor(singleChannel, bgr, Imgproc.COLOR_GRAY2BGR);
+        return bgr;
+    }
+
+    public static Mat drawCanny(IntermediateResult ir) {
+        return toBgr(ir.srcCanny);
+    }
+
+    public static Mat drawContours(IntermediateResult ir) {
+        Mat output = toBgr(ir.srcCannyDilated);
+        for (MatOfPoint contour : ir.contours) {
+            Imgproc.drawContours(output, ir.contours, -1, new Scalar(0, 255, 0), 1);
+        }
+        Rect largest = null;
+        double largestArea = 0;
+        for (MatOfPoint contour : ir.contours) {
+            Rect rect = Imgproc.boundingRect(contour);
+            double area = rect.area();
+            if (area > largestArea) {
+                largestArea = area;
+                largest = rect;
+            }
+        }
+        if (largest != null) {
+            Imgproc.rectangle(output, largest.tl(), largest.br(), new Scalar(255, 0, 0), 2);
+        }
+        return output;
+    }
+
+    public static Mat drawHLines(IntermediateResult ir) {
+        Mat output = ir.srcOriginal.clone();
+        if (ir.hLinePositions == null) return output;
+        Scalar RED = new Scalar(0, 0, 255);
+        int w = output.width();
+        for (int y : ir.hLinePositions) {
+            Imgproc.line(output, new Point(0, y), new Point(w, y), RED, 2);
+        }
+        return output;
+    }
+
+    public static Mat drawVLines(IntermediateResult ir) {
+        Mat output = ir.srcOriginal.clone();
+        if (ir.vLinePositions == null) return output;
+        Scalar RED = new Scalar(0, 0, 255);
+        int h = output.height();
+        for (int x : ir.vLinePositions) {
+            Imgproc.line(output, new Point(x, 0), new Point(x, h), RED, 2);
+        }
+        return output;
+    }
+
+    public static Mat drawRiver(IntermediateResult ir) {
+        Mat output = ir.srcOriginal.clone();
+        if (ir.riverLine == null) return output;
+        Scalar GREEN = new Scalar(0, 255, 0);
+        int w = output.width();
+        int y4 = (int) ir.riverLine[0];
+        int y5 = (int) ir.riverLine[1];
+        Imgproc.line(output, new Point(0, y4), new Point(w, y4), GREEN, 3);
+        Imgproc.line(output, new Point(0, y5), new Point(w, y5), GREEN, 3);
+        Imgproc.putText(output, "楚河", new Point(10, y4 - 8),
+                Imgproc.FONT_HERSHEY_SIMPLEX, 0.7, GREEN, 2);
+        Imgproc.putText(output, "汉界", new Point(w - 100, y5 + 30),
+                Imgproc.FONT_HERSHEY_SIMPLEX, 0.7, GREEN, 2);
+        return output;
+    }
+
+    public static Mat drawGridFull(IntermediateResult ir) {
+        Mat output = ir.srcOriginal.clone();
+        Point[][] grid = ir.grid;
+        if (grid == null) return output;
+        Scalar RED = new Scalar(0, 0, 255);
+        for (int r = 0; r < 10; r++) {
+            Imgproc.line(output, grid[r][0], grid[r][8], RED, 2);
+        }
+        for (int c = 0; c < 9; c++) {
+            Imgproc.line(output, grid[0][c], grid[4][c], RED, 2);
+            Imgproc.line(output, grid[5][c], grid[9][c], RED, 2);
+            if (c == 0 || c == 8) {
+                Imgproc.line(output, grid[4][c], grid[5][c], RED, 2);
+            }
+        }
+        for (int r = 0; r < 10; r++) {
+            for (int c = 0; c < 9; c++) {
+                Imgproc.drawMarker(output, grid[r][c], RED, Imgproc.MARKER_CROSS, 6, 1);
+            }
         }
         return output;
     }
