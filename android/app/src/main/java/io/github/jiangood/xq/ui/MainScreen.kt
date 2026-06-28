@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,20 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.platform.LocalContext
-import io.github.jiangood.xq.service.AnalysisHistoryStore
-import io.github.jiangood.xq.service.HistoryEntry
 import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.viewmodel.AnalysisViewModel
 import io.github.jiangood.xq.viewmodel.UiState
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 
 @Composable
 fun MainScreen(
@@ -70,16 +61,6 @@ fun MainScreen(
 
         Button(onClick = onPickImage) {
             Text("选择图片")
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        var showHistory by remember { mutableStateOf(false) }
-        Button(onClick = { showHistory = true }) {
-            Text("历史记录")
-        }
-        if (showHistory) {
-            HistoryDialog(onDismiss = { showHistory = false })
         }
 
         Spacer(Modifier.height(12.dp))
@@ -159,78 +140,6 @@ fun MainScreen(
         val allLogs = viewModel.logs.collectAsState().value
 
         LogCard(title = "日志", logs = allLogs, autoExpand = state is UiState.Error)
-    }
-}
-
-@Composable
-private fun HistoryDialog(onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    var entries by remember { mutableStateOf(AnalysisHistoryStore.getEntries(context)) }
-    var showClearConfirm by remember { mutableStateOf(false) }
-    val dateFormat = remember { SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("历史记录", fontWeight = FontWeight.Bold) },
-        text = {
-            if (entries.isEmpty()) {
-                Text("暂无历史记录", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                LazyColumn {
-                    items(entries) { entry ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = dateFormat.format(Date(entry.timestamp)),
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.width(72.dp)
-                            )
-                            Text(
-                                text = entry.chineseMove,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            if (entries.isNotEmpty()) {
-                TextButton(onClick = { showClearConfirm = true }) {
-                    Text("清空", color = MaterialTheme.colorScheme.error)
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("关闭") }
-        }
-    )
-
-    if (showClearConfirm) {
-        AlertDialog(
-            onDismissRequest = { showClearConfirm = false },
-            title = { Text("确认清空") },
-            text = { Text("确定要清空所有历史记录吗？") },
-            confirmButton = {
-                TextButton(onClick = {
-                    AnalysisHistoryStore.clear(context)
-                    entries = emptyList()
-                    showClearConfirm = false
-                }) {
-                    Text("确定", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearConfirm = false }) { Text("取消") }
-            }
-        )
     }
 }
 
