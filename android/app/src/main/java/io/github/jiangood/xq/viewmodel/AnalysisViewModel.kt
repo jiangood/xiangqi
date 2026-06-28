@@ -142,7 +142,7 @@ class AnalysisViewModel : ViewModel() {
                 _uiState.value = state3.copy(stepPreviews = state3.stepPreviews + (3 to step3Bmp))
             }
 
-            val currentUciMove = state3.standardMoves.firstOrNull()
+            val currentUciMove = if (state3 is UiState.Result) state3.standardMoves.firstOrNull() else null
             val step6Mat = BoardUtils.drawPreview(
                 r.lastSrc, r.lastBoardRect, r.lastDetections, r.lastGrid
             )
