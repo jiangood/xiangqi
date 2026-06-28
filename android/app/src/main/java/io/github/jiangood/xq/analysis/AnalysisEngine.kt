@@ -64,7 +64,7 @@ object AnalysisEngine {
                     AppLog.add("[引擎] 引擎启动失败")
                 }
                 AppLog.add("[引擎] 加载 ONNX 模型...")
-                val modelFile = File(context.cacheDir, "xiangqi_yolo.onnx")
+                val modelFile = File(context.filesDir, "xiangqi_yolo.onnx")
                 if (!modelFile.exists()) {
                     AppLog.add("[引擎] 解压 ONNX 模型...")
                     context.assets.open("xiangqi_yolo.onnx").use { input ->
