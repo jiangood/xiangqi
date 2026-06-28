@@ -93,7 +93,7 @@ public class YoloPieceRecognizer implements PieceRecognizer {
             riverLine = BoardUtils.detectRiver(hLinePos, cellSizeEst, hCenter);
         }
 
-        Point[][] calibratedGrid = BoardUtils.calibrateGrid(correctedDets, boardRect, binaryBoard);
+        Point[][] calibratedGrid = BoardUtils.calibrateGrid(correctedDets, boardRect, binaryBoard, hLinePos, vLinePos);
 
         // Populate intermediate result
         IntermediateResult ir = new IntermediateResult();
@@ -118,6 +118,10 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         this.lastBoardRect = boardRect;
         this.lastDetections = correctedDets;
         this.lastGrid = calibratedGrid;
+
+        blurred.release();
+        kernel.release();
+        hierarchy.release();
 
         return BoardUtils.assignPiecesToGrid(correctedDets, calibratedGrid, boardRect);
     }

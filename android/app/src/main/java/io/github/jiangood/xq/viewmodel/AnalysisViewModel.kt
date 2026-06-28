@@ -1,7 +1,6 @@
 package io.github.jiangood.xq.viewmodel
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -24,7 +23,7 @@ sealed class UiState {
     data class Result(
         val moves: List<String>,
         val standardMoves: List<String> = emptyList(),
-        val stepPreviews: Map<Int, Bitmap> = emptyMap(),
+        val stepPreviews: Map<Int, String> = emptyMap(),
         val validationWarnings: List<String> = emptyList(),
         val elapsedMs: Long = 0L
     ) : UiState()
@@ -51,6 +50,8 @@ class AnalysisViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = UiState.Analyzing
             try {
+                AppLog.add("清理旧缓存...")
+                AndroidImageUtils.cleanupOldAnalysisDirs(context.cacheDir)
                 AppLog.add("等待引擎与识别模型就绪...")
                 AnalysisEngine.awaitInitialized()
                 AppLog.add("引擎与识别模型就绪")
@@ -104,7 +105,7 @@ class AnalysisViewModel : ViewModel() {
                 _uiState.value = UiState.Result(moves = chineseMoves, standardMoves = moves, validationWarnings = validationWarnings, elapsedMs = elapsedMs)
 
                 AppLog.add("生成中间步骤预览图...")
-                generatePreviews()
+                generatePreviews(context)
                 AppLog.add("分析完成")
             } catch (e: Exception) {
                 AppLog.add("分析出错: ${e.message ?: "未知错误"}")
@@ -123,6 +124,8 @@ class AnalysisViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = UiState.Analyzing
             try {
+                AppLog.add("清理旧缓存...")
+                AndroidImageUtils.cleanupOldAnalysisDirs(context.cacheDir)
                 AppLog.add("等待引擎与识别模型就绪...")
                 AnalysisEngine.awaitInitialized()
                 AppLog.add("引擎与识别模型就绪")
@@ -163,7 +166,7 @@ class AnalysisViewModel : ViewModel() {
                 _uiState.value = UiState.Result(moves = chineseMoves, standardMoves = moves, validationWarnings = validationWarnings, elapsedMs = elapsedMs)
 
                 AppLog.add("生成中间步骤预览图...")
-                generatePreviews()
+                generatePreviews(context)
                 AppLog.add("分析完成")
             } catch (e: Exception) {
                 AppLog.add("分析出错: ${e.message ?: "未知错误"}")
@@ -172,51 +175,64 @@ class AnalysisViewModel : ViewModel() {
         }
     }
 
-    private suspend fun generatePreviews() {
+    private suspend fun generatePreviews(context: Context) {
         val recognizer = AnalysisEngine.boardRecognizer ?: return
         if (recognizer !is YoloPieceRecognizer) return
+        val ir = recognizer.lastIntermediate ?: return
 
-        val r = recognizer
+        val state = _uiState.value
+        if (state is UiState.Result) {
+            ir.bestUciMove = state.standardMoves.firstOrNull()
+        }
+
+        val cacheDir = File(context.cacheDir, "analysis_${System.nanoTime()}")
+        cacheDir.mkdirs()
+
         try {
-            val step1Mat = BoardUtils.drawBoardRect(r.lastSrc, r.lastBoardRect)
-            val step1Bmp = AndroidImageUtils.matToBitmap(step1Mat)
-            val state1 = _uiState.value
-            if (state1 is UiState.Result) {
-                _uiState.value = state1.copy(stepPreviews = state1.stepPreviews + (1 to step1Bmp))
+            val stepLabels = listOf(
+                "01_crop_center", "02_gray", "03_canny", "04_contours",
+                "05_board_rect", "06_board_crop", "07_binary", "08_h_lines",
+                "09_v_lines", "10_river", "11_grid_full", "12_raw_detections",
+                "13_color_correction", "14_detections_labeled", "15_pieces_snapped",
+                "16_best_move"
+            )
+
+            val stepMats = listOf(
+                BoardUtils.drawCropCenter(ir),
+                BoardUtils.toBgr(ir.srcGray),
+                BoardUtils.drawCanny(ir),
+                BoardUtils.drawContours(ir),
+                BoardUtils.drawBoardRect(ir.srcOriginal, ir.boardRect),
+                ir.boardCropped,
+                BoardUtils.toBgr(ir.boardBinary),
+                BoardUtils.drawHLines(ir),
+                BoardUtils.drawVLines(ir),
+                BoardUtils.drawRiver(ir),
+                BoardUtils.drawGridFull(ir),
+                BoardUtils.drawRawDetections(ir),
+                BoardUtils.drawColorCorrection(ir),
+                BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid),
+                BoardUtils.drawPiecesSnapped(ir),
+                BoardUtils.drawMoveArrow(ir)
+            )
+
+            val paths = mutableMapOf<Int, String>()
+
+            for (i in stepMats.indices) {
+                val stepNum = i + 1
+                val fileName = "${stepLabels[i]}.jpg"
+                val file = File(cacheDir, fileName)
+                AndroidImageUtils.matToJpeg(stepMats[i], file.absolutePath)
+                stepMats[i].release()
+                paths[stepNum] = file.absolutePath
             }
 
-            val step2Mat = BoardUtils.drawDetectionsOnly(
-                r.lastSrc, r.lastBoardRect, r.lastDetections, r.lastGrid
-            )
-            val step2Bmp = AndroidImageUtils.matToBitmap(step2Mat)
-            val state2 = _uiState.value
-            if (state2 is UiState.Result) {
-                _uiState.value = state2.copy(stepPreviews = state2.stepPreviews + (2 to step2Bmp))
+            val currentState = _uiState.value
+            if (currentState is UiState.Result) {
+                _uiState.value = currentState.copy(stepPreviews = paths)
             }
-
-            val step3Mat = BoardUtils.drawPreview(
-                r.lastSrc, r.lastBoardRect, r.lastDetections, r.lastGrid
-            )
-            val step3Bmp = AndroidImageUtils.matToBitmap(step3Mat)
-            val state3 = _uiState.value
-            if (state3 is UiState.Result) {
-                _uiState.value = state3.copy(stepPreviews = state3.stepPreviews + (3 to step3Bmp))
-            }
-
-            val currentUciMove = if (state3 is UiState.Result) state3.standardMoves.firstOrNull() else null
-            val step6Mat = BoardUtils.drawPreview(
-                r.lastSrc, r.lastBoardRect, r.lastDetections, r.lastGrid
-            )
-            if (currentUciMove != null) {
-                BoardUtils.drawMove(step6Mat, r.lastGrid, currentUciMove)
-            }
-            val step6Bmp = AndroidImageUtils.matToBitmap(step6Mat)
-            val state6 = _uiState.value
-            if (state6 is UiState.Result) {
-                _uiState.value = state6.copy(stepPreviews = state6.stepPreviews + (6 to step6Bmp))
-            }
-        } catch (_: Exception) {
-            // preview generation failure is non-fatal
+        } catch (e: Exception) {
+            AppLog.add("预览图生成失败: ${e.message}")
         }
     }
 

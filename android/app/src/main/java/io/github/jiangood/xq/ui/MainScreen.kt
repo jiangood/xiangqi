@@ -1,6 +1,7 @@
 package io.github.jiangood.xq.ui
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -128,15 +129,38 @@ fun MainScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        s.stepPreviews[6]?.let { bmp ->
+                        if (s.stepPreviews.isNotEmpty()) {
                             Spacer(Modifier.height(12.dp))
-                            Text("走法预览", fontWeight = FontWeight.Medium, fontSize = 13.sp)
-                            Spacer(Modifier.height(4.dp))
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = "走法预览",
-                                modifier = Modifier.fillMaxWidth()
+                            Text("处理过程（共 ${s.stepPreviews.size} 步）", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                            Spacer(Modifier.height(8.dp))
+
+                            val stepNames = listOf(
+                                "中心裁剪", "灰度图", "Canny 边缘检测", "轮廓检测",
+                                "棋盘定位", "棋盘裁剪", "二值化", "水平线检测",
+                                "垂直线检测", "楚河汉界检测", "网格红线标注", "YOLO 原始检测",
+                                "颜色修正", "棋子识别", "棋子归位", "最佳走法"
                             )
+
+                            s.stepPreviews.toSortedMap().forEach { (step, path) ->
+                                val label = stepNames.getOrNull(step - 1) ?: "步骤 $step"
+                                Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                                    Text(
+                                        text = "步 $step: $label",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.height(2.dp))
+                                    val bitmap = remember(path) { BitmapFactory.decodeFile(path) }
+                                    bitmap?.let {
+                                        Image(
+                                            bitmap = it.asImageBitmap(),
+                                            contentDescription = label,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                            }
                         }
 
                         if (s.validationWarnings.isNotEmpty()) {

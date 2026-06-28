@@ -474,6 +474,7 @@ public class BoardUtils {
     }
 
     public static Mat drawCropCenter(IntermediateResult ir) {
+        if (ir == null || ir.srcOriginal == null) return new Mat();
         Mat output = ir.srcOriginal.clone();
         int h = ir.srcOriginal.rows();
         int w = ir.srcOriginal.cols();
@@ -493,17 +494,21 @@ public class BoardUtils {
     }
 
     public static Mat drawCanny(IntermediateResult ir) {
+        if (ir == null || ir.srcCanny == null) return new Mat();
         return toBgr(ir.srcCanny);
     }
 
     public static Mat drawContours(IntermediateResult ir) {
+        if (ir == null || ir.srcCannyDilated == null) return new Mat();
         Mat output = toBgr(ir.srcCannyDilated);
-        for (MatOfPoint contour : ir.contours) {
-            Imgproc.drawContours(output, ir.contours, -1, new Scalar(0, 255, 0), 1);
-        }
+        if (ir.contours == null) return output;
+        Scalar GREEN = new Scalar(0, 255, 0);
+        Scalar BLUE = new Scalar(255, 0, 0);
         Rect largest = null;
         double largestArea = 0;
-        for (MatOfPoint contour : ir.contours) {
+        for (int i = 0; i < ir.contours.size(); i++) {
+            MatOfPoint contour = ir.contours.get(i);
+            Imgproc.drawContours(output, ir.contours, i, GREEN, 1);
             Rect rect = Imgproc.boundingRect(contour);
             double area = rect.area();
             if (area > largestArea) {
@@ -512,14 +517,14 @@ public class BoardUtils {
             }
         }
         if (largest != null) {
-            Imgproc.rectangle(output, largest.tl(), largest.br(), new Scalar(255, 0, 0), 2);
+            Imgproc.rectangle(output, largest.tl(), largest.br(), BLUE, 2);
         }
         return output;
     }
 
     public static Mat drawHLines(IntermediateResult ir) {
+        if (ir == null || ir.srcOriginal == null || ir.hLinePositions == null) return new Mat();
         Mat output = ir.srcOriginal.clone();
-        if (ir.hLinePositions == null) return output;
         Scalar RED = new Scalar(0, 0, 255);
         int w = output.width();
         for (int y : ir.hLinePositions) {
@@ -529,8 +534,8 @@ public class BoardUtils {
     }
 
     public static Mat drawVLines(IntermediateResult ir) {
+        if (ir == null || ir.srcOriginal == null || ir.vLinePositions == null) return new Mat();
         Mat output = ir.srcOriginal.clone();
-        if (ir.vLinePositions == null) return output;
         Scalar RED = new Scalar(0, 0, 255);
         int h = output.height();
         for (int x : ir.vLinePositions) {
@@ -540,8 +545,8 @@ public class BoardUtils {
     }
 
     public static Mat drawRiver(IntermediateResult ir) {
+        if (ir == null || ir.srcOriginal == null || ir.riverLine == null) return new Mat();
         Mat output = ir.srcOriginal.clone();
-        if (ir.riverLine == null) return output;
         Scalar GREEN = new Scalar(0, 255, 0);
         int w = output.width();
         int y4 = (int) ir.riverLine[0];
@@ -556,9 +561,9 @@ public class BoardUtils {
     }
 
     public static Mat drawGridFull(IntermediateResult ir) {
+        if (ir == null || ir.srcOriginal == null || ir.grid == null) return new Mat();
         Mat output = ir.srcOriginal.clone();
         Point[][] grid = ir.grid;
-        if (grid == null) return output;
         Scalar RED = new Scalar(0, 0, 255);
         for (int r = 0; r < 10; r++) {
             Imgproc.line(output, grid[r][0], grid[r][8], RED, 2);
@@ -574,6 +579,102 @@ public class BoardUtils {
             for (int c = 0; c < 9; c++) {
                 Imgproc.drawMarker(output, grid[r][c], RED, Imgproc.MARKER_CROSS, 6, 1);
             }
+        }
+        return output;
+    }
+
+    public static Mat drawRawDetections(IntermediateResult ir) {
+        if (ir == null || ir.srcOriginal == null || ir.rawDetections == null) return new Mat();
+        if (ir.boardRect == null) return new Mat();
+        Mat output = ir.srcOriginal.clone();
+        Scalar GRAY = new Scalar(128, 128, 128);
+        double cellW = ir.grid != null ? ir.grid[0][1].x - ir.grid[0][0].x : 40;
+        double cellH = ir.grid != null ? ir.grid[1][0].y - ir.grid[0][0].y : 40;
+        for (Map.Entry<Point, String> e : ir.rawDetections.entrySet()) {
+            Point pt = e.getKey();
+            String name = e.getValue();
+            double absX = ir.boardRect.x + pt.x;
+            double absY = ir.boardRect.y + pt.y;
+            double x1 = absX - cellW / 2;
+            double y1 = absY - cellH / 2;
+            double x2 = absX + cellW / 2;
+            double y2 = absY + cellH / 2;
+            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), GRAY, 2);
+            Imgproc.putText(output, name, new Point(x1, Math.max(y1 - 4, 0)),
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, GRAY, 1);
+        }
+        return output;
+    }
+
+    public static Mat drawColorCorrection(IntermediateResult ir) {
+        if (ir == null || ir.srcOriginal == null || ir.correctedDetections == null) return new Mat();
+        if (ir.boardRect == null) return new Mat();
+        Mat output = ir.srcOriginal.clone();
+        double cellW = ir.grid != null ? ir.grid[0][1].x - ir.grid[0][0].x : 40;
+        double cellH = ir.grid != null ? ir.grid[1][0].y - ir.grid[0][0].y : 40;
+
+        for (Map.Entry<Point, String> e : ir.correctedDetections.entrySet()) {
+            Point pt = e.getKey();
+            String name = e.getValue();
+            double absX = ir.boardRect.x + pt.x;
+            double absY = ir.boardRect.y + pt.y;
+            double x1 = absX - cellW / 2;
+            double y1 = absY - cellH / 2;
+            double x2 = absX + cellW / 2;
+            double y2 = absY + cellH / 2;
+
+            String rawName = ir.rawDetections != null ? ir.rawDetections.get(pt) : null;
+            boolean corrected = rawName != null && !rawName.equals(name);
+            Scalar color = corrected ? new Scalar(0, 255, 255) :
+                    (name.startsWith("r") ? new Scalar(0, 0, 255) : new Scalar(0, 0, 0));
+            String label = corrected ? name + "*" : name;
+
+            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), color, 2);
+            Imgproc.putText(output, label, new Point(x1, Math.max(y1 - 4, 0)),
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, color, 1);
+        }
+        return output;
+    }
+
+    public static Mat drawPiecesSnapped(IntermediateResult ir) {
+        if (ir == null || ir.srcOriginal == null || ir.grid == null || ir.correctedDetections == null || ir.boardRect == null) return new Mat();
+        Mat output = ir.srcOriginal.clone();
+        Point[][] grid = ir.grid;
+        Scalar LIGHT = new Scalar(200, 200, 200);
+
+        for (int r = 0; r < 10; r++) {
+            Imgproc.line(output, grid[r][0], grid[r][8], LIGHT, 1);
+        }
+        for (int c = 0; c < 9; c++) {
+            Imgproc.line(output, grid[0][c], grid[4][c], LIGHT, 1);
+            Imgproc.line(output, grid[5][c], grid[9][c], LIGHT, 1);
+            if (c == 0 || c == 8) {
+                Imgproc.line(output, grid[4][c], grid[5][c], LIGHT, 1);
+            }
+        }
+
+        String[][] board = assignPiecesToGrid(ir.correctedDetections, grid, ir.boardRect);
+        if (board == null) return output;
+        for (int r = 0; r < 10; r++) {
+            for (int c = 0; c < 9; c++) {
+                String piece = board[r][c];
+                if (piece == null) continue;
+                Point pt = grid[r][c];
+                boolean isRed = piece.startsWith("r");
+                Scalar color = isRed ? new Scalar(0, 0, 255) : new Scalar(0, 0, 0);
+                Imgproc.circle(output, pt, 8, color, -1);
+                Imgproc.putText(output, piece, new Point(pt.x + 10, pt.y - 5),
+                        Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, color, 1);
+            }
+        }
+        return output;
+    }
+
+    public static Mat drawMoveArrow(IntermediateResult ir) {
+        if (ir == null) return new Mat();
+        Mat output = drawPiecesSnapped(ir);
+        if (ir.bestUciMove != null && ir.bestUciMove.length() == 4 && ir.grid != null) {
+            drawMove(output, ir.grid, ir.bestUciMove);
         }
         return output;
     }
