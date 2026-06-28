@@ -18,6 +18,7 @@ import io.github.jiangood.xq.analysis.AnalysisEngine
 import io.github.jiangood.xq.MainActivity
 import io.github.jiangood.xq.settings.SettingsManager
 import io.github.jiangood.xq.util.AppLog
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -217,6 +218,16 @@ class FloatingBubbleService : Service() {
                 }
                 if (file != null) {
                     AppLog.add("[悬浮窗] 截屏成功: ${file.name} (${file.length()} bytes)")
+                    // 保存原图供主界面重新解析
+                    withContext(Dispatchers.IO) {
+                        val lastCapture = File(filesDir, "last_capture.png")
+                        try {
+                            file.copyTo(lastCapture, overwrite = true)
+                            AppLog.add("[悬浮窗] 原图已保存: ${lastCapture.absolutePath}")
+                        } catch (e: Exception) {
+                            AppLog.add("[悬浮窗] 保存原图失败: ${e.message}")
+                        }
+                    }
                     AppLog.add("[悬浮窗] 开始分析...")
                     val result = AnalysisEngine.analyze(file)
                     withContext(Dispatchers.Main) {
