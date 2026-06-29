@@ -355,20 +355,31 @@ private fun generateTestVisualization(
 ): Bitmap? {
     return try {
         val img = Imgcodecs.imread(imagePath, Imgcodecs.IMREAD_COLOR) ?: return null
-        val green = Scalar(0.0, 255.0, 0.0)
-        val red = Scalar(0.0, 0.0, 255.0)
-        val blue = Scalar(255.0, 0.0, 0.0)
+
+        val cellSize = grid[0][1].x - grid[0][0].x
+        val pieceSize = cellSize * 0.85
+        val half = (pieceSize / 2).toInt()
 
         val cropY = if (img.height() > img.width() * 10.0 / 9.0)
             (img.height() - (img.width() * 10.0 / 9.0).toInt()) / 2 else 0
+
+        val red = Scalar(0.0, 0.0, 255.0)
+        val blue = Scalar(255.0, 0.0, 0.0)
+        val white = Scalar(255.0, 255.0, 255.0)
+        val font = Imgproc.FONT_HERSHEY_SIMPLEX
 
         for (r in 0 until 10) {
             for (c in 0 until 9) {
                 val p = board[r][c] ?: continue
                 val color = if (p.startsWith("r")) red else blue
-                val pt = Point(grid[r][c].x, grid[r][c].y + cropY)
-                Imgproc.circle(img, pt, 8, color, -1)
-                Imgproc.circle(img, pt, 8, green, 2)
+                val cx = grid[r][c].x.toInt()
+                val cy = grid[r][c].y.toInt() + cropY
+                val x1 = cx - half
+                val y1 = cy - half
+                val x2 = cx + half
+                val y2 = cy + half
+                Imgproc.rectangle(img, Point(x1.toDouble(), y1.toDouble()), Point(x2.toDouble(), y2.toDouble()), color, 2)
+                Imgproc.putText(img, p, Point(x1.toDouble(), (y1 - 4).toDouble()), font, 0.5, white, 2)
             }
         }
 
