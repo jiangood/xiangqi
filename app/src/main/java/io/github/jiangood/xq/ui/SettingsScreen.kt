@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -94,10 +95,10 @@ fun SettingsScreen(
     }
 
     if (depthDialog) {
-        NumberPickerDialog(
+        SimpleNumberDialog(
             title = "搜索深度",
             current = SettingsManager.getDepth(),
-            range = 5..30,
+            min = 5, max = 30,
             onDismiss = { depthDialog = false },
             onConfirm = { v ->
                 SettingsManager.setDepth(v)
@@ -107,10 +108,10 @@ fun SettingsScreen(
     }
 
     if (threadsDialog) {
-        NumberPickerDialog(
+        SimpleNumberDialog(
             title = "线程数",
             current = SettingsManager.getThreads(),
-            range = 1..8,
+            min = 1, max = 8,
             onDismiss = { threadsDialog = false },
             onConfirm = { v ->
                 SettingsManager.setThreads(v)
@@ -163,14 +164,15 @@ private fun SettingCell(
 }
 
 @Composable
-private fun NumberPickerDialog(
+private fun SimpleNumberDialog(
     title: String,
     current: Int,
-    range: IntRange,
+    min: Int, max: Int,
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit
 ) {
-    var selected by remember { mutableStateOf(current) }
+    var text by remember { mutableStateOf(current.toString()) }
+    var error by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -178,32 +180,34 @@ private fun NumberPickerDialog(
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                range.forEach { value ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { selected = value }
-                            .padding(vertical = 10.dp, horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = selected == value,
-                            onClick = { selected = value }
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = if (title == "搜索深度") "${value} 层" else "${value} 线程",
-                            fontSize = 16.sp,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { v ->
+                        text = v
+                        error = v.toIntOrNull()?.let { it in min..max } != true
+                    },
+                    label = { Text("范围 $min ~ $max") },
+                    isError = error,
+                    supportingText = if (error) {{ Text("请输入 $min ~ $max 之间的整数") }} else null,
+                    keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(selected) }) {
+            TextButton(
+                onClick = {
+                    text.toIntOrNull()?.let { v ->
+                        if (v in min..max) {
+                            onConfirm(v)
+                        }
+                    }
+                },
+                enabled = !error && text.isNotBlank()
+            ) {
                 Text("确定")
             }
         },
