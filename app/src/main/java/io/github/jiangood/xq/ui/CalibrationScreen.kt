@@ -67,7 +67,7 @@ private val PIECE_CHINESE = mapOf(
 )
 
 private val STANDARD_OPENING: Array<Array<String?>> = arrayOf(
-    arrayOf("bk", "bb", "bc", "ba", "bk", "ba", "bc", "bb", "bk"),
+    arrayOf("br", "bn", "bb", "ba", "bk", "ba", "bb", "bn", "br"),
     arrayOf(null, null, null, null, null, null, null, null, null),
     arrayOf(null, "bc", null, null, null, null, null, "bc", null),
     arrayOf("bp", null, "bp", null, "bp", null, "bp", null, "bp"),
@@ -76,7 +76,7 @@ private val STANDARD_OPENING: Array<Array<String?>> = arrayOf(
     arrayOf("rp", null, "rp", null, "rp", null, "rp", null, "rp"),
     arrayOf(null, "rc", null, null, null, null, null, "rc", null),
     arrayOf(null, null, null, null, null, null, null, null, null),
-    arrayOf("rk", "rr", "rc", "ra", "rk", "ra", "rc", "rr", "rk")
+    arrayOf("rr", "rn", "rb", "ra", "rk", "ra", "rb", "rn", "rr")
 )
 
 private fun detectOrientation(mat: Mat, grid: Array<Array<Point>>): Boolean {
