@@ -31,6 +31,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.viewmodel.AnalysisViewModel
+import io.github.jiangood.xq.viewmodel.StepItem
 import io.github.jiangood.xq.viewmodel.UiState
 import androidx.compose.material3.IconButton
 
@@ -138,87 +139,43 @@ fun MainScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        if (s.stepPreviews.isNotEmpty()) {
+                        if (s.steps.isNotEmpty()) {
                             Spacer(Modifier.height(12.dp))
-                            Text("处理过程（共 ${s.stepPreviews.size} 步）", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                            Text("处理过程（共 ${s.steps.size} 步）", fontWeight = FontWeight.Medium, fontSize = 13.sp)
                             Spacer(Modifier.height(8.dp))
 
                             var selectedImage by remember { mutableStateOf<Bitmap?>(null) }
 
-                            val stepNames = listOf(
-                                "原图", "中心裁剪", "灰度图", "Canny 边缘检测",
-                                "轮廓检测", "棋盘定位", "棋盘裁剪", "二值化",
-                                "水平线检测", "垂直线检测", "楚河汉界检测", "网格红线标注",
-                                "精裁棋盘", "YOLO 全部检测", "YOLO NMS 过滤", "颜色修正",
-                                "棋子识别", "棋子归位", "检测统计",
-                                "二维数组", "局面验证", "FEN 识别",
-                                "棋盘布局", "最佳走法"
-                            )
-
-                            val stepDescriptions = listOf(
-                                "输入的原始棋盘图片",
-                                "按 4:3 比例裁剪，去除多余背景",
-                                "转为灰度图，减少后续计算量",
-                                "Canny 算法检测边缘",
-                                "形态学膨胀后检测轮廓，最大轮廓=棋盘区域",
-                                "蓝色矩形标记检测到的棋盘位置",
-                                "按棋盘外框裁切出棋盘区域",
-                                "Otsu 自适应二值化，增强对比度",
-                                "形态学运算检测水平网格线位置",
-                                "形态学运算检测垂直网格线位置",
-                                "检测楚河汉界位置，确定网格校准基准",
-                                "红色标注校准后的完整10×9网格",
-                                "按网格外沿+半棋子边距精裁，去除装饰边框",
-                                "置信度>25%的所有候选框，绿色=NMS保留，红色=NMS抑制",
-                                "NMS 后最终检测结果，显示置信度",
-                                "根据原图颜色修正红黑方，黄色=被修正",
-                                "检测框+类别标签",
-                                "棋子吸附到最近网格交叉点",
-                                "YOLO 检测数量统计与参数",
-                                "识别结果转为10×9二维数组，中文棋子名",
-                                "验证棋子数量与位置是否合法",
-                                "生成 FEN 字符串",
-                                "程序自绘标准棋盘布局",
-                                "引擎推荐的最佳走法（黄色箭头）"
-                            )
-
-                            val allStepKeys = (s.stepPreviews.keys + s.stepTexts.keys).toSortedSet()
-                            allStepKeys.forEach { step ->
-                                val label = stepNames.getOrNull(step - 1) ?: "步骤 $step"
-                                val desc = stepDescriptions.getOrNull(step - 1)
-                                Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                            s.steps.forEach { item ->
+                                Column(modifier = Modifier.padding(bottom = 10.dp)) {
                                     Text(
-                                        text = "步 $step: $label",
+                                        text = "步 ${item.step}: ${item.title}",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                    if (desc != null) {
-                                        Text(
-                                            text = desc,
-                                            fontSize = 10.sp,
-                                            color = MaterialTheme.colorScheme.outline,
-                                            modifier = Modifier.padding(top = 1.dp)
-                                        )
-                                    }
-                                    Spacer(Modifier.height(4.dp))
-                                    val text = s.stepTexts[step]
-                                    if (text != null) {
+                                    Text(
+                                        text = item.description,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.padding(top = 1.dp, bottom = 4.dp)
+                                    )
+                                    if (item.text != null) {
                                         SelectionContainer {
                                             Text(
-                                                text = text,
+                                                text = item.text,
                                                 fontSize = 11.sp,
                                                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                                                 color = MaterialTheme.colorScheme.onSurface
                                             )
                                         }
                                     } else {
-                                        s.stepPreviews[step]?.let { path ->
+                                        item.imagePath?.let { path ->
                                             val bitmap = remember(path) { BitmapFactory.decodeFile(path) }
                                             bitmap?.let { bmp ->
                                                 Image(
                                                     bitmap = bmp.asImageBitmap(),
-                                                    contentDescription = label,
+                                                    contentDescription = item.title,
                                                     modifier = Modifier
                                                         .fillMaxWidth()
                                                         .clickable { selectedImage = bmp }
