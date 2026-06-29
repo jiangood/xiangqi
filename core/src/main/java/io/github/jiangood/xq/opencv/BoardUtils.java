@@ -52,41 +52,71 @@ public class BoardUtils {
         return calibrateGridFallback(boardRect);
     }
 
+    /**
+     * Convert a partial detected line chain (int[]) to uniform all-N positions.
+     * When the chain has all expected_n lines, use them directly.
+     * When partial, estimate missing rows/cols by comparing the first value to
+     * the expected position (cellSizePrior/2 from origin), then extrapolate.
+     */
+    private static double[] chainToUniform(int[] chain, int expectedN, double cellSizePrior) {
+        int n = chain.length;
+        double[] spacings = new double[n - 1];
+        for (int i = 0; i < n - 1; i++) {
+            spacings[i] = chain[i + 1] - chain[i];
+        }
+        Arrays.sort(spacings);
+        double cs = spacings[spacings.length / 2];
+
+        if (n == expectedN) {
+            double[] result = new double[n];
+            for (int i = 0; i < n; i++) result[i] = chain[i];
+            return result;
+        }
+
+        double expectedFirst = cellSizePrior / 2.0;
+        int firstIdx = (int) Math.round((chain[0] - expectedFirst) / cs);
+        firstIdx = Math.max(0, Math.min(firstIdx, expectedN - n));
+
+        double origin = chain[0] - firstIdx * cs;
+        double[] result = new double[expectedN];
+        for (int i = 0; i < expectedN; i++) {
+            result[i] = origin + i * cs;
+        }
+        return result;
+    }
+
+    private static double medianSpacing(int[] chain) {
+        double[] spacings = new double[chain.length - 1];
+        for (int i = 0; i < chain.length - 1; i++) {
+            spacings[i] = chain[i + 1] - chain[i];
+        }
+        Arrays.sort(spacings);
+        return spacings[spacings.length / 2];
+    }
+
     public static Point[][] calibrateGrid(Map<Point, String> matches, Rect boardRect, Mat binaryBoard, int[] hChain, int[] vChain) {
-        double bw = boardRect.width, bh = boardRect.height;
+        double bw = boardRect.width;
 
         if (hChain != null && hChain.length >= 6) {
-            double[] hSpacings = new double[hChain.length - 1];
-            for (int i = 0; i < hChain.length - 1; i++) {
-                hSpacings[i] = hChain[i + 1] - hChain[i];
-            }
-            Arrays.sort(hSpacings);
-            double cs_h = hSpacings[hSpacings.length / 2];
-            double centerY = (hChain[0] + hChain[hChain.length - 1]) / 2.0;
-            double originY = centerY - 4.5 * cs_h;
+            double cellSizePrior = bw / 9.0;
+            double[] hUniform = chainToUniform(hChain, 10, cellSizePrior);
+            double cs_h = medianSpacing(hChain);
 
-            double cs_w;
-            double originX;
-
+            double[] vUniform;
             if (vChain != null && vChain.length >= 4) {
-                double[] vSpacings = new double[vChain.length - 1];
-                for (int i = 0; i < vChain.length - 1; i++) {
-                    vSpacings[i] = vChain[i + 1] - vChain[i];
-                }
-                Arrays.sort(vSpacings);
-                cs_w = vSpacings[vSpacings.length / 2];
-                double centerX = (vChain[0] + vChain[vChain.length - 1]) / 2.0;
-                originX = centerX - 4 * cs_w;
+                vUniform = chainToUniform(vChain, 9, cellSizePrior);
             } else {
-                cs_w = cs_h;
-                originX = bw / 2.0 - 4 * cs_h;
+                vUniform = new double[9];
+                for (int c = 0; c < 9; c++) {
+                    vUniform[c] = bw / 2.0 - 4 * cs_h + c * cs_h;
+                }
             }
 
             Point[][] grid = new Point[10][9];
             for (int r = 0; r < 10; r++) {
                 for (int c = 0; c < 9; c++) {
-                    grid[r][c] = new Point(boardRect.x + originX + c * cs_w,
-                                           boardRect.y + originY + r * cs_h);
+                    grid[r][c] = new Point(boardRect.x + vUniform[c],
+                                           boardRect.y + hUniform[r]);
                 }
             }
             return grid;
