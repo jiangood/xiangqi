@@ -109,6 +109,14 @@ public class YoloPieceRecognizer implements PieceRecognizer {
             rawDets.put(new Point(e.getKey().x + dx, e.getKey().y + dy), e.getValue());
         }
 
+        // Convert NMS scores to board-crop coords too
+        Map<Point, Float> nmsScoreBoard = new LinkedHashMap<>();
+        if (this.lastScores != null) {
+            for (Map.Entry<Point, Float> e : this.lastScores.entrySet()) {
+                nmsScoreBoard.put(new Point(e.getKey().x + dx, e.getKey().y + dy), e.getValue());
+            }
+        }
+
         // Convert allDetections to board-crop coords too
         Map<Point, String> allBoard = new LinkedHashMap<>();
         Map<Point, Float> allScoreBoard = new LinkedHashMap<>();
@@ -145,7 +153,7 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         ir.riverLine = riverLine;
         ir.grid = calibratedGrid;
         ir.rawDetections = rawDets;
-        ir.rawDetectionScores = this.lastScores;
+        ir.rawDetectionScores = nmsScoreBoard;
         ir.yoloPreNmsCount = this.lastPreNmsCount;
         ir.allDetections = allBoard;
         ir.allDetectionScores = allScoreBoard;
