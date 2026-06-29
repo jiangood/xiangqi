@@ -50,6 +50,10 @@ public class BoardUtils {
             Rect rect = Imgproc.boundingRect(contour);
             double area = rect.area();
             if (area > src.total() * 0.1 && area > largestArea) {
+                double boardRatio = (double) rect.width / rect.height;
+                if (boardRatio < 0.80 || boardRatio > 0.98) continue;
+                double fillRatio = Imgproc.contourArea(contour) / area;
+                if (fillRatio < 0.70) continue;
                 largestArea = area;
                 largestRect = rect;
             }

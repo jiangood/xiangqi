@@ -40,7 +40,6 @@ fun MainScreen(
     viewModel: AnalysisViewModel,
     onPickImage: () -> Unit,
     onToggleFloating: (Boolean) -> Unit,
-    onReparseLast: () -> Unit,
     onOpenSettings: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -87,11 +86,8 @@ fun MainScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(onClick = onPickImage, modifier = Modifier.weight(1f)) {
+            Button(onClick = onPickImage, modifier = Modifier.fillMaxWidth()) {
                 Text("选择图片")
-            }
-            OutlinedButton(onClick = onReparseLast, modifier = Modifier.weight(1f)) {
-                Text("解析上次截图")
             }
         }
 

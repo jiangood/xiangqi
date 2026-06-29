@@ -126,67 +126,6 @@ class AnalysisViewModel : ViewModel() {
         }
     }
 
-    fun analyzeLastCapture(context: Context) {
-        val file = File(context.filesDir, "last_capture.png")
-        if (!file.exists()) {
-            AppLog.add("没有保存的上次截屏图片")
-            _uiState.value = UiState.Error("没有保存的上次截屏图片")
-            return
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.value = UiState.Analyzing
-            try {
-                AppLog.add("清理旧缓存...")
-                AndroidImageUtils.cleanupOldAnalysisDirs(context.cacheDir)
-                AppLog.add("等待引擎与识别模型就绪...")
-                AnalysisEngine.awaitInitialized()
-                AppLog.add("引擎与识别模型就绪")
-
-                val board = AnalysisEngine.boardRecognizer
-                val engine = AnalysisEngine.engineClient
-                if (board == null || engine == null) {
-                    AppLog.add("引擎或识别模型未就绪")
-                    _uiState.value = UiState.Error("引擎或识别模型初始化失败")
-                    return@launch
-                }
-
-                AppLog.add("开始棋盘识别: ${file.name}")
-                val rawBoard = board.parseBoard(file.absolutePath)
-                AppLog.add("棋盘识别完成")
-
-                val fixedBoard = rawBoard
-
-                val validationWarnings = FenUtil.validatePositionDetails(fixedBoard)
-                if (validationWarnings.isEmpty()) {
-                    AppLog.add("局面验证通过")
-                } else {
-                    AppLog.add("局面验证发现 ${validationWarnings.size} 个问题:")
-                    validationWarnings.forEach { AppLog.add("  ⚠ $it") }
-                }
-
-                AppLog.add("生成 FEN...")
-                val fen = FenUtil.toFen(fixedBoard)
-                AppLog.add("FEN: $fen")
-
-                AppLog.add("引擎分析中...")
-                val startTime = System.currentTimeMillis()
-                val moves = engine.getBestMove(fen)
-                val elapsedMs = System.currentTimeMillis() - startTime
-                AppLog.add("引擎返回 ${moves.size} 条走法，耗时 ${elapsedMs}ms")
-                val chineseMoves = moves.map { NotationConverter.convertToChineseNotation(fixedBoard, it) }
-
-                _uiState.value = UiState.Result(moves = chineseMoves, standardMoves = moves, validationWarnings = validationWarnings, elapsedMs = elapsedMs)
-
-                AppLog.add("生成中间步骤预览图...")
-                generatePreviews(context)
-                AppLog.add("分析完成")
-            } catch (e: Exception) {
-                AppLog.add("分析出错: ${e.message ?: "未知错误"}")
-                _uiState.value = UiState.Error(e.message ?: "分析出错")
-            }
-        }
-    }
-
     private suspend fun generatePreviews(context: Context) {
         val recognizer = AnalysisEngine.boardRecognizer ?: return
         if (recognizer !is YoloPieceRecognizer) return

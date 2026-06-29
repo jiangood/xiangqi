@@ -148,7 +148,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     },
-                    onReparseLast = { viewModel.analyzeLastCapture(this) },
                     onOpenSettings = { showSettings = true }
                 )
             }
