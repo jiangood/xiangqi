@@ -8,7 +8,6 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -21,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -166,14 +164,7 @@ fun CalibrationScreen(onBack: () -> Unit) {
                             .background(Color(0xFF333333))
                     ) {
                         Canvas(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .pointerInput(Unit) {
-                                    detectTransformGestures { _, pan, zoom, _ ->
-                                        scale = (scale * zoom).coerceIn(1f, 5f)
-                                        offset += pan
-                                    }
-                                }
+                            modifier = Modifier.fillMaxSize()
                         ) {
                             val bmp = s.bitmap
                             val imgFitScale = minOf(
@@ -217,6 +208,22 @@ fun CalibrationScreen(onBack: () -> Unit) {
                                 }
                             }
                         }
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            SmallFloatingActionButton(onClick = { scale = (scale * 1.3f).coerceAtMost(5f) }) {
+                                Text("+", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            }
+                            SmallFloatingActionButton(onClick = { scale = 1f; offset = Offset.Zero }) {
+                                Text("⊙", fontSize = 14.sp)
+                            }
+                            SmallFloatingActionButton(onClick = { scale = (scale / 1.3f).coerceAtLeast(1f) }) {
+                                Text("−", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
 
                     Spacer(Modifier.height(4.dp))
@@ -224,21 +231,32 @@ fun CalibrationScreen(onBack: () -> Unit) {
                     val templates = remember(s.mat, s.grid, s.cellSize) {
                         cropTemplates(s.mat, s.grid, s.cellSize)
                     }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(1.dp)
                     ) {
                         templates.forEach { (type, bmp) ->
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = type,
-                                modifier = Modifier
-                                    .width(34.dp)
-                                    .height(48.dp)
-                                    .background(Color(0xFFE0E0E0))
-                            )
+                            val label = PIECE_CHINESE[type] ?: type
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.width(36.dp)
+                            ) {
+                                Image(
+                                    bitmap = bmp.asImageBitmap(),
+                                    contentDescription = type,
+                                    modifier = Modifier
+                                        .width(34.dp)
+                                        .height(40.dp)
+                                        .background(Color(0xFFE0E0E0))
+                                )
+                                Text(
+                                    text = label,
+                                    fontSize = 9.sp,
+                                    color = if (type.startsWith("r")) Color(0xFFD32F2F) else Color(0xFF1976D2)
+                                )
+                            }
                         }
                     }
 
