@@ -18,6 +18,8 @@ public class IntermediateResult {
     public double[] riverLine;
     public Point[][] grid;
     public Map<Point, String> rawDetections;
+    public Map<Point, Float> rawDetectionScores;
+    public int yoloPreNmsCount;
     public Map<Point, String> correctedDetections;
     public Mat boardRefined;       // Refined crop (to grid boundaries + margin)
     public Rect refineRect;        // The refined crop rectangle

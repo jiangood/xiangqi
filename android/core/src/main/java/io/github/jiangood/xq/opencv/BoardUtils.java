@@ -587,6 +587,13 @@ public class BoardUtils {
         if (ir == null || ir.srcOriginal == null || ir.rawDetections == null) return new Mat();
         if (ir.boardRect == null) return new Mat();
         Mat output = ir.srcOriginal.clone();
+
+        // Detection count info
+        String info = "Detections: " + ir.rawDetections.size() + " (NMS)";
+        if (ir.yoloPreNmsCount > 0) info += " / " + ir.yoloPreNmsCount + " (pre-NMS)";
+        Imgproc.putText(output, info, new Point(10, 30),
+                Imgproc.FONT_HERSHEY_SIMPLEX, 0.8, new Scalar(0, 0, 0), 2);
+
         Scalar GRAY = new Scalar(128, 128, 128);
         double cellW = ir.grid != null ? ir.grid[0][1].x - ir.grid[0][0].x : 40;
         double cellH = ir.grid != null ? ir.grid[1][0].y - ir.grid[0][0].y : 40;
@@ -599,9 +606,14 @@ public class BoardUtils {
             double y1 = absY - cellH / 2;
             double x2 = absX + cellW / 2;
             double y2 = absY + cellH / 2;
+
+            // Score
+            Float score = ir.rawDetectionScores != null ? ir.rawDetectionScores.get(pt) : null;
+            String label = score != null ? String.format("%s %.0f%%", name, score * 100) : name;
+
             Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), GRAY, 2);
-        Imgproc.putText(output, name, new Point(x1, Math.max(y1 - 8, 0)),
-                Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, GRAY, 2);
+            Imgproc.putText(output, label, new Point(x1, Math.max(y1 - 8, 0)),
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, GRAY, 2);
         }
         return output;
     }

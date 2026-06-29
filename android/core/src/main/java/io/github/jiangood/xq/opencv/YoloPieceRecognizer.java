@@ -133,6 +133,8 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         ir.riverLine = riverLine;
         ir.grid = calibratedGrid;
         ir.rawDetections = rawDets;
+        ir.rawDetectionScores = this.lastScores;
+        ir.yoloPreNmsCount = this.lastPreNmsCount;
         ir.correctedDetections = correctedDets;
         this.lastIntermediate = ir;
 
@@ -225,6 +227,7 @@ public class YoloPieceRecognizer implements PieceRecognizer {
             detections.add(new Detection(x1, y1, x2, y2, maxScore, classId));
         }
 
+        this.lastPreNmsCount = detections.size();
         detections.sort((a, b) -> Float.compare(b.score, a.score));
         List<Detection> kept = new ArrayList<>();
         for (Detection d : detections) {
@@ -243,6 +246,7 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         log.info("NMS 后剩余 " + kept.size() + " 个检测");
 
         Map<Point, String> result = new LinkedHashMap<>();
+        Map<Point, Float> scores = new LinkedHashMap<>();
         for (Detection d : kept) {
             float centerX = (d.x1 + d.x2) / 2;
             float centerY = (d.y1 + d.y2) / 2;
@@ -253,8 +257,11 @@ public class YoloPieceRecognizer implements PieceRecognizer {
             origX = Math.max(0, Math.min(origW, origX));
             origY = Math.max(0, Math.min(origH, origY));
 
-            result.put(new Point(origX, origY), CLASS_NAMES[d.classId]);
+            Point pt = new Point(origX, origY);
+            result.put(pt, CLASS_NAMES[d.classId]);
+            scores.put(pt, d.score);
         }
+        this.lastScores = scores;
 
         return result;
     }
@@ -309,6 +316,8 @@ public class YoloPieceRecognizer implements PieceRecognizer {
     public Rect lastBoardRect;
     public Map<Point, String> lastDetections;
     public Point[][] lastGrid;
+    private Map<Point, Float> lastScores;
+    private int lastPreNmsCount;
     public IntermediateResult lastIntermediate;
 
     private static class Detection {
