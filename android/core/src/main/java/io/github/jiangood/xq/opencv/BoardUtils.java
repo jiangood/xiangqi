@@ -681,7 +681,8 @@ public class BoardUtils {
     }
 
     public static Mat drawAllDetections(IntermediateResult ir) {
-        if (ir == null || ir.srcOriginal == null || ir.allDetections == null) return new Mat();
+        if (ir == null || ir.srcOriginal == null) return new Mat();
+        if (ir.allDetections == null || ir.allDetections.isEmpty()) return ir.srcOriginal.clone();
         if (ir.boardRect == null) return new Mat();
         Mat output = ir.srcOriginal.clone();
         double cellW = ir.grid != null ? ir.grid[0][1].x - ir.grid[0][0].x : 40;
