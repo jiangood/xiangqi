@@ -76,14 +76,6 @@ class AnalysisViewModel : ViewModel() {
                 AnalysisEngine.awaitInitialized()
                 AppLog.add("引擎与识别模型就绪")
 
-                val board = AnalysisEngine.boardRecognizer
-                val engine = AnalysisEngine.engineClient
-                if (board == null || engine == null) {
-                    AppLog.add("引擎或识别模型未就绪")
-                    _uiState.value = UiState.Error("引擎或识别模型初始化失败")
-                    return@launch
-                }
-
                 AppLog.add("复制输入图片到缓存...")
                 val tempFile = File(context.cacheDir, "input_${System.nanoTime()}.jpg")
                 val inputStream = context.contentResolver.openInputStream(imageUri)
@@ -97,32 +89,22 @@ class AnalysisViewModel : ViewModel() {
                 }
                 AppLog.add("图片已保存到: ${tempFile.name}")
 
-                AppLog.add("开始棋盘识别...")
-                val rawBoard = board.parseBoard(tempFile.absolutePath)
-                AppLog.add("棋盘识别完成")
-
-                val fixedBoard = rawBoard
-
-                val validationWarnings = FenUtil.validatePositionDetails(fixedBoard)
-                if (validationWarnings.isEmpty()) {
-                    AppLog.add("局面验证通过")
-                } else {
-                    AppLog.add("局面验证发现 ${validationWarnings.size} 个问题:")
-                    validationWarnings.forEach { AppLog.add("  ⚠ $it") }
+                val result = AnalysisEngine.analyze(tempFile)
+                if (result == null) {
+                    _uiState.value = UiState.Error("分析失败")
+                    return@launch
                 }
 
-                AppLog.add("生成 FEN...")
-                val fen = FenUtil.toFen(fixedBoard)
-                AppLog.add("FEN: $fen")
+                val validationWarnings = FenUtil.validatePositionDetails(result.board)
+                val elapsedMs = 0L
 
-                AppLog.add("引擎分析中...")
-                val startTime = System.currentTimeMillis()
-                val moves = engine.getBestMove(fen)
-                val elapsedMs = System.currentTimeMillis() - startTime
-                AppLog.add("引擎返回 ${moves.size} 条走法，耗时 ${elapsedMs}ms")
-                val chineseMoves = moves.map { NotationConverter.convertToChineseNotation(fixedBoard, it) }
-
-                _uiState.value = UiState.Result(moves = chineseMoves, standardMoves = moves, validationWarnings = validationWarnings, elapsedMs = elapsedMs)
+                _uiState.value = UiState.Result(
+                    moves = result.chineseMoves,
+                    standardMoves = result.standardMoves,
+                    validationWarnings = validationWarnings,
+                    elapsedMs = elapsedMs,
+                    imageDir = result.visualizationPath
+                )
 
                 AppLog.add("分析完成")
             } catch (e: Exception) {

@@ -140,50 +140,21 @@ fun MainScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        if (s.steps.isNotEmpty()) {
+                        if (s.imageDir != null) {
                             Spacer(Modifier.height(12.dp))
-                            Text("处理过程（共 ${s.steps.size} 步）", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+                            Text("识别结果", fontWeight = FontWeight.Medium, fontSize = 13.sp)
                             Spacer(Modifier.height(8.dp))
 
                             var selectedImage by remember { mutableStateOf<Bitmap?>(null) }
-
-                            s.steps.forEach { item ->
-                                Column(modifier = Modifier.padding(bottom = 10.dp)) {
-                                    Text(
-                                        text = "步 ${item.step}: ${item.title}",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = item.description,
-                                        fontSize = 10.sp,
-                                        color = MaterialTheme.colorScheme.outline,
-                                        modifier = Modifier.padding(top = 1.dp, bottom = 4.dp)
-                                    )
-                                    if (item.text != null) {
-                                        SelectionContainer {
-                                            Text(
-                                                text = item.text,
-                                                fontSize = 11.sp,
-                                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                        }
-                                    } else if (item.hasImage && s.imageDir != null) {
-                                        val path = "${s.imageDir}/image_%02d.jpg".format(item.step)
-                                        val bitmap = remember(path) { BitmapFactory.decodeFile(path) }
-                                        bitmap?.let { bmp ->
-                                            Image(
-                                                bitmap = bmp.asImageBitmap(),
-                                                contentDescription = item.title,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clickable { selectedImage = bmp }
-                                            )
-                                        }
-                                    }
-                                }
+                            val bitmap = remember(s.imageDir) { BitmapFactory.decodeFile(s.imageDir) }
+                            bitmap?.let { bmp ->
+                                Image(
+                                    bitmap = bmp.asImageBitmap(),
+                                    contentDescription = "识别结果",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { selectedImage = bmp }
+                                )
                             }
 
                             selectedImage?.let { bmp ->

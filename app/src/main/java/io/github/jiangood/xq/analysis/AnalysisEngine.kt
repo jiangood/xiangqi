@@ -2,6 +2,8 @@ package io.github.jiangood.xq.analysis
 
 import android.content.Context
 import io.github.jiangood.xq.engine.AndroidEngineClient
+import io.github.jiangood.xq.opencv.BoardUtils
+import io.github.jiangood.xq.opencv.CalibrationData
 import io.github.jiangood.xq.opencv.TemplatePieceRecognizer
 import io.github.jiangood.xq.settings.CalibrationManager
 import io.github.jiangood.xq.util.AppLog
@@ -12,19 +14,25 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.opencv.core.*
+import org.opencv.imgcodecs.Imgcodecs
+import org.opencv.imgproc.Imgproc
 import java.io.File
 
 data class AnalysisResult(
     val board: Array<Array<String?>>,
     val fen: String,
     val standardMoves: List<String>,
-    val chineseMoves: List<String>
+    val chineseMoves: List<String>,
+    val visualizationPath: String? = null
 )
 
 object AnalysisEngine {
     var engineClient: AndroidEngineClient? = null
         private set
     var boardRecognizer: TemplatePieceRecognizer? = null
+        private set
+    var calibrationData: CalibrationData? = null
         private set
 
     private val initComplete = CompletableDeferred<Unit>()
@@ -66,6 +74,7 @@ object AnalysisEngine {
 
                 AppLog.add("[引擎] 加载校准数据...")
                 val calibData = CalibrationManager.load(context)
+                calibrationData = calibData
                 if (calibData != null) {
                     val templateDir = CalibrationManager.getTemplateFileDir(context)
                     boardRecognizer = TemplatePieceRecognizer(calibData, templateDir)
@@ -114,7 +123,8 @@ object AnalysisEngine {
                     AppLog.add("[引擎] 翻译: $move -> $result")
                     result
                 }
-                AnalysisResult(board, fen, moves, chineseMoves)
+                val vizPath = generateVisualization(imageFile.absolutePath, board, moves.firstOrNull())
+                AnalysisResult(board, fen, moves, chineseMoves, vizPath)
             } catch (e: Exception) {
                 AppLog.add("[引擎] 分析异常: ${e.message}")
                 null
@@ -140,6 +150,66 @@ object AnalysisEngine {
             lines.add("[引擎]   row$i: $row")
         }
         lines.forEach { AppLog.add(it) }
+    }
+
+    private val PIECE_CHINESE = mapOf(
+        "rk" to "帅", "ra" to "仕", "rb" to "相", "rr" to "車", "rn" to "馬", "rc" to "炮", "rp" to "兵",
+        "bk" to "将", "ba" to "士", "bb" to "象", "br" to "车", "bn" to "马", "bc" to "炮", "bp" to "卒"
+    )
+
+    private fun generateVisualization(
+        imagePath: String,
+        board: Array<Array<String?>>,
+        bestMove: String?
+    ): String? {
+        val calib = calibrationData ?: return null
+        val img = Imgcodecs.imread(imagePath, Imgcodecs.IMREAD_COLOR) ?: return null
+        val cropped = BoardUtils.cropBoardCenter(img)
+        img.release()
+        val mat = cropped
+
+        val grid = calib.grid
+        val green = Scalar(0.0, 255.0, 0.0)
+        val red = Scalar(0.0, 0.0, 255.0)
+        val yellow = Scalar(0.0, 255.0, 255.0)
+
+        // Grid lines
+        for (r in 0 until 10) {
+            Imgproc.line(mat, Point(grid[r][0].x, grid[r][0].y), Point(grid[r][8].x, grid[r][8].y), green, 2)
+        }
+        for (c in 0 until 9) {
+            Imgproc.line(mat, Point(grid[0][c].x, grid[0][c].y), Point(grid[9][c].x, grid[9][c].y), green, 2)
+        }
+
+        // Piece labels
+        for (r in 0 until 10) {
+            for (c in 0 until 9) {
+                val p = board[r][c] ?: continue
+                val ch = PIECE_CHINESE[p] ?: continue
+                val pt = grid[r][c]
+                Imgproc.putText(mat, ch, Point(pt.x - 12, pt.y + 6),
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, red, 2)
+            }
+        }
+
+        // Best move arrow
+        if (bestMove != null && bestMove.length == 4) {
+            val fromCol = bestMove[0] - 'a'
+            val fromRow = 9 - (bestMove[1] - '0')
+            val toCol = bestMove[2] - 'a'
+            val toRow = 9 - (bestMove[3] - '0')
+            if (fromCol in 0..8 && fromRow in 0..9 && toCol in 0..8 && toRow in 0..9) {
+                val fromPt = grid[fromRow][fromCol]
+                val toPt = grid[toRow][toCol]
+                Imgproc.arrowedLine(mat, fromPt, toPt, yellow, 3, Imgproc.LINE_AA, 0, 0.3)
+            }
+        }
+
+        val outDir = File(imagePath).parentFile
+        val outPath = File(outDir, "visualization.jpg").absolutePath
+        Imgcodecs.imwrite(outPath, mat)
+        mat.release()
+        return outPath
     }
 
     fun release() {
