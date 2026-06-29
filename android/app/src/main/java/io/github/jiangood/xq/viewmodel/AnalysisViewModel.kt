@@ -202,7 +202,7 @@ class AnalysisViewModel : ViewModel() {
 
             val titles = listOf("原图", "中心裁剪", "灰度图", "Canny 边缘检测", "轮廓检测",
                 "棋盘定位", "棋盘裁剪", "二值化", "水平线检测", "垂直线检测", "楚河汉界检测",
-                "网格红线标注", "精裁棋盘", "YOLO 全部检测", "YOLO NMS 过滤", "颜色修正",
+                "网格红线标注", "精裁棋盘", "YOLO NMS 过滤", "颜色修正",
                 "棋子识别", "棋子归位", "检测统计", "二维数组", "局面验证", "FEN 识别",
                 "棋盘布局", "最佳走法")
             val descs = listOf("输入的原始棋盘图片", "按 4:3 比例裁剪，去除多余背景",
@@ -214,7 +214,6 @@ class AnalysisViewModel : ViewModel() {
                 "检测楚河汉界位置，确定网格校准基准",
                 "红色标注校准后的完整10×9网格",
                 "按网格外沿+半棋子边距精裁，去除装饰边框",
-                "置信度>25%的所有候选框，绿色=NMS保留，红色=NMS抑制",
                 "NMS 后最终检测结果，显示置信度",
                 "根据原图颜色修正红黑方，黄色=被修正", "检测框+类别标签",
                 "棋子吸附到最近网格交叉点", "YOLO 检测数量统计与参数",
@@ -238,12 +237,10 @@ class AnalysisViewModel : ViewModel() {
                 BoardUtils.drawRiver(ir) to "image_11.jpg",
                 BoardUtils.drawGridFull(ir) to "image_12.jpg",
                 ir.boardRefined to "image_13.jpg",
-                BoardUtils.drawAllDetections(ir) to "image_14.jpg",
-                BoardUtils.drawRawDetections(ir) to "image_15.jpg",
-                BoardUtils.drawRawDetections(ir) to "image_15.jpg",
-                BoardUtils.drawColorCorrection(ir) to "image_16.jpg",
-                BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid) to "image_17.jpg",
-                BoardUtils.drawPiecesSnapped(ir) to "image_18.jpg"
+                BoardUtils.drawRawDetections(ir) to "image_14.jpg",
+                BoardUtils.drawColorCorrection(ir) to "image_15.jpg",
+                BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid) to "image_16.jpg",
+                BoardUtils.drawPiecesSnapped(ir) to "image_17.jpg"
             )
             for ((mat, name) in stepMats) {
                 AndroidImageUtils.matToJpeg(mat, File(cacheDir, name).absolutePath)
@@ -251,38 +248,37 @@ class AnalysisViewModel : ViewModel() {
             }
 
             val steps = mutableListOf<StepItem>()
-            for (i in 0 until 18) {
+            for (i in 0 until 17) {
                 val step = i + 1
-                val text = if (step == 14) BoardUtils.detectionsToText(ir) else null
-                steps.add(StepItem(step, titles[i], descs[i], imagePath = path(step), text = text))
+                steps.add(StepItem(step, titles[i], descs[i], imagePath = path(step)))
             }
 
             val detCount = ir.rawDetections.size
             val preNms = ir.yoloPreNmsCount
-            steps.add(StepItem(19, titles[18], descs[18], text =
+            steps.add(StepItem(18, titles[17], descs[17], text =
                 "YOLO detections: $detCount (after NMS) / $preNms (pre-NMS, conf>25%)\nConfidence threshold: 25%  NMS threshold: 65%"))
 
-            steps.add(StepItem(20, titles[19], descs[19], text = BoardUtils.boardToText(board)))
+            steps.add(StepItem(19, titles[18], descs[18], text = BoardUtils.boardToText(board)))
 
             val warnText = if (valid) "✓ 局面验证通过" else
                 "✗ 局面验证失败:\n" + state.validationWarnings.joinToString("\n") { "  ⚠ $it" }
-            steps.add(StepItem(21, titles[20], descs[20], text = warnText))
+            steps.add(StepItem(20, titles[19], descs[19], text = warnText))
 
             if (valid) {
                 val fen = FenUtil.toFen(board)
-                steps.add(StepItem(22, titles[21], descs[21], text = "FEN: $fen"))
+                steps.add(StepItem(21, titles[20], descs[20], text = "FEN: $fen"))
 
                 val layoutMat = BoardUtils.drawBoardLayout(board)
-                val layoutFile = File(cacheDir, "image_23.jpg")
+                val layoutFile = File(cacheDir, "image_22.jpg")
                 AndroidImageUtils.matToJpeg(layoutMat, layoutFile.absolutePath)
                 layoutMat.release()
-                steps.add(StepItem(23, titles[22], descs[22], imagePath = layoutFile.absolutePath))
+                steps.add(StepItem(22, titles[21], descs[21], imagePath = layoutFile.absolutePath))
 
                 val moveMat = BoardUtils.drawMoveArrow(ir)
-                val moveFile = File(cacheDir, "image_24.jpg")
+                val moveFile = File(cacheDir, "image_23.jpg")
                 AndroidImageUtils.matToJpeg(moveMat, moveFile.absolutePath)
                 moveMat.release()
-                steps.add(StepItem(24, titles[23], descs[23], imagePath = moveFile.absolutePath))
+                steps.add(StepItem(23, titles[22], descs[22], imagePath = moveFile.absolutePath))
             }
 
             val currentState = _uiState.value
