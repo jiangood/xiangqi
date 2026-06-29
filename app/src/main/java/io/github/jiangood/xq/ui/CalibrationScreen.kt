@@ -6,10 +6,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -22,9 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -41,6 +41,7 @@ import org.opencv.core.Core
 import org.opencv.core.Mat
 import org.opencv.core.Point
 import org.opencv.core.Rect
+import org.opencv.core.Scalar
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import java.io.File
@@ -60,11 +61,9 @@ private sealed class CalibrationUiState {
     data class Error(val message: String) : CalibrationUiState()
 }
 
-private val PIECE_LABELS = mapOf(
-    "rk" to "帅", "ra" to "仕", "rb" to "相", "rr" to "车",
-    "rn" to "马", "rc" to "炮", "rp" to "兵",
-    "bk" to "将", "ba" to "士", "bb" to "象", "br" to "車",
-    "bn" to "馬", "bc" to "砲", "bp" to "卒"
+private val PIECE_CHINESE = mapOf(
+    "rk" to "帅", "ra" to "仕", "rb" to "相", "rr" to "車", "rn" to "馬", "rc" to "炮", "rp" to "兵",
+    "bk" to "将", "ba" to "士", "bb" to "象", "br" to "车", "bn" to "马", "bc" to "炮", "bp" to "卒"
 )
 
 private val STANDARD_OPENING: Array<Array<String?>> = arrayOf(
@@ -113,10 +112,9 @@ private data class TestResult(
     val total: Int,
     val correct: Int,
     val mismatches: List<String>,
-    val recognized: Array<Array<String?>>
-) {
-    val score: String get() = "$correct/$total"
-}
+    val recognized: Array<Array<String?>>,
+    val resultBitmap: Bitmap?
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -139,6 +137,7 @@ fun CalibrationScreen(onBack: () -> Unit) {
                     state = newState
                     scale = 1f
                     offset = Offset.Zero
+                    testResult = null
                 }
             }
         }
@@ -148,6 +147,7 @@ fun CalibrationScreen(onBack: () -> Unit) {
         val s = state as? CalibrationUiState.Ready
         s?.mat?.release()
         s?.imagePath?.let { File(it).delete() }
+        testResult?.resultBitmap?.recycle()
         onBack()
     }
 
@@ -197,7 +197,7 @@ fun CalibrationScreen(onBack: () -> Unit) {
 
                     Box(
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(if (testResult != null) 0.4f else 1f)
                             .fillMaxWidth()
                             .background(Color(0xFF333333))
                     ) {
@@ -290,9 +290,16 @@ fun CalibrationScreen(onBack: () -> Unit) {
                             saveCalibration(context, s, orientationCorrect)
                             s.mat.release()
                             s.imagePath.let { File(it).delete() }
+                            testResult?.resultBitmap?.recycle()
                             onBack()
                         }) {
                             Text("确认校准")
+                        }
+                    }
+
+                    if (testResult != null) {
+                        Column(modifier = Modifier.weight(0.5f)) {
+                            TestResultSection(testResult!!)
                         }
                     }
                 }
@@ -311,57 +318,111 @@ fun CalibrationScreen(onBack: () -> Unit) {
             }
         }
     }
-
-    if (testResult != null) {
-        TestResultDialog(
-            result = testResult!!,
-            onDismiss = { testResult = null }
-        )
-    }
 }
 
 @Composable
-private fun TestResultDialog(
-    result: TestResult,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
+private fun TestResultSection(result: TestResult) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        HorizontalDivider()
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Text(
                 if (result.passed) "测试通过 ✓" else "测试失败 ✗",
                 color = if (result.passed) Color(0xFF4CAF50) else Color(0xFFE53935),
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
             )
-        },
-        text = {
-            Column(
+            Text(
+                "(${result.correct}/${result.total} ${String.format("%.1f", result.correct * 100.0 / result.total)}%)",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (result.resultBitmap != null) {
+            Image(
+                bitmap = result.resultBitmap.asImageBitmap(),
+                contentDescription = "测试结果",
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text("正确识别: ${result.score}")
-                Text("准确率: ${String.format("%.1f", result.correct * 100.0 / result.total)}%")
+                    .padding(vertical = 4.dp)
+            )
+        }
 
-                if (result.mismatches.isNotEmpty()) {
-                    Spacer(Modifier.height(4.dp))
-                    Text("错误详情:", fontWeight = FontWeight.Bold)
-                    result.mismatches.take(20).forEach { msg ->
-                        Text(msg, fontSize = 13.sp, color = Color(0xFFE53935))
-                    }
-                    if (result.mismatches.size > 20) {
-                        Text("... 还有 ${result.mismatches.size - 20} 个错误", fontSize = 13.sp)
-                    }
-                }
+        if (result.mismatches.isNotEmpty()) {
+            Text("错误详情:", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            result.mismatches.take(20).forEach { msg ->
+                Text(msg, fontSize = 12.sp, color = Color(0xFFE53935))
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("确定")
+            if (result.mismatches.size > 20) {
+                Text("... 还有 ${result.mismatches.size - 20} 个错误", fontSize = 12.sp)
             }
         }
-    )
+    }
+}
+
+private fun generateTestVisualization(
+    imagePath: String,
+    grid: Array<Array<Point>>,
+    board: Array<Array<String?>>
+): Bitmap? {
+    return try {
+        val img = Imgcodecs.imread(imagePath, Imgcodecs.IMREAD_COLOR) ?: return null
+        val cropped = io.github.jiangood.xq.opencv.BoardUtils.cropBoardCenter(img)
+        img.release()
+
+        val green = Scalar(0.0, 255.0, 0.0)
+        for (r in 0 until 10) {
+            Imgproc.line(cropped, Point(grid[r][0].x, grid[r][0].y), Point(grid[r][8].x, grid[r][8].y), green, 2)
+        }
+        for (c in 0 until 9) {
+            Imgproc.line(cropped, Point(grid[0][c].x, grid[0][c].y), Point(grid[9][c].x, grid[9][c].y), green, 2)
+        }
+
+        val bmp = AndroidImageUtils.matToBitmap(cropped)
+        cropped.release()
+
+        val canvas = android.graphics.Canvas(bmp)
+        val paint = android.graphics.Paint().apply {
+            color = android.graphics.Color.RED
+            textSize = 28f
+            isAntiAlias = true
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+        val bgPaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.argb(180, 255, 255, 255)
+        }
+
+        for (r in 0 until 10) {
+            for (c in 0 until 9) {
+                val p = board[r][c] ?: continue
+                val ch = PIECE_CHINESE[p] ?: continue
+                val pt = grid[r][c]
+                val textW = paint.measureText(ch)
+                canvas.drawRect(
+                    (pt.x - textW / 2 - 2).toFloat(),
+                    (pt.y - paint.textSize / 2 - 2).toFloat(),
+                    (pt.x + textW / 2 + 2).toFloat(),
+                    (pt.y + paint.textSize / 2 + 2).toFloat(),
+                    bgPaint
+                )
+                canvas.drawText(ch, (pt.x - textW / 2).toFloat(), (pt.y + paint.textSize / 3).toFloat(), paint)
+            }
+        }
+
+        bmp
+    } catch (_: Exception) {
+        null
+    }
 }
 
 private suspend fun runTest(
@@ -393,19 +454,22 @@ private suspend fun runTest(
                 correct++
             } else {
                 val pos = "($r,$c)"
-                val expStr = expected?.let { PIECE_LABELS[it] ?: it } ?: "空"
-                val actStr = actual?.let { PIECE_LABELS[it] ?: it } ?: "空"
+                val expStr = expected?.let { PIECE_CHINESE[it] ?: it } ?: "空"
+                val actStr = actual?.let { PIECE_CHINESE[it] ?: it } ?: "空"
                 mismatches.add("$pos: 期望 $expStr, 识别为 $actStr")
             }
         }
     }
+
+    val resultBitmap = generateTestVisualization(state.imagePath, state.grid, board)
 
     TestResult(
         passed = correct == total,
         total = total,
         correct = correct,
         mismatches = mismatches,
-        recognized = board
+        recognized = board,
+        resultBitmap = resultBitmap
     )
 }
 
