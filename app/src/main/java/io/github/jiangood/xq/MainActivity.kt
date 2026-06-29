@@ -10,6 +10,7 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
@@ -22,6 +23,7 @@ import io.github.jiangood.xq.BuildConfig
 import io.github.jiangood.xq.service.CaptureState
 import io.github.jiangood.xq.service.FloatingBubbleService
 import io.github.jiangood.xq.settings.SettingsManager
+import io.github.jiangood.xq.ui.CalibrationScreen
 import io.github.jiangood.xq.ui.MainScreen
 import io.github.jiangood.xq.ui.SettingsScreen
 import io.github.jiangood.xq.util.AppLog
@@ -120,36 +122,51 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             var showSettings by remember { mutableStateOf(false) }
-            if (showSettings) {
-                SettingsScreen(onBack = { showSettings = false })
-            } else {
-                MainScreen(
-                    viewModel = viewModel,
-                    onPickImage = { pickMedia.launch(ActivityResultContracts.PickVisualMedia.ImageOnly.let { androidx.activity.result.PickVisualMediaRequest(it) }) },
-                    onToggleFloating = { enabled ->
-                        if (enabled) {
-                            AppLog.add("[悬浮窗] 用户开启悬浮窗")
-                            if (!Settings.canDrawOverlays(this)) {
-                                AppLog.add("[悬浮窗] 需要悬浮窗权限，跳转设置")
-                                val intent = Intent(
-                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                    Uri.parse("package:$packageName")
-                                )
-                                overlayPermissionLauncher.launch(intent)
+            var showCalibration by remember { mutableStateOf(false) }
+
+            when {
+                showCalibration -> {
+                    CalibrationScreen(onBack = { showCalibration = false })
+                }
+                showSettings -> {
+                    SettingsScreen(
+                        onBack = { showSettings = false },
+                        onOpenCalibration = { showCalibration = true }
+                    )
+                }
+                else -> {
+                    MainScreen(
+                        viewModel = viewModel,
+                        onPickImage = {
+                            pickMedia.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                        onToggleFloating = { enabled ->
+                            if (enabled) {
+                                AppLog.add("[悬浮窗] 用户开启悬浮窗")
+                                if (!Settings.canDrawOverlays(this)) {
+                                    AppLog.add("[悬浮窗] 需要悬浮窗权限，跳转设置")
+                                    val intent = Intent(
+                                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                        Uri.parse("package:$packageName")
+                                    )
+                                    overlayPermissionLauncher.launch(intent)
+                                } else {
+                                    AppLog.add("[悬浮窗] 已有悬浮窗权限")
+                                    checkAndRequestNotificationPermission()
+                                }
                             } else {
-                                AppLog.add("[悬浮窗] 已有悬浮窗权限")
-                                checkAndRequestNotificationPermission()
+                                AppLog.add("[悬浮窗] 用户关闭悬浮窗")
+                                Intent(this, FloatingBubbleService::class.java).also {
+                                    it.action = "STOP"
+                                    startService(it)
+                                }
                             }
-                        } else {
-                            AppLog.add("[悬浮窗] 用户关闭悬浮窗")
-                            Intent(this, FloatingBubbleService::class.java).also {
-                                it.action = "STOP"
-                                startService(it)
-                            }
-                        }
-                    },
-                    onOpenSettings = { showSettings = true }
-                )
+                        },
+                        onOpenSettings = { showSettings = true }
+                    )
+                }
             }
         }
     }

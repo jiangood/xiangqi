@@ -21,7 +21,8 @@ import io.github.jiangood.xq.settings.SettingsManager
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onOpenCalibration: () -> Unit = {}
 ) {
     var depth by remember { mutableStateOf(SettingsManager.getDepth()) }
     var threads by remember { mutableStateOf(SettingsManager.getThreads()) }
@@ -89,6 +90,16 @@ fun SettingsScreen(
             }
 
             Spacer(Modifier.weight(1f))
+
+            HorizontalDivider()
+            Button(
+                onClick = onOpenCalibration,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("棋盘棋子校准", fontSize = 16.sp)
+            }
+            Spacer(Modifier.height(16.dp))
 
             HorizontalDivider()
             Text(

@@ -1,32 +1,30 @@
 # 中国象棋局面分析
 
-基于 YOLO 自训练的棋子识别模型，识别棋盘图片转为 FEN 局面表达式。
+手机截图场景。截图中棋盘网格一定在正中心。
 
-## CLI — 图片转 FEN
+## 使用流程
 
-```shell
-cd cli
-pip install -r requirements.txt
-python inference.py <image-file-path>
-```
+### 首次使用：棋盘棋子校准
 
-输出标准 FEN 格式字符串（红色大写，黑色小写），例如：
+1. 打开设置 → "棋盘棋子校准"
+2. 选择一张**开局局面**截图（确保 14 类棋子齐全）
+3. 自动检测棋盘网格，在图片上叠加显示
+4. 可双指缩放/平移检查网格是否对齐
+5. 确认方向正确后点击"确认校准"
+6. 程序自动按标准开局阵型裁切 32 个棋子图像并保存为模板
 
-```
-rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w
-```
+### 日常分析
 
-### 训练数据生成
+选图 → 模板匹配识别棋子 → 引擎分析走法
 
-```shell
-python generate_labels.py [raw_dir] [image_dir] [label_dir] [preview_dir] [val_ratio]
-```
-
-从原始截图通过模板匹配自动生成 YOLO 标注。
+不再需要 YOLO / ONNX 模型。
 
 ## Android
 
 支持安卓手机，基于 Pikafish 引擎进行棋局分析。
+
+- Kotlin + Jetpack Compose + OpenCV + Pikafish 引擎
+- 构建: `.\gradlew assembleDebug`
 
 ## FEN 格式
 

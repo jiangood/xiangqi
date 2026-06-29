@@ -2,61 +2,14 @@
 
 手机截图场景。截图中棋盘网格一定在正中心。
 
-## CLI — 图片转 FEN
+## 识别管线
 
-```bash
-cd cli && pip install -r requirements.txt
-python inference.py <image-path>
-```
+校准(首次) → 模板匹配(复用网格) → FEN → 引擎
 
-输出标准 FEN（红色大写，黑色小写），例如 `rnbakabnr/9/... w`。
-
-## 推理管线
-
-`locate_board()` (Canny+contour, 中心约束) → `calibrate_grid()` (线检测 + 几何对齐) → YOLO ONNX → 颜色修正 → `assign_pieces_to_grid()` → `to_fen()`
-
-- **颜色修正**: `_correct_colors()` — 取检测点周围 9×9 窗口的红色分量修正被 YOLO 误分的棋子
-- **FEN 走子方**: 根据 `k`(将) 在底部三行 (row 7-9) 判定 — 红方帅在底部则 `w`，黑方将在底部则 `b`
-
-## 网格校准
-
-- **主方案**: Otsu 二值化 → 形态学水平线检测 → 线链等距搜索 → 从线链中心外推 `origin_y`, `cell_size`（无需河界专用检测）
-- **回退**: 几何先验 — `cell_size = bw/9`, 网格从外边框向内偏移 `cell_size/2`
-
-## 棋盘定位 (`locate_board()`)
-
-截图棋盘一定在正中心，所以定位简化（CLI 和 Android 端一致）：
-- GaussianBlur(5×5) + Canny(30,100) + dilate(5×5)
-- 仅保留包含图像中心、覆盖 < 85%、接近 9:10 宽高比的轮廓
-- 未找到则回退为中心 85% 裁剪
-
-## YOLO 模型
-
-- `cli/models/xiangqi_yolo.onnx` (14 类), input 640×640 letterbox
-- 14 类: `rk ra rb rr rn rc rp / bk ba bb br bn bc bp`
-- 推理参数: conf=0.25, NMS=0.65
-- 训练: `model-training/scripts/train.py` (YOLOv11n, `flipud=0.5`)
-- 数据生成: `python generate_labels.py` — 模板匹配原截图 → YOLO label
-
-## 测试
-
-```bash
-cd cli
-python test_grid.py   # 生成网格叠加图到 demos/output/
-python test_river.py  # 测试网格线检测
-python -m pytest test_to_fen.py -v  # FEN 生成单元测试
-```
-
-## 训练
-
-```bash
-cd cli
-python generate_labels.py [raw_dir] [image_dir] [label_dir] [preview_dir] [val_ratio]
-cd ../model-training
-pip install -r requirements.txt
-python scripts/train.py
-python scripts/export_onnx.py  # PT → ONNX, 复制到 cli/models/
-```
+- **校准**: 选开局截图 → `BoardUtils.calibrateGrid()` → 网格叠加预览(可缩放/平移) → 确认 → 保存网格坐标 + 裁切 32 个棋子为模板
+- **分析**: `TemplatePieceRecognizer.parseBoard()` — 对每个网格交叉点裁切棋子区域，`Imgproc.matchTemplate()` vs 14 类模板，取最佳匹配
+- 红黑方向: 比较 `(row0,col4)` 和 `(row9,col4)` 两处棋子红色分量
+- 校准数据存储: `filesDir/calibration/` (grid.json + meta.json + index.json + 32 个 png)
 
 ## Android
 
@@ -66,9 +19,3 @@ python scripts/export_onnx.py  # PT → ONNX, 复制到 cli/models/
 - Thin build: `.\gradlew assembleRelease -Pthin`
 - 发布 APK 需要 `KEYSTORE_B64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` secrets
 - 文件命名: `xq-{versionName}-full.apk` / `xq-{versionName}-thin.apk`
-
-## 关键约定
-
-- 验证: 运行 `cd cli && python test_grid.py | findstr cell`
-- 模型文件: `cli/models/xiangqi_yolo.onnx` (通过 Git LFS 追踪，不在 .gitignore 中)
-- ONNX 导出: `model-training/scripts/export_onnx.py` (输入 PT 权重路径需要编辑)

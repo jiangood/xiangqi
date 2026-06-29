@@ -2,8 +2,8 @@ package io.github.jiangood.xq.analysis
 
 import android.content.Context
 import io.github.jiangood.xq.engine.AndroidEngineClient
-import io.github.jiangood.xq.opencv.PieceRecognizer
-import io.github.jiangood.xq.opencv.YoloPieceRecognizer
+import io.github.jiangood.xq.opencv.TemplatePieceRecognizer
+import io.github.jiangood.xq.settings.CalibrationManager
 import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.util.FenUtil
 import io.github.jiangood.xq.util.NotationConverter
@@ -24,7 +24,7 @@ data class AnalysisResult(
 object AnalysisEngine {
     var engineClient: AndroidEngineClient? = null
         private set
-    var boardRecognizer: PieceRecognizer? = null
+    var boardRecognizer: TemplatePieceRecognizer? = null
         private set
 
     private val initComplete = CompletableDeferred<Unit>()
@@ -63,25 +63,17 @@ object AnalysisEngine {
                 } else {
                     AppLog.add("[引擎] 引擎启动失败")
                 }
-                AppLog.add("[引擎] 加载 ONNX 模型...")
-                val modelFile = File(context.filesDir, "xiangqi_yolo.onnx")
-                if (!modelFile.exists()) {
-                    try {
-                        AppLog.add("[引擎] 解压 ONNX 模型...")
-                        context.assets.open("xiangqi_yolo.onnx").use { input ->
-                            modelFile.outputStream().use { output -> input.copyTo(output) }
-                        }
-                        AppLog.add("[引擎] ONNX 解压完成")
-                    } catch (e: java.io.FileNotFoundException) {
-                        AppLog.add("[引擎] ONNX 模型文件不存在（thin 包），请先安装完整版或手动下载")
-                    } catch (e: Exception) {
-                        AppLog.add("[引擎] ONNX 解压跳过: ${e.message}")
-                    }
+
+                AppLog.add("[引擎] 加载校准数据...")
+                val calibData = CalibrationManager.load(context)
+                if (calibData != null) {
+                    val templateDir = CalibrationManager.getTemplateFileDir(context)
+                    boardRecognizer = TemplatePieceRecognizer(calibData, templateDir)
+                    AppLog.add("[引擎] 校准数据加载成功，使用模板匹配")
                 } else {
-                    AppLog.add("[引擎] ONNX 模型已存在")
+                    AppLog.add("[引擎] 未找到校准数据，请先在设置中完成棋盘棋子校准")
                 }
-                boardRecognizer = YoloPieceRecognizer(modelFile.absolutePath)
-                AppLog.add("[引擎] ONNX 模型加载成功")
+
                 initComplete.complete(Unit)
             } catch (e: Exception) {
                 AppLog.add("[引擎] 初始化失败: ${e.message}")
@@ -102,9 +94,12 @@ object AnalysisEngine {
                 val engine = engineClient
                 if (recognizer == null || engine == null) {
                     AppLog.add("[引擎] 分析失败: recognizer=${recognizer != null}, engine=${engine != null}")
+                    if (recognizer == null) {
+                        AppLog.add("[引擎] 请先在设置中完成棋盘棋子校准")
+                    }
                     return@withContext null
                 }
-                AppLog.add("[引擎] 开始棋盘识别: ${imageFile.name}")
+                AppLog.add("[引擎] 开始模板匹配棋盘识别: ${imageFile.name}")
                 val rawBoard = recognizer.parseBoard(imageFile.absolutePath)
                 AppLog.add("[引擎] 棋盘识别完成, 检测到棋子: ${countPieces(rawBoard)}")
                 val board = rawBoard

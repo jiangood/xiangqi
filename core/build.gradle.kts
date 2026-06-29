@@ -17,7 +17,6 @@ android {
 }
 
 dependencies {
-    implementation(libs.onnxruntime.android)
     implementation(libs.hutool)
     api(libs.opencv.android)
 }

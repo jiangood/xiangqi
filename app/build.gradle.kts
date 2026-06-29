@@ -11,8 +11,8 @@ android {
         applicationId = "io.github.jiangood.xq"
         minSdk = 34
         targetSdk = 34
-        versionCode = 80
-        versionName = "5.0.5"
+        versionCode = 81
+        versionName = "6.0.0"
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
@@ -58,7 +58,7 @@ android {
     }
 
     aaptOptions {
-        ignoreAssetsPattern = if (project.hasProperty("thin")) "!pikafish.nnue:!xiangqi_yolo.onnx:" else ""
+        ignoreAssetsPattern = if (project.hasProperty("thin")) "!pikafish.nnue:" else ""
     }
 
     packaging {

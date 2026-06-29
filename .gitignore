@@ -43,6 +43,9 @@ cli/bin/Pikafish-20250110/
 **/output/
 /model-training/data/raw/
 /model-training.rar
+# opencode
+/.opencode/
+
 # ONNX models tracked via LFS - not in .gitignore
 
 # Android
