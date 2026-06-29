@@ -193,7 +193,7 @@ class AnalysisViewModel : ViewModel() {
             val board = BoardUtils.assignPiecesToGrid(ir.correctedDetections, ir.grid, ir.boardRect)
             val valid = state.validationWarnings.isEmpty()
 
-            // Image steps 1-17
+            // Image steps 1-18
             val matLabels = listOf(
                 "01_original" to ir.srcOriginal,
                 "02_crop_center" to BoardUtils.drawCropCenter(ir),
@@ -208,10 +208,11 @@ class AnalysisViewModel : ViewModel() {
                 "11_river" to BoardUtils.drawRiver(ir),
                 "12_grid_full" to BoardUtils.drawGridFull(ir),
                 "13_refined_crop" to ir.boardRefined,
-                "14_raw_detections" to BoardUtils.drawRawDetections(ir),
-                "15_color_correction" to BoardUtils.drawColorCorrection(ir),
-                "16_detections_labeled" to BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid),
-                "17_pieces_snapped" to BoardUtils.drawPiecesSnapped(ir)
+                "14_all_detections" to BoardUtils.drawAllDetections(ir),
+                "15_raw_detections" to BoardUtils.drawRawDetections(ir),
+                "16_color_correction" to BoardUtils.drawColorCorrection(ir),
+                "17_detections_labeled" to BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid),
+                "18_pieces_snapped" to BoardUtils.drawPiecesSnapped(ir)
             )
             for ((label, mat) in matLabels) {
                 AndroidImageUtils.matToJpeg(mat, File(cacheDir, "$label.jpg").absolutePath)
@@ -225,27 +226,31 @@ class AnalysisViewModel : ViewModel() {
                 previews[step] = file.absolutePath
             }
 
-            // Text steps: 18=board array, 19=validation, 20=FEN
+            // Text steps: 19=detection stats, 20=board array, 21=validation, 22=FEN
             val texts = mutableMapOf<Int, String>()
-            texts[18] = BoardUtils.boardToText(board)
+            val detCount = ir.rawDetections.size
+            val preNms = ir.yoloPreNmsCount
+            texts[19] = "YOLO detections: $detCount (after NMS) / $preNms (pre-NMS, conf>25%)\nConfidence threshold: 25%  NMS threshold: 65%"
+
+            texts[20] = BoardUtils.boardToText(board)
 
             val warnText = if (valid) "✓ 局面验证通过" else
                 "✗ 局面验证失败:\n" + state.validationWarnings.joinToString("\n") { "  ⚠ $it" }
-            texts[19] = warnText
+            texts[21] = warnText
 
             if (valid) {
                 val fen = FenUtil.toFen(board)
-                texts[20] = "FEN: $fen"
+                texts[22] = "FEN: $fen"
 
                 val layoutMat = BoardUtils.drawBoardLayout(board)
-                AndroidImageUtils.matToJpeg(layoutMat, File(cacheDir, "21_board_layout.jpg").absolutePath)
+                AndroidImageUtils.matToJpeg(layoutMat, File(cacheDir, "23_board_layout.jpg").absolutePath)
                 layoutMat.release()
-                previews[21] = File(cacheDir, "21_board_layout.jpg").absolutePath
+                previews[23] = File(cacheDir, "23_board_layout.jpg").absolutePath
 
                 val moveMat = BoardUtils.drawMoveArrow(ir)
-                AndroidImageUtils.matToJpeg(moveMat, File(cacheDir, "22_best_move.jpg").absolutePath)
+                AndroidImageUtils.matToJpeg(moveMat, File(cacheDir, "24_best_move.jpg").absolutePath)
                 moveMat.release()
-                previews[22] = File(cacheDir, "22_best_move.jpg").absolutePath
+                previews[24] = File(cacheDir, "24_best_move.jpg").absolutePath
             }
 
             val currentState = _uiState.value

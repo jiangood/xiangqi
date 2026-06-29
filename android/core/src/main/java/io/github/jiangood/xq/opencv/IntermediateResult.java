@@ -20,6 +20,8 @@ public class IntermediateResult {
     public Map<Point, String> rawDetections;
     public Map<Point, Float> rawDetectionScores;
     public int yoloPreNmsCount;
+    public Map<Point, String> allDetections;
+    public Map<Point, Float> allDetectionScores;
     public Map<Point, String> correctedDetections;
     public Mat boardRefined;       // Refined crop (to grid boundaries + margin)
     public Rect refineRect;        // The refined crop rectangle

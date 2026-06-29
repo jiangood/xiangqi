@@ -135,6 +135,8 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         ir.rawDetections = rawDets;
         ir.rawDetectionScores = this.lastScores;
         ir.yoloPreNmsCount = this.lastPreNmsCount;
+        ir.allDetections = this.lastAllDetections;
+        ir.allDetectionScores = this.lastAllScores;
         ir.correctedDetections = correctedDets;
         this.lastIntermediate = ir;
 
@@ -228,6 +230,22 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         }
 
         this.lastPreNmsCount = detections.size();
+
+        // Store all detections (pre-NMS) for diagnostic display
+        Map<Point, String> allMap = new LinkedHashMap<>();
+        Map<Point, Float> allScoresMap = new LinkedHashMap<>();
+        for (Detection d : detections) {
+            float cx2 = (d.x1 + d.x2) / 2;
+            float cy2 = (d.y1 + d.y2) / 2;
+            float ox = Math.max(0, Math.min(origW, (cx2 - padW) / scale));
+            float oy = Math.max(0, Math.min(origH, (cy2 - padH) / scale));
+            Point pt = new Point(ox, oy);
+            allMap.put(pt, CLASS_NAMES[d.classId]);
+            allScoresMap.put(pt, d.score);
+        }
+        this.lastAllDetections = allMap;
+        this.lastAllScores = allScoresMap;
+
         detections.sort((a, b) -> Float.compare(b.score, a.score));
         List<Detection> kept = new ArrayList<>();
         for (Detection d : detections) {
@@ -318,6 +336,8 @@ public class YoloPieceRecognizer implements PieceRecognizer {
     public Point[][] lastGrid;
     private Map<Point, Float> lastScores;
     private int lastPreNmsCount;
+    private Map<Point, String> lastAllDetections;
+    private Map<Point, Float> lastAllScores;
     public IntermediateResult lastIntermediate;
 
     private static class Detection {

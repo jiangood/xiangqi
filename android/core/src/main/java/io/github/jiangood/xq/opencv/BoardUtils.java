@@ -587,14 +587,6 @@ public class BoardUtils {
         if (ir == null || ir.srcOriginal == null || ir.rawDetections == null) return new Mat();
         if (ir.boardRect == null) return new Mat();
         Mat output = ir.srcOriginal.clone();
-
-        // Detection count info
-        String info = "Detections: " + ir.rawDetections.size() + " (NMS)";
-        if (ir.yoloPreNmsCount > 0) info += " / " + ir.yoloPreNmsCount + " (pre-NMS)";
-        Imgproc.putText(output, info, new Point(10, 30),
-                Imgproc.FONT_HERSHEY_SIMPLEX, 0.8, new Scalar(0, 0, 0), 2);
-
-        Scalar GRAY = new Scalar(128, 128, 128);
         double cellW = ir.grid != null ? ir.grid[0][1].x - ir.grid[0][0].x : 40;
         double cellH = ir.grid != null ? ir.grid[1][0].y - ir.grid[0][0].y : 40;
         for (Map.Entry<Point, String> e : ir.rawDetections.entrySet()) {
@@ -606,14 +598,11 @@ public class BoardUtils {
             double y1 = absY - cellH / 2;
             double x2 = absX + cellW / 2;
             double y2 = absY + cellH / 2;
-
-            // Score
             Float score = ir.rawDetectionScores != null ? ir.rawDetectionScores.get(pt) : null;
             String label = score != null ? String.format("%s %.0f%%", name, score * 100) : name;
-
-            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), GRAY, 2);
+            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), new Scalar(128, 128, 128), 2);
             Imgproc.putText(output, label, new Point(x1, Math.max(y1 - 8, 0)),
-                    Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, GRAY, 2);
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, new Scalar(128, 128, 128), 2);
         }
         return output;
     }
@@ -687,6 +676,33 @@ public class BoardUtils {
         Mat output = drawPiecesSnapped(ir);
         if (ir.bestUciMove != null && ir.bestUciMove.length() == 4 && ir.grid != null) {
             drawMove(output, ir.grid, ir.bestUciMove);
+        }
+        return output;
+    }
+
+    public static Mat drawAllDetections(IntermediateResult ir) {
+        if (ir == null || ir.srcOriginal == null || ir.allDetections == null) return new Mat();
+        if (ir.boardRect == null) return new Mat();
+        Mat output = ir.srcOriginal.clone();
+        double cellW = ir.grid != null ? ir.grid[0][1].x - ir.grid[0][0].x : 40;
+        double cellH = ir.grid != null ? ir.grid[1][0].y - ir.grid[0][0].y : 40;
+        for (Map.Entry<Point, String> e : ir.allDetections.entrySet()) {
+            Point pt = e.getKey();
+            String name = e.getValue();
+            double absX = ir.boardRect.x + pt.x;
+            double absY = ir.boardRect.y + pt.y;
+            double x1 = absX - cellW / 2;
+            double y1 = absY - cellH / 2;
+            double x2 = absX + cellW / 2;
+            double y2 = absY + cellH / 2;
+            Float score = ir.allDetectionScores != null ? ir.allDetectionScores.get(pt) : null;
+            boolean kept = ir.rawDetections.containsKey(pt);
+            String label = score != null ? String.format("%s %.0f%%", name, score * 100) : name;
+            Scalar color = kept ? new Scalar(0, 200, 0) : new Scalar(0, 0, 255);
+            label = kept ? label : label + " (NMS)";
+            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), color, 2);
+            Imgproc.putText(output, label, new Point(x1, Math.max(y1 - 8, 0)),
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, color, 2);
         }
         return output;
     }
