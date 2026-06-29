@@ -240,6 +240,7 @@ class AnalysisViewModel : ViewModel() {
                 ir.boardRefined to "image_13.jpg",
                 BoardUtils.drawAllDetections(ir) to "image_14.jpg",
                 BoardUtils.drawRawDetections(ir) to "image_15.jpg",
+                BoardUtils.drawRawDetections(ir) to "image_15.jpg",
                 BoardUtils.drawColorCorrection(ir) to "image_16.jpg",
                 BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid) to "image_17.jpg",
                 BoardUtils.drawPiecesSnapped(ir) to "image_18.jpg"
@@ -251,7 +252,9 @@ class AnalysisViewModel : ViewModel() {
 
             val steps = mutableListOf<StepItem>()
             for (i in 0 until 18) {
-                steps.add(StepItem(i + 1, titles[i], descs[i], imagePath = path(i + 1)))
+                val step = i + 1
+                val text = if (step == 14) BoardUtils.detectionsToText(ir) else null
+                steps.add(StepItem(step, titles[i], descs[i], imagePath = path(step), text = text))
             }
 
             val detCount = ir.rawDetections.size

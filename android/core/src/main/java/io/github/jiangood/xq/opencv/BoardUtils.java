@@ -695,14 +695,9 @@ public class BoardUtils {
             double y1 = absY - cellH / 2;
             double x2 = absX + cellW / 2;
             double y2 = absY + cellH / 2;
-            Float score = ir.allDetectionScores != null ? ir.allDetectionScores.get(pt) : null;
             boolean kept = ir.rawDetections.containsKey(pt);
-            String label = score != null ? String.format("%s %.0f%%", name, score * 100) : name;
             Scalar color = kept ? new Scalar(0, 200, 0) : new Scalar(0, 0, 255);
-            label = kept ? label : label + " (NMS)";
             Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), color, 2);
-            Imgproc.putText(output, label, new Point(x1, Math.max(y1 - 8, 0)),
-                    Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, color, 2);
         }
         return output;
     }
@@ -787,6 +782,21 @@ public class BoardUtils {
         java.util.Map.entry("br", "车"), java.util.Map.entry("bn", "马"),
         java.util.Map.entry("bc", "炮"), java.util.Map.entry("bp", "卒")
     );
+
+    public static String detectionsToText(IntermediateResult ir) {
+        if (ir.allDetections == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<Point, String> e : ir.allDetections.entrySet()) {
+            String name = e.getValue();
+            Float score = ir.allDetectionScores != null ? ir.allDetectionScores.get(e.getKey()) : null;
+            boolean kept = ir.rawDetections.containsKey(e.getKey());
+            sb.append(kept ? "[KEPT] " : "[NMS]  ");
+            sb.append(name);
+            if (score != null) sb.append(String.format(" %.0f%%", score * 100));
+            sb.append("\n");
+        }
+        return sb.toString();
+    }
 
     public static String boardToText(String[][] board) {
         StringBuilder sb = new StringBuilder();
