@@ -1,22 +1,53 @@
 package io.github.jiangood.xq.ui
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.jiangood.xq.BuildConfig
+import io.github.jiangood.xq.settings.CalibrationManager
 import io.github.jiangood.xq.settings.SettingsManager
+import java.io.File
+
+private val PIECE_TYPES = listOf(
+    "rk", "ra", "rb", "rr", "rn", "rc", "rp",
+    "bk", "ba", "bb", "br", "bn", "bc", "bp"
+)
+
+@Composable
+private fun rememberTemplates(context: android.content.Context): State<List<Bitmap>> {
+    return remember {
+        mutableStateOf(
+            try {
+                val dir = CalibrationManager.getDir(context)
+                PIECE_TYPES.mapNotNull { type ->
+                    dir.listFiles { f -> f.name.startsWith("${type}_") }
+                        ?.firstOrNull()
+                        ?.let { BitmapFactory.decodeFile(it.absolutePath) }
+                }
+            } catch (_: Exception) { emptyList() }
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,12 +123,46 @@ fun SettingsScreen(
             Spacer(Modifier.weight(1f))
 
             HorizontalDivider()
+            Text("棋盘棋子校准", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+
+            val calibrated = CalibrationManager.isCalibrated(context)
+            if (calibrated) {
+                val templates by rememberTemplates(context)
+                Text(
+                    "已校准 (${templates.size} 枚模板)",
+                    fontSize = 14.sp,
+                    color = Color(0xFF4CAF50)
+                )
+                if (templates.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        items(templates) { bmp ->
+                            Image(
+                                bitmap = bmp.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .width(40.dp)
+                                    .height(40.dp)
+                                    .background(Color(0xFFE0E0E0))
+                            )
+                        }
+                    }
+                }
+            } else {
+                Text(
+                    "未校准，请选择开局截图",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
             Button(
                 onClick = onOpenCalibration,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("棋盘棋子校准", fontSize = 16.sp)
+                Text(if (calibrated) "重新校准" else "开始校准", fontSize = 16.sp)
             }
             Spacer(Modifier.height(16.dp))
 
