@@ -717,29 +717,66 @@ public class BoardUtils {
         if (ir == null || ir.boardRefined == null || ir.grid == null || ir.correctedDetections == null) return new Mat();
         Mat output = ir.boardRefined.clone();
         Point[][] grid = ir.grid;
-        Scalar LIGHT = new Scalar(200, 200, 200);
-        for (int r = 0; r < 10; r++) {
-            Imgproc.line(output, grid[r][0], grid[r][8], LIGHT, 1);
-        }
+        String[][] board = assignPiecesToGrid(ir.correctedDetections, grid);
+
+        double cellW = grid[0][1].x - grid[0][0].x;
+        double cellH = grid[1][0].y - grid[0][0].y;
+        double cellRadius = Math.max(cellW, cellH) / 3.0;
+
+        // 1. Grid lines — red, 2px
+        Scalar GRID = new Scalar(0, 0, 255);
+        for (int r = 0; r < 10; r++)
+            Imgproc.line(output, grid[r][0], grid[r][8], GRID, 2);
         for (int c = 0; c < 9; c++) {
-            Imgproc.line(output, grid[0][c], grid[4][c], LIGHT, 1);
-            Imgproc.line(output, grid[5][c], grid[9][c], LIGHT, 1);
-            if (c == 0 || c == 8) {
-                Imgproc.line(output, grid[4][c], grid[5][c], LIGHT, 1);
+            Imgproc.line(output, grid[0][c], grid[4][c], GRID, 2);
+            Imgproc.line(output, grid[5][c], grid[9][c], GRID, 2);
+            if (c == 0 || c == 8)
+                Imgproc.line(output, grid[4][c], grid[5][c], GRID, 2);
+        }
+
+        // 2. Detection boxes (before snapping) + connecting lines
+        for (Map.Entry<Point, String> e : ir.correctedDetections.entrySet()) {
+            Point detPt = e.getKey();
+
+            // Find nearest grid point
+            double bestDist = cellRadius * cellRadius;
+            Point snapPt = null;
+            for (int r = 0; r < 10; r++) {
+                for (int c = 0; c < 9; c++) {
+                    double dx = detPt.x - grid[r][c].x;
+                    double dy = detPt.y - grid[r][c].y;
+                    double d2 = dx * dx + dy * dy;
+                    if (d2 < bestDist) {
+                        bestDist = d2;
+                        snapPt = grid[r][c];
+                    }
+                }
+            }
+
+            // Detection box — thin yellow
+            double x1 = detPt.x - cellW / 2;
+            double y1 = detPt.y - cellH / 2;
+            double x2 = detPt.x + cellW / 2;
+            double y2 = detPt.y + cellH / 2;
+            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), new Scalar(0, 255, 255), 1);
+
+            if (snapPt != null) {
+                // Connecting line — cyan
+                Imgproc.line(output, detPt, snapPt, new Scalar(255, 255, 0), 1);
             }
         }
-        String[][] board = assignPiecesToGrid(ir.correctedDetections, grid);
-        if (board == null) return output;
-        for (int r = 0; r < 10; r++) {
-            for (int c = 0; c < 9; c++) {
-                String piece = board[r][c];
-                if (piece == null) continue;
-                Point pt = grid[r][c];
-                boolean isRed = piece.startsWith("r");
-                Scalar color = isRed ? new Scalar(0, 0, 255) : new Scalar(0, 0, 0);
-                Imgproc.circle(output, pt, 8, color, -1);
-                Imgproc.putText(output, piece, new Point(pt.x + 8, pt.y - 5),
-                        Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, color, 1);
+
+        // 3. Snapped pieces (after) — green filled circles + labels
+        if (board != null) {
+            for (int r = 0; r < 10; r++) {
+                for (int c = 0; c < 9; c++) {
+                    String piece = board[r][c];
+                    if (piece == null) continue;
+                    Point pt = grid[r][c];
+                    Imgproc.circle(output, pt, 10, new Scalar(0, 255, 0), -1);
+                    Imgproc.putText(output, piece, new Point(pt.x + 12, pt.y + 4),
+                            Imgproc.FONT_HERSHEY_SIMPLEX, 0.5, new Scalar(255, 255, 255), 1);
+                }
             }
         }
         return output;
