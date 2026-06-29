@@ -219,7 +219,30 @@ fun CalibrationScreen(onBack: () -> Unit) {
                         }
                     }
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(4.dp))
+
+                    val templates = remember(s.mat, s.grid, s.cellSize) {
+                        cropTemplates(s.mat, s.grid, s.cellSize)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        templates.forEach { (type, bmp) ->
+                            Image(
+                                bitmap = bmp.asImageBitmap(),
+                                contentDescription = type,
+                                modifier = Modifier
+                                    .width(34.dp)
+                                    .height(48.dp)
+                                    .background(Color(0xFFE0E0E0))
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(4.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -332,48 +355,25 @@ private fun generateTestVisualization(
 ): Bitmap? {
     return try {
         val img = Imgcodecs.imread(imagePath, Imgcodecs.IMREAD_COLOR) ?: return null
-        val cropped = io.github.jiangood.xq.opencv.BoardUtils.cropBoardCenter(img)
-        img.release()
-
         val green = Scalar(0.0, 255.0, 0.0)
-        for (r in 0 until 10) {
-            Imgproc.line(cropped, Point(grid[r][0].x, grid[r][0].y), Point(grid[r][8].x, grid[r][8].y), green, 2)
-        }
-        for (c in 0 until 9) {
-            Imgproc.line(cropped, Point(grid[0][c].x, grid[0][c].y), Point(grid[9][c].x, grid[9][c].y), green, 2)
-        }
+        val red = Scalar(0.0, 0.0, 255.0)
+        val blue = Scalar(255.0, 0.0, 0.0)
 
-        val bmp = AndroidImageUtils.matToBitmap(cropped)
-        cropped.release()
-
-        val canvas = android.graphics.Canvas(bmp)
-        val paint = android.graphics.Paint().apply {
-            color = android.graphics.Color.RED
-            textSize = 28f
-            isAntiAlias = true
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-        }
-        val bgPaint = android.graphics.Paint().apply {
-            color = android.graphics.Color.argb(180, 255, 255, 255)
-        }
+        val cropY = if (img.height() > img.width() * 10.0 / 9.0)
+            (img.height() - (img.width() * 10.0 / 9.0).toInt()) / 2 else 0
 
         for (r in 0 until 10) {
             for (c in 0 until 9) {
                 val p = board[r][c] ?: continue
-                val ch = PIECE_CHINESE[p] ?: continue
-                val pt = grid[r][c]
-                val textW = paint.measureText(ch)
-                canvas.drawRect(
-                    (pt.x - textW / 2 - 2).toFloat(),
-                    (pt.y - paint.textSize / 2 - 2).toFloat(),
-                    (pt.x + textW / 2 + 2).toFloat(),
-                    (pt.y + paint.textSize / 2 + 2).toFloat(),
-                    bgPaint
-                )
-                canvas.drawText(ch, (pt.x - textW / 2).toFloat(), (pt.y + paint.textSize / 3).toFloat(), paint)
+                val color = if (p.startsWith("r")) red else blue
+                val pt = Point(grid[r][c].x, grid[r][c].y + cropY)
+                Imgproc.circle(img, pt, 8, color, -1)
+                Imgproc.circle(img, pt, 8, green, 2)
             }
         }
 
+        val bmp = AndroidImageUtils.matToBitmap(img)
+        img.release()
         bmp
     } catch (_: Exception) {
         null
@@ -466,6 +466,21 @@ private suspend fun startCalibration(
     } catch (e: Exception) {
         onResult(CalibrationUiState.Error("校准失败: ${e.message ?: "未知错误"}"))
     }
+}
+
+private fun cropTemplates(mat: Mat, grid: Array<Array<Point>>, cellSize: Double): List<Pair<String, Bitmap>> {
+    val pieceSize = cellSize * 0.85
+    val result = mutableListOf<Pair<String, Bitmap>>()
+    for (r in 0 until 10) {
+        for (c in 0 until 9) {
+            val pieceType = STANDARD_OPENING[r][c] ?: continue
+            val pieceMat = CalibrationManager.cropPiece(mat, grid, r, c, pieceSize) ?: continue
+            val bmp = AndroidImageUtils.matToBitmap(pieceMat)
+            pieceMat.release()
+            result.add(pieceType to bmp)
+        }
+    }
+    return result
 }
 
 private fun saveCalibration(context: android.content.Context, state: CalibrationUiState.Ready) {
