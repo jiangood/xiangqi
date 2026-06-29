@@ -26,7 +26,7 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', 'gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
@@ -36,14 +36,14 @@ jobs:
           path: |
             ${{ env.ANDROID_HOME }}/platforms
             ${{ env.ANDROID_HOME }}/build-tools
-          key: ${{ runner.os }}-sdk-${{ hashFiles('android/**/*.gradle*') }}
+          key: ${{ runner.os }}-sdk-${{ hashFiles('**/*.gradle*') }}
           restore-keys: |
             ${{ runner.os }}-sdk-
 
       - name: Verify version tag matches build.gradle
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          FILE_VERSION=$(grep 'versionName\s*=' android/app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+          FILE_VERSION=$(grep 'versionName\s*=' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
           if [ "$TAG_VERSION" != "$FILE_VERSION" ]; then
             echo "ERROR: Tag version (v$TAG_VERSION) does not match build.gradle.kts (v$FILE_VERSION)"
             exit 1
@@ -57,35 +57,33 @@ jobs:
           yes | $SDK_MGR --install "platforms;android-34" "build-tools;34.0.0" || true
 
       - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > android/app/keystore.jks
+        run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > app/keystore.jks
 
       - name: Build full APK
         env:
-          KEYSTORE_PATH: ${{ github.workspace }}/android/app/keystore.jks
+          KEYSTORE_PATH: ${{ github.workspace }}/app/keystore.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          cd android
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
 
       - name: Save full APK (before thin build overwrites output dir)
         run: |
-          cp android/app/build/outputs/apk/release/xq-*-full.apk /tmp/
+          cp app/build/outputs/apk/release/xq-*-full.apk /tmp/
 
       - name: Build thin APK
         env:
-          KEYSTORE_PATH: ${{ github.workspace }}/android/app/keystore.jks
+          KEYSTORE_PATH: ${{ github.workspace }}/app/keystore.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          cd android
           ./gradlew assembleRelease --no-daemon -Pthin
           cp /tmp/xq-*-full.apk app/build/outputs/apk/release/
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: android/app/build/outputs/apk/release/xq-*.apk
+          files: app/build/outputs/apk/release/xq-*.apk
           generate_release_notes: true

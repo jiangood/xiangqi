@@ -46,10 +46,10 @@ cli/bin/Pikafish-20250110/
 # ONNX models tracked via LFS - not in .gitignore
 
 # Android
-android/.gradle/
-android/local.properties
+.gradle/
+local.properties
 release-key.jks
-android/app/release.keystore
+app/release.keystore
 *.apk
 
 # Python

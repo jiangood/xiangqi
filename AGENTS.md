@@ -61,8 +61,8 @@ python scripts/export_onnx.py  # PT → ONNX, 复制到 cli/models/
 
 ## Android
 
-- `android/` — Kotlin + Jetpack Compose + OpenCV + Pikafish 引擎
-- 构建: `cd android && .\gradlew assembleDebug`
+- Kotlin + Jetpack Compose + OpenCV + Pikafish 引擎
+- 构建: `.\gradlew assembleDebug`
 - 发布: CI 在 `v*` tag 触发, 构建 full APK (含 NNUE) 和 thin APK (不含), 创建 GitHub Release
 - Thin build: `.\gradlew assembleRelease -Pthin`
 - 发布 APK 需要 `KEYSTORE_B64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` secrets
