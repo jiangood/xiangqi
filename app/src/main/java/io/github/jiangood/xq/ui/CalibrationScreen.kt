@@ -503,9 +503,12 @@ private suspend fun startCalibration(
 private fun cropTemplates(mat: Mat, grid: Array<Array<Point>>, cellSize: Double): List<Pair<String, Bitmap>> {
     val pieceSize = cellSize * 0.85
     val result = mutableListOf<Pair<String, Bitmap>>()
+    val savedTypes = mutableSetOf<String>()
     for (r in 0 until 10) {
         for (c in 0 until 9) {
             val pieceType = STANDARD_OPENING[r][c] ?: continue
+            if (pieceType in savedTypes) continue
+            savedTypes.add(pieceType)
             val pieceMat = CalibrationManager.cropPiece(mat, grid, r, c, pieceSize) ?: continue
             val bmp = AndroidImageUtils.matToBitmap(pieceMat)
             pieceMat.release()
@@ -526,13 +529,15 @@ private fun saveCalibration(context: android.content.Context, state: Calibration
     data.templates = mutableListOf()
 
     val dir = CalibrationManager.getDir(context)
-    var counter = 0
+    val savedTypes = mutableSetOf<String>()
 
     for (r in 0 until 10) {
         for (c in 0 until 9) {
             val pieceType = STANDARD_OPENING[r][c] ?: continue
+            if (pieceType in savedTypes) continue
+            savedTypes.add(pieceType)
             val pieceMat = CalibrationManager.cropPiece(state.mat, state.grid, r, c, pieceSize) ?: continue
-            val filename = "${pieceType}_${counter++}.png"
+            val filename = "${pieceType}.png"
             Imgcodecs.imwrite(File(dir, filename).absolutePath, pieceMat)
             pieceMat.release()
             data.templates.add(CalibrationTemplate(filename, pieceType))
