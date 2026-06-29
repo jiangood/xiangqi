@@ -43,6 +43,7 @@ fun MainScreen(
     onOpenSettings: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
+    val ready by viewModel.ready.collectAsState()
     val scrollState = rememberScrollState()
     var floatingEnabled by remember { mutableStateOf(false) }
 
@@ -86,8 +87,12 @@ fun MainScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(onClick = onPickImage, modifier = Modifier.fillMaxWidth()) {
-                Text("选择图片")
+            Button(
+                onClick = onPickImage,
+                enabled = ready,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (ready) "选择图片" else "初始化中...")
             }
         }
 

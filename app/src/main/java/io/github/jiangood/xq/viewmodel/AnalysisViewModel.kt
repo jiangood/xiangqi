@@ -43,6 +43,9 @@ class AnalysisViewModel : ViewModel() {
     private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
     val uiState: StateFlow<UiState> = _uiState
 
+    private val _ready = MutableStateFlow(false)
+    val ready: StateFlow<Boolean> = _ready
+
     val logs: StateFlow<List<String>> = AppLog.logs
 
     fun initOpenCV(context: Context) {
@@ -52,6 +55,14 @@ class AnalysisViewModel : ViewModel() {
             _uiState.value = UiState.Error("OpenCV 初始化失败")
         } else {
             AppLog.add("OpenCV 初始化成功")
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    AnalysisEngine.awaitInitialized()
+                    _ready.value = AnalysisEngine.boardRecognizer != null && AnalysisEngine.engineClient != null
+                } catch (_: Exception) {
+                    _ready.value = false
+                }
+            }
         }
     }
 
