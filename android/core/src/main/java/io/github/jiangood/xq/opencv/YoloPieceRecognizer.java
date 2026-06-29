@@ -90,6 +90,16 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         Rect refinedRect = BoardUtils.computeRefinedRect(calibratedGrid, boardRect);
         Mat boardRefinedMat = new Mat(srcColor, refinedRect).clone();
 
+        // ── Forget original image — re-base to refined-crop coordinates ──
+        Point[][] refinedGrid = new Point[10][9];
+        for (int r = 0; r < 10; r++) {
+            for (int c = 0; c < 9; c++) {
+                refinedGrid[r][c] = new Point(
+                    calibratedGrid[r][c].x - refinedRect.x,
+                    calibratedGrid[r][c].y - refinedRect.y);
+            }
+        }
+
         // Otsu binary on refined board crop
         Mat refinedGray = new Mat();
         Imgproc.cvtColor(boardRefinedMat, refinedGray, Imgproc.COLOR_BGR2GRAY);
@@ -99,42 +109,15 @@ public class YoloPieceRecognizer implements PieceRecognizer {
 
         // YOLO inference on refined crop (convert binary back to 3-channel)
         Imgproc.cvtColor(refinedGray, boardRefinedMat, Imgproc.COLOR_GRAY2BGR);
-        Map<Point, String> rawDetsInRefined = runYoloInference(boardRefinedMat);
+        Map<Point, String> rawDets = runYoloInference(boardRefinedMat);
 
-        // Convert detections from refined-crop coords to board-crop coords
-        int dx = refinedRect.x - boardRect.x;
-        int dy = refinedRect.y - boardRect.y;
-        Map<Point, String> rawDets = new LinkedHashMap<>();
-        for (Map.Entry<Point, String> e : rawDetsInRefined.entrySet()) {
-            rawDets.put(new Point(e.getKey().x + dx, e.getKey().y + dy), e.getValue());
-        }
-
-        // Convert NMS scores to board-crop coords too
-        Map<Point, Float> nmsScoreBoard = new LinkedHashMap<>();
-        if (this.lastScores != null) {
-            for (Map.Entry<Point, Float> e : this.lastScores.entrySet()) {
-                nmsScoreBoard.put(new Point(e.getKey().x + dx, e.getKey().y + dy), e.getValue());
-            }
-        }
-
-        // Convert allDetections to board-crop coords too
-        Map<Point, String> allBoard = new LinkedHashMap<>();
-        Map<Point, Float> allScoreBoard = new LinkedHashMap<>();
-        if (this.lastAllDetections != null) {
-            for (Map.Entry<Point, String> e : this.lastAllDetections.entrySet()) {
-                Point boardPt = new Point(e.getKey().x + dx, e.getKey().y + dy);
-                allBoard.put(boardPt, e.getValue());
-                Float s = this.lastAllScores != null ? this.lastAllScores.get(e.getKey()) : null;
-                if (s != null) allScoreBoard.put(boardPt, s);
-            }
-        }
-
-        // Color correction (works with board-crop coords)
+        // Color correction — sample boardRefinedMat directly (refined-crop coords)
         Map<Point, String> correctedDets = new LinkedHashMap<>();
         for (Map.Entry<Point, String> e : rawDets.entrySet()) {
             correctedDets.put(e.getKey().clone(), e.getValue());
         }
-        correctColorsFromOriginal(correctedDets, srcColor, boardRect);
+        correctColorsFromOriginal(correctedDets, boardRefinedMat,
+                new Rect(0, 0, boardRefinedMat.width(), boardRefinedMat.height()));
 
         // Populate intermediate result
         IntermediateResult ir = new IntermediateResult();
@@ -151,12 +134,12 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         ir.hLinePositions = hLinePos;
         ir.vLinePositions = vLinePos;
         ir.riverLine = riverLine;
-        ir.grid = calibratedGrid;
+        ir.grid = refinedGrid;
         ir.rawDetections = rawDets;
-        ir.rawDetectionScores = nmsScoreBoard;
+        ir.rawDetectionScores = this.lastScores;
         ir.yoloPreNmsCount = this.lastPreNmsCount;
-        ir.allDetections = allBoard;
-        ir.allDetectionScores = allScoreBoard;
+        ir.allDetections = this.lastAllDetections;
+        ir.allDetectionScores = this.lastAllScores;
         ir.correctedDetections = correctedDets;
         this.lastIntermediate = ir;
 
@@ -164,7 +147,7 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         this.lastSrc = srcColor;
         this.lastBoardRect = boardRect;
         this.lastDetections = correctedDets;
-        this.lastGrid = calibratedGrid;
+        this.lastGrid = refinedGrid;
 
         // Cleanup
         blurred.release();
@@ -172,7 +155,7 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         hierarchy.release();
         refinedBinary.release();
 
-        return BoardUtils.assignPiecesToGrid(correctedDets, calibratedGrid, boardRect);
+        return BoardUtils.assignPiecesToGrid(correctedDets, refinedGrid);
     }
 
     private Map<Point, String> runYoloInference(Mat boardRegion) throws OrtException {

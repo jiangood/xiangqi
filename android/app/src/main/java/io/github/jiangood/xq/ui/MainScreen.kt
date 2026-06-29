@@ -169,18 +169,17 @@ fun MainScreen(
                                                 color = MaterialTheme.colorScheme.onSurface
                                             )
                                         }
-                                    } else {
-                                        item.imagePath?.let { path ->
-                                            val bitmap = remember(path) { BitmapFactory.decodeFile(path) }
-                                            bitmap?.let { bmp ->
-                                                Image(
-                                                    bitmap = bmp.asImageBitmap(),
-                                                    contentDescription = item.title,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clickable { selectedImage = bmp }
-                                                )
-                                            }
+                                    } else if (item.hasImage && s.imageDir != null) {
+                                        val path = "${s.imageDir}/image_%02d.jpg".format(item.step)
+                                        val bitmap = remember(path) { BitmapFactory.decodeFile(path) }
+                                        bitmap?.let { bmp ->
+                                            Image(
+                                                bitmap = bmp.asImageBitmap(),
+                                                contentDescription = item.title,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable { selectedImage = bmp }
+                                            )
                                         }
                                     }
                                 }

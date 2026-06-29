@@ -373,6 +373,40 @@ public class BoardUtils {
         return bestPair;
     }
 
+    public static String[][] assignPiecesToGrid(Map<Point, String> matchResult, Point[][] grid) {
+        String[][] board = new String[10][9];
+        double cellRadius = Math.max(
+            grid[1][0].y - grid[0][0].y,
+            grid[0][1].x - grid[0][0].x
+        ) / 3.0;
+
+        for (Map.Entry<Point, String> entry : matchResult.entrySet()) {
+            Point matchPt = entry.getKey();
+            String pieceName = entry.getValue();
+
+            double bestDist = Double.MAX_VALUE;
+            int bestRow = -1, bestCol = -1;
+            for (int row = 0; row < 10; row++) {
+                for (int col = 0; col < 9; col++) {
+                    double dx = matchPt.x - grid[row][col].x;
+                    double dy = matchPt.y - grid[row][col].y;
+                    double dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        bestRow = row;
+                        bestCol = col;
+                    }
+                }
+            }
+
+            if (bestDist <= cellRadius && bestRow >= 0 && bestCol >= 0 && board[bestRow][bestCol] == null) {
+                board[bestRow][bestCol] = pieceName;
+            }
+        }
+
+        return board;
+    }
+
     public static String[][] assignPiecesToGrid(Map<Point, String> matchResult, Point[][] calibratedGrid, Rect boardRect) {
         String[][] board = new String[10][9];
         double cellRadius = Math.max(
@@ -772,6 +806,94 @@ public class BoardUtils {
         }
 
         return img;
+    }
+
+    // ─── Refined-crop drawing helpers (grid + detections in refined-crop coords) ───
+
+    public static Mat drawRefinedRawDetections(IntermediateResult ir) {
+        if (ir == null || ir.boardRefined == null || ir.rawDetections == null) return new Mat();
+        Mat output = ir.boardRefined.clone();
+        double cellW = ir.grid != null ? ir.grid[0][1].x - ir.grid[0][0].x : 40;
+        double cellH = ir.grid != null ? ir.grid[1][0].y - ir.grid[0][0].y : 40;
+        for (Map.Entry<Point, String> e : ir.rawDetections.entrySet()) {
+            Point pt = e.getKey();
+            String name = e.getValue();
+            double x1 = pt.x - cellW / 2;
+            double y1 = pt.y - cellH / 2;
+            double x2 = pt.x + cellW / 2;
+            double y2 = pt.y + cellH / 2;
+            Float score = ir.rawDetectionScores != null ? ir.rawDetectionScores.get(pt) : null;
+            String label = score != null ? String.format("%s %.2f", name, score) : name;
+            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), new Scalar(128, 128, 128), 2);
+            Imgproc.putText(output, label, new Point(x1, Math.max(y1 - 6, 0)),
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, new Scalar(128, 128, 128), 1);
+        }
+        return output;
+    }
+
+    public static Mat drawRefinedColorCorrection(IntermediateResult ir) {
+        if (ir == null || ir.boardRefined == null || ir.correctedDetections == null) return new Mat();
+        Mat output = ir.boardRefined.clone();
+        double cellW = ir.grid != null ? ir.grid[0][1].x - ir.grid[0][0].x : 40;
+        double cellH = ir.grid != null ? ir.grid[1][0].y - ir.grid[0][0].y : 40;
+        for (Map.Entry<Point, String> e : ir.correctedDetections.entrySet()) {
+            Point pt = e.getKey();
+            String name = e.getValue();
+            double x1 = pt.x - cellW / 2;
+            double y1 = pt.y - cellH / 2;
+            double x2 = pt.x + cellW / 2;
+            double y2 = pt.y + cellH / 2;
+            String rawName = ir.rawDetections != null ? ir.rawDetections.get(pt) : null;
+            boolean corrected = rawName != null && !rawName.equals(name);
+            Scalar color = corrected ? new Scalar(0, 255, 255) :
+                    (name.startsWith("r") ? new Scalar(0, 0, 255) : new Scalar(0, 0, 0));
+            String label = corrected ? name + "*" : name;
+            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), color, 2);
+            Imgproc.putText(output, label, new Point(x1, Math.max(y1 - 6, 0)),
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, color, 1);
+        }
+        return output;
+    }
+
+    public static Mat drawRefinedPiecesSnapped(IntermediateResult ir) {
+        if (ir == null || ir.boardRefined == null || ir.grid == null || ir.correctedDetections == null) return new Mat();
+        Mat output = ir.boardRefined.clone();
+        Point[][] grid = ir.grid;
+        Scalar LIGHT = new Scalar(200, 200, 200);
+        for (int r = 0; r < 10; r++) {
+            Imgproc.line(output, grid[r][0], grid[r][8], LIGHT, 1);
+        }
+        for (int c = 0; c < 9; c++) {
+            Imgproc.line(output, grid[0][c], grid[4][c], LIGHT, 1);
+            Imgproc.line(output, grid[5][c], grid[9][c], LIGHT, 1);
+            if (c == 0 || c == 8) {
+                Imgproc.line(output, grid[4][c], grid[5][c], LIGHT, 1);
+            }
+        }
+        String[][] board = assignPiecesToGrid(ir.correctedDetections, grid);
+        if (board == null) return output;
+        for (int r = 0; r < 10; r++) {
+            for (int c = 0; c < 9; c++) {
+                String piece = board[r][c];
+                if (piece == null) continue;
+                Point pt = grid[r][c];
+                boolean isRed = piece.startsWith("r");
+                Scalar color = isRed ? new Scalar(0, 0, 255) : new Scalar(0, 0, 0);
+                Imgproc.circle(output, pt, 8, color, -1);
+                Imgproc.putText(output, piece, new Point(pt.x + 8, pt.y - 5),
+                        Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, color, 1);
+            }
+        }
+        return output;
+    }
+
+    public static Mat drawRefinedMoveArrow(IntermediateResult ir) {
+        if (ir == null) return new Mat();
+        Mat output = drawRefinedPiecesSnapped(ir);
+        if (ir.bestUciMove != null && ir.bestUciMove.length() == 4 && ir.grid != null) {
+            drawMove(output, ir.grid, ir.bestUciMove);
+        }
+        return output;
     }
 
     private static final java.util.Map<String, String> PIECE_CHINESE = java.util.Map.ofEntries(

@@ -17,13 +17,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.opencv.android.OpenCVLoader
 import org.opencv.core.Mat
+import org.opencv.core.Rect
 import java.io.File
 
 data class StepItem(
     val step: Int,
     val title: String,
     val description: String,
-    val imagePath: String? = null,
+    val hasImage: Boolean = false,
     val text: String? = null
 )
 
@@ -35,7 +36,8 @@ sealed class UiState {
         val standardMoves: List<String> = emptyList(),
         val steps: List<StepItem> = emptyList(),
         val validationWarnings: List<String> = emptyList(),
-        val elapsedMs: Long = 0L
+        val elapsedMs: Long = 0L,
+        val imageDir: String? = null
     ) : UiState()
     data class Error(val message: String) : UiState()
 }
@@ -197,52 +199,50 @@ class AnalysisViewModel : ViewModel() {
         cacheDir.mkdirs()
 
         try {
-            val board = BoardUtils.assignPiecesToGrid(ir.correctedDetections, ir.grid, ir.boardRect)
+            val board = BoardUtils.assignPiecesToGrid(ir.correctedDetections, ir.grid)
             val valid = state.validationWarnings.isEmpty()
 
-            fun img(name: String) = File(cacheDir, name).absolutePath
-
-            // Save image mats
+            // Save image mats — filename auto-generated from step number
             val imageSteps = listOf(
-                Triple(1, "image_01.jpg", BoardUtils.drawCropCenter(ir)),
-                Triple(2, "image_02.jpg", BoardUtils.toBgr(ir.srcGray)),
-                Triple(3, "image_03.jpg", BoardUtils.drawCanny(ir)),
-                Triple(4, "image_04.jpg", BoardUtils.drawContours(ir)),
-                Triple(5, "image_05.jpg", BoardUtils.drawBoardRect(ir.srcOriginal, ir.boardRect)),
-                Triple(6, "image_06.jpg", ir.boardCropped),
-                Triple(7, "image_07.jpg", BoardUtils.toBgr(ir.boardBinary)),
-                Triple(8, "image_08.jpg", BoardUtils.drawHLines(ir)),
-                Triple(9, "image_09.jpg", BoardUtils.drawVLines(ir)),
-                Triple(10, "image_10.jpg", BoardUtils.drawRiver(ir)),
-                Triple(11, "image_11.jpg", BoardUtils.drawGridFull(ir)),
-                Triple(12, "image_12.jpg", ir.boardRefined),
-                Triple(13, "image_13.jpg", BoardUtils.drawRawDetections(ir)),
-                Triple(14, "image_14.jpg", BoardUtils.drawColorCorrection(ir)),
-                Triple(15, "image_15.jpg", BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid)),
-                Triple(16, "image_16.jpg", BoardUtils.drawPiecesSnapped(ir))
+                1 to BoardUtils.drawCropCenter(ir),
+                2 to BoardUtils.toBgr(ir.srcGray),
+                3 to BoardUtils.drawCanny(ir),
+                4 to BoardUtils.drawContours(ir),
+                5 to BoardUtils.drawBoardRect(ir.srcOriginal, ir.boardRect),
+                6 to ir.boardCropped,
+                7 to BoardUtils.toBgr(ir.boardBinary),
+                8 to BoardUtils.drawHLines(ir),
+                9 to BoardUtils.drawVLines(ir),
+                10 to BoardUtils.drawRiver(ir),
+                11 to BoardUtils.drawGridFull(ir),
+                12 to ir.boardRefined,
+                13 to BoardUtils.drawRefinedRawDetections(ir),
+                14 to BoardUtils.drawRefinedColorCorrection(ir),
+                15 to BoardUtils.drawPreview(ir.boardRefined, Rect(0, 0, ir.boardRefined.width(), ir.boardRefined.height()), ir.correctedDetections, ir.grid),
+                16 to BoardUtils.drawRefinedPiecesSnapped(ir)
             )
-            for ((_, fname, mat) in imageSteps) {
-                AndroidImageUtils.matToJpeg(mat, File(cacheDir, fname).absolutePath)
+            for ((step, mat) in imageSteps) {
+                AndroidImageUtils.matToJpeg(mat, File(cacheDir, "image_%02d.jpg".format(step)).absolutePath)
                 mat.release()
             }
 
             val steps = mutableListOf<StepItem>()
-            steps.add(StepItem(1, "中心裁剪", "按 4:3 比例裁剪，去除多余背景", imagePath = img("image_01.jpg")))
-            steps.add(StepItem(2, "灰度图", "转为灰度图，减少计算量", imagePath = img("image_02.jpg")))
-            steps.add(StepItem(3, "Canny 边缘检测", "Canny 算法检测边缘", imagePath = img("image_03.jpg")))
-            steps.add(StepItem(4, "轮廓检测", "形态学膨胀后检测轮廓，最大轮廓=棋盘区域", imagePath = img("image_04.jpg")))
-            steps.add(StepItem(5, "棋盘定位", "蓝色矩形标记检测到的棋盘位置", imagePath = img("image_05.jpg")))
-            steps.add(StepItem(6, "棋盘裁剪", "按棋盘外框裁切出棋盘区域", imagePath = img("image_06.jpg")))
-            steps.add(StepItem(7, "二值化", "Otsu 自适应二值化，增强对比度", imagePath = img("image_07.jpg")))
-            steps.add(StepItem(8, "水平线检测", "形态学运算检测水平网格线位置", imagePath = img("image_08.jpg")))
-            steps.add(StepItem(9, "垂直线检测", "形态学运算检测垂直网格线位置", imagePath = img("image_09.jpg")))
-            steps.add(StepItem(10, "楚河汉界检测", "检测楚河汉界位置，确定网格校准基准", imagePath = img("image_10.jpg")))
-            steps.add(StepItem(11, "网格红线标注", "红色标注校准后的完整10×9网格", imagePath = img("image_11.jpg")))
-            steps.add(StepItem(12, "精裁棋盘", "按网格外沿+半棋子边距精裁，去除装饰边框", imagePath = img("image_12.jpg")))
-            steps.add(StepItem(13, "YOLO NMS 过滤", "NMS 后最终检测结果，显示置信度", imagePath = img("image_13.jpg")))
-            steps.add(StepItem(14, "颜色修正", "根据原图颜色修正红黑方，黄色=被修正", imagePath = img("image_14.jpg")))
-            steps.add(StepItem(15, "棋子识别", "检测框+类别标签", imagePath = img("image_15.jpg")))
-            steps.add(StepItem(16, "棋子归位", "棋子吸附到最近网格交叉点", imagePath = img("image_16.jpg")))
+            steps.add(StepItem(1, "中心裁剪", "按 4:3 比例裁剪，去除多余背景", hasImage = true))
+            steps.add(StepItem(2, "灰度图", "转为灰度图，减少计算量", hasImage = true))
+            steps.add(StepItem(3, "Canny 边缘检测", "Canny 算法检测边缘", hasImage = true))
+            steps.add(StepItem(4, "轮廓检测", "形态学膨胀后检测轮廓，最大轮廓=棋盘区域", hasImage = true))
+            steps.add(StepItem(5, "棋盘定位", "蓝色矩形标记检测到的棋盘位置", hasImage = true))
+            steps.add(StepItem(6, "棋盘裁剪", "按棋盘外框裁切出棋盘区域", hasImage = true))
+            steps.add(StepItem(7, "二值化", "Otsu 自适应二值化，增强对比度", hasImage = true))
+            steps.add(StepItem(8, "水平线检测", "形态学运算检测水平网格线位置", hasImage = true))
+            steps.add(StepItem(9, "垂直线检测", "形态学运算检测垂直网格线位置", hasImage = true))
+            steps.add(StepItem(10, "楚河汉界检测", "检测楚河汉界位置，确定网格校准基准", hasImage = true))
+            steps.add(StepItem(11, "网格红线标注", "红色标注校准后的完整10×9网格", hasImage = true))
+            steps.add(StepItem(12, "精裁棋盘", "按网格外沿+半棋子边距精裁，去除装饰边框", hasImage = true))
+            steps.add(StepItem(13, "YOLO NMS 过滤", "NMS 后最终检测结果，显示置信度", hasImage = true))
+            steps.add(StepItem(14, "颜色修正", "根据精裁棋盘颜色修正红黑方，黄色=被修正", hasImage = true))
+            steps.add(StepItem(15, "棋子识别", "检测框+类别标签", hasImage = true))
+            steps.add(StepItem(16, "棋子归位", "棋子吸附到最近网格交叉点", hasImage = true))
 
             val detCount = ir.rawDetections.size
             val preNms = ir.yoloPreNmsCount
@@ -260,21 +260,19 @@ class AnalysisViewModel : ViewModel() {
                 steps.add(StepItem(20, "FEN 识别", "生成 FEN 字符串", text = "FEN: $fen"))
 
                 val layoutMat = BoardUtils.drawBoardLayout(board)
-                val layoutFile = File(cacheDir, "image_21.jpg")
-                AndroidImageUtils.matToJpeg(layoutMat, layoutFile.absolutePath)
+                AndroidImageUtils.matToJpeg(layoutMat, File(cacheDir, "image_21.jpg").absolutePath)
                 layoutMat.release()
-                steps.add(StepItem(21, "棋盘布局", "程序自绘标准棋盘布局", imagePath = img("image_21.jpg")))
+                steps.add(StepItem(21, "棋盘布局", "程序自绘标准棋盘布局", hasImage = true))
 
-                val moveMat = BoardUtils.drawMoveArrow(ir)
-                val moveFile = File(cacheDir, "image_22.jpg")
-                AndroidImageUtils.matToJpeg(moveMat, moveFile.absolutePath)
+                val moveMat = BoardUtils.drawRefinedMoveArrow(ir)
+                AndroidImageUtils.matToJpeg(moveMat, File(cacheDir, "image_22.jpg").absolutePath)
                 moveMat.release()
-                steps.add(StepItem(22, "最佳走法", "引擎推荐的最佳走法（黄色箭头）", imagePath = img("image_22.jpg")))
+                steps.add(StepItem(22, "最佳走法", "引擎推荐的最佳走法（黄色箭头）", hasImage = true))
             }
 
             val currentState = _uiState.value
             if (currentState is UiState.Result) {
-                _uiState.value = currentState.copy(steps = steps)
+                _uiState.value = currentState.copy(steps = steps, imageDir = cacheDir.absolutePath)
             }
         } catch (e: Exception) {
             AppLog.add("预览图生成失败: ${e.message}")
