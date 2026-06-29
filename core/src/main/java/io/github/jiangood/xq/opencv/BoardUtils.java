@@ -492,9 +492,9 @@ public class BoardUtils {
             double y2 = absY + cellH / 2;
             Float score = ir.rawDetectionScores != null ? ir.rawDetectionScores.get(pt) : null;
             String label = score != null ? String.format("%s %.2f", name, score) : name;
-            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), new Scalar(128, 128, 128), 2);
+            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), new Scalar(0, 0, 255), 2);
             Imgproc.putText(output, label, new Point(x1, Math.max(y1 - 6, 0)),
-                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, new Scalar(128, 128, 128), 1);
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, new Scalar(0, 0, 255), 1);
         }
         return output;
     }
@@ -682,9 +682,9 @@ public class BoardUtils {
             double y2 = pt.y + cellH / 2;
             Float score = ir.rawDetectionScores != null ? ir.rawDetectionScores.get(pt) : null;
             String label = score != null ? String.format("%s %.2f", name, score) : name;
-            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), new Scalar(128, 128, 128), 2);
+            Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), new Scalar(0, 0, 255), 2);
             Imgproc.putText(output, label, new Point(x1, Math.max(y1 - 6, 0)),
-                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, new Scalar(128, 128, 128), 1);
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, new Scalar(0, 0, 255), 1);
         }
         return output;
     }
