@@ -200,83 +200,76 @@ class AnalysisViewModel : ViewModel() {
             val board = BoardUtils.assignPiecesToGrid(ir.correctedDetections, ir.grid, ir.boardRect)
             val valid = state.validationWarnings.isEmpty()
 
-            val titles = listOf("中心裁剪", "灰度图", "Canny 边缘检测", "轮廓检测",
-                "棋盘定位", "棋盘裁剪", "二值化", "水平线检测", "垂直线检测", "楚河汉界检测",
-                "网格红线标注", "精裁棋盘", "YOLO NMS 过滤", "颜色修正",
-                "棋子识别", "棋子归位", "检测统计", "二维数组", "局面验证", "FEN 识别",
-                "棋盘布局", "最佳走法")
-            val descs = listOf("按 4:3 比例裁剪，去除多余背景",
-                "转为灰度图，减少计算量", "Canny 算法检测边缘",
-                "形态学膨胀后检测轮廓，最大轮廓=棋盘区域",
-                "蓝色矩形标记检测到的棋盘位置", "按棋盘外框裁切出棋盘区域",
-                "Otsu 自适应二值化，增强对比度",
-                "形态学运算检测水平网格线位置", "形态学运算检测垂直网格线位置",
-                "检测楚河汉界位置，确定网格校准基准",
-                "红色标注校准后的完整10×9网格",
-                "按网格外沿+半棋子边距精裁，去除装饰边框",
-                "NMS 后最终检测结果，显示置信度",
-                "根据原图颜色修正红黑方，黄色=被修正", "检测框+类别标签",
-                "棋子吸附到最近网格交叉点", "YOLO 检测数量统计与参数",
-                "识别结果转为10×9二维数组，中文棋子名",
-                "验证棋子数量与位置是否合法", "生成 FEN 字符串",
-                "程序自绘标准棋盘布局", "引擎推荐的最佳走法（黄色箭头）")
+            fun img(name: String) = File(cacheDir, name).absolutePath
 
-            fun path(n: Int) = File(cacheDir, "${"image_%02d".format(n)}.jpg").absolutePath
-
-            val stepMats = listOf(
-                BoardUtils.drawCropCenter(ir) to "image_01.jpg",
-                BoardUtils.toBgr(ir.srcGray) to "image_02.jpg",
-                BoardUtils.drawCanny(ir) to "image_03.jpg",
-                BoardUtils.drawContours(ir) to "image_04.jpg",
-                BoardUtils.drawBoardRect(ir.srcOriginal, ir.boardRect) to "image_05.jpg",
-                ir.boardCropped to "image_06.jpg",
-                BoardUtils.toBgr(ir.boardBinary) to "image_07.jpg",
-                BoardUtils.drawHLines(ir) to "image_08.jpg",
-                BoardUtils.drawVLines(ir) to "image_09.jpg",
-                BoardUtils.drawRiver(ir) to "image_10.jpg",
-                BoardUtils.drawGridFull(ir) to "image_11.jpg",
-                ir.boardRefined to "image_12.jpg",
-                BoardUtils.drawRawDetections(ir) to "image_13.jpg",
-                BoardUtils.drawColorCorrection(ir) to "image_14.jpg",
-                BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid) to "image_15.jpg",
-                BoardUtils.drawPiecesSnapped(ir) to "image_16.jpg"
+            // Save image mats
+            val imageSteps = listOf(
+                Triple(1, "image_01.jpg", BoardUtils.drawCropCenter(ir)),
+                Triple(2, "image_02.jpg", BoardUtils.toBgr(ir.srcGray)),
+                Triple(3, "image_03.jpg", BoardUtils.drawCanny(ir)),
+                Triple(4, "image_04.jpg", BoardUtils.drawContours(ir)),
+                Triple(5, "image_05.jpg", BoardUtils.drawBoardRect(ir.srcOriginal, ir.boardRect)),
+                Triple(6, "image_06.jpg", ir.boardCropped),
+                Triple(7, "image_07.jpg", BoardUtils.toBgr(ir.boardBinary)),
+                Triple(8, "image_08.jpg", BoardUtils.drawHLines(ir)),
+                Triple(9, "image_09.jpg", BoardUtils.drawVLines(ir)),
+                Triple(10, "image_10.jpg", BoardUtils.drawRiver(ir)),
+                Triple(11, "image_11.jpg", BoardUtils.drawGridFull(ir)),
+                Triple(12, "image_12.jpg", ir.boardRefined),
+                Triple(13, "image_13.jpg", BoardUtils.drawRawDetections(ir)),
+                Triple(14, "image_14.jpg", BoardUtils.drawColorCorrection(ir)),
+                Triple(15, "image_15.jpg", BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid)),
+                Triple(16, "image_16.jpg", BoardUtils.drawPiecesSnapped(ir))
             )
-            for ((mat, name) in stepMats) {
-                AndroidImageUtils.matToJpeg(mat, File(cacheDir, name).absolutePath)
+            for ((_, fname, mat) in imageSteps) {
+                AndroidImageUtils.matToJpeg(mat, File(cacheDir, fname).absolutePath)
                 mat.release()
             }
 
             val steps = mutableListOf<StepItem>()
-            for (i in 0 until 16) {
-                steps.add(StepItem(i + 1, titles[i], descs[i], imagePath = path(i + 1)))
-            }
+            steps.add(StepItem(1, "中心裁剪", "按 4:3 比例裁剪，去除多余背景", imagePath = img("image_01.jpg")))
+            steps.add(StepItem(2, "灰度图", "转为灰度图，减少计算量", imagePath = img("image_02.jpg")))
+            steps.add(StepItem(3, "Canny 边缘检测", "Canny 算法检测边缘", imagePath = img("image_03.jpg")))
+            steps.add(StepItem(4, "轮廓检测", "形态学膨胀后检测轮廓，最大轮廓=棋盘区域", imagePath = img("image_04.jpg")))
+            steps.add(StepItem(5, "棋盘定位", "蓝色矩形标记检测到的棋盘位置", imagePath = img("image_05.jpg")))
+            steps.add(StepItem(6, "棋盘裁剪", "按棋盘外框裁切出棋盘区域", imagePath = img("image_06.jpg")))
+            steps.add(StepItem(7, "二值化", "Otsu 自适应二值化，增强对比度", imagePath = img("image_07.jpg")))
+            steps.add(StepItem(8, "水平线检测", "形态学运算检测水平网格线位置", imagePath = img("image_08.jpg")))
+            steps.add(StepItem(9, "垂直线检测", "形态学运算检测垂直网格线位置", imagePath = img("image_09.jpg")))
+            steps.add(StepItem(10, "楚河汉界检测", "检测楚河汉界位置，确定网格校准基准", imagePath = img("image_10.jpg")))
+            steps.add(StepItem(11, "网格红线标注", "红色标注校准后的完整10×9网格", imagePath = img("image_11.jpg")))
+            steps.add(StepItem(12, "精裁棋盘", "按网格外沿+半棋子边距精裁，去除装饰边框", imagePath = img("image_12.jpg")))
+            steps.add(StepItem(13, "YOLO NMS 过滤", "NMS 后最终检测结果，显示置信度", imagePath = img("image_13.jpg")))
+            steps.add(StepItem(14, "颜色修正", "根据原图颜色修正红黑方，黄色=被修正", imagePath = img("image_14.jpg")))
+            steps.add(StepItem(15, "棋子识别", "检测框+类别标签", imagePath = img("image_15.jpg")))
+            steps.add(StepItem(16, "棋子归位", "棋子吸附到最近网格交叉点", imagePath = img("image_16.jpg")))
 
             val detCount = ir.rawDetections.size
             val preNms = ir.yoloPreNmsCount
-            steps.add(StepItem(17, titles[16], descs[16], text =
+            steps.add(StepItem(17, "检测统计", "YOLO 检测数量统计与参数", text =
                 "YOLO detections: $detCount (after NMS) / $preNms (pre-NMS, conf>25%)\nConfidence threshold: 25%  NMS threshold: 65%"))
 
-            steps.add(StepItem(18, titles[17], descs[17], text = BoardUtils.boardToText(board)))
+            steps.add(StepItem(18, "二维数组", "识别结果转为10×9二维数组，中文棋子名", text = BoardUtils.boardToText(board)))
 
             val warnText = if (valid) "✓ 局面验证通过" else
                 "✗ 局面验证失败:\n" + state.validationWarnings.joinToString("\n") { "  ⚠ $it" }
-            steps.add(StepItem(19, titles[18], descs[18], text = warnText))
+            steps.add(StepItem(19, "局面验证", "验证棋子数量与位置是否合法", text = warnText))
 
             if (valid) {
                 val fen = FenUtil.toFen(board)
-                steps.add(StepItem(20, titles[19], descs[19], text = "FEN: $fen"))
+                steps.add(StepItem(20, "FEN 识别", "生成 FEN 字符串", text = "FEN: $fen"))
 
                 val layoutMat = BoardUtils.drawBoardLayout(board)
                 val layoutFile = File(cacheDir, "image_21.jpg")
                 AndroidImageUtils.matToJpeg(layoutMat, layoutFile.absolutePath)
                 layoutMat.release()
-                steps.add(StepItem(21, titles[20], descs[20], imagePath = layoutFile.absolutePath))
+                steps.add(StepItem(21, "棋盘布局", "程序自绘标准棋盘布局", imagePath = img("image_21.jpg")))
 
                 val moveMat = BoardUtils.drawMoveArrow(ir)
                 val moveFile = File(cacheDir, "image_22.jpg")
                 AndroidImageUtils.matToJpeg(moveMat, moveFile.absolutePath)
                 moveMat.release()
-                steps.add(StepItem(22, titles[21], descs[21], imagePath = moveFile.absolutePath))
+                steps.add(StepItem(22, "最佳走法", "引擎推荐的最佳走法（黄色箭头）", imagePath = img("image_22.jpg")))
             }
 
             val currentState = _uiState.value
