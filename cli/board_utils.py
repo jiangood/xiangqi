@@ -116,12 +116,12 @@ def detect_grid_lines(binary_img, cell_size):
 
 
 
-def _chain_to_uniform(chain, expected_n, cell_size_prior):
-    """Convert a partial detected line chain (h_chain or v_chain) to uniform all-N positions.
+def _chain_to_uniform(chain, expected_n, cell_size_prior, known_center):
+    """Convert a partial detected line chain to uniform all-N positions.
 
-    When the chain has all expected_n lines, use them directly (faithful to detected pixels).
-    When partial, estimate which rows/cols are missing by comparing the first value to the
-    expected position (cell_size_prior/2 from origin), then extrapolate.
+    When the chain has all expected_n lines, use them directly.
+    When partial, anchor the grid at `known_center` (the board center).
+    The board center is always the image center per the screenshot constraint.
     """
     n = len(chain)
     spacings = chain[1:] - chain[:-1]
@@ -130,37 +130,36 @@ def _chain_to_uniform(chain, expected_n, cell_size_prior):
     if n == expected_n:
         return chain, cs
 
-    expected_first = cell_size_prior / 2.0
-    first_idx = int(round((chain[0] - expected_first) / cs))
-    first_idx = max(0, min(first_idx, expected_n - n))
-
-    origin = chain[0] - first_idx * cs
+    center_idx = (expected_n - 1) / 2.0
+    origin = known_center - center_idx * cs
     return np.array([origin + i * cs for i in range(expected_n)]), cs
 
 
 def calibrate_grid(matches, board_rect, binary_img=None, img_size=None):
     bx, by, bw, bh = board_rect
     cell_size = bw / 9.0
+    center_x = bx + bw / 2.0
+    center_y = by + bh / 2.0
 
     if binary_img is not None:
         h_chain, v_chain = detect_grid_lines(binary_img, cell_size)
 
         if h_chain is not None and len(h_chain) >= 6:
-            h_uniform, cs_h = _chain_to_uniform(h_chain, 10, cell_size)
+            h_uniform, cs_h = _chain_to_uniform(h_chain, 10, cell_size, center_y)
 
             if v_chain is not None and len(v_chain) >= 4:
-                v_uniform, cs_w = _chain_to_uniform(v_chain, 9, cell_size)
+                v_uniform, cs_w = _chain_to_uniform(v_chain, 9, cell_size, center_x)
             else:
                 cs_w = cs_h
-                v_uniform = np.array([bw / 2.0 - 4 * cs_h + c * cs_w for c in range(9)])
+                v_uniform = np.array([center_x - 4 * cs_h + c * cs_w for c in range(9)])
 
             rows = h_uniform
             cols = v_uniform
-            return [[(cols[c] + bx, rows[r] + by) for c in range(9)] for r in range(10)]
+            return [[(cols[c], rows[r]) for c in range(9)] for r in range(10)]
 
-    # 回退：假设网格从外边框向内偏移 cell_size/2（近似值）
-    origin_x = bx + cell_size / 2.0
-    origin_y = by + cell_size / 2.0
+    # 回退以 board_rect 中心锚定网格
+    origin_x = center_x - 4 * cell_size
+    origin_y = center_y - 4.5 * cell_size
     rows = [origin_y + r * cell_size for r in range(10)]
     cols = [origin_x + c * cell_size for c in range(9)]
     return [[(cols[c], rows[r]) for c in range(9)] for r in range(10)]
