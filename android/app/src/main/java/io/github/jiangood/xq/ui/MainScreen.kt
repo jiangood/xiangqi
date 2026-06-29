@@ -155,9 +155,37 @@ fun MainScreen(
                                 "棋盘布局", "最佳走法"
                             )
 
+                            val stepDescriptions = listOf(
+                                "输入的原始棋盘图片",
+                                "按 4:3 比例裁剪，去除多余背景",
+                                "转为灰度图，减少后续计算量",
+                                "Canny 算法检测边缘",
+                                "形态学膨胀后检测轮廓，最大轮廓=棋盘区域",
+                                "蓝色矩形标记检测到的棋盘位置",
+                                "按棋盘外框裁切出棋盘区域",
+                                "Otsu 自适应二值化，增强对比度",
+                                "形态学运算检测水平网格线位置",
+                                "形态学运算检测垂直网格线位置",
+                                "检测楚河汉界位置，确定网格校准基准",
+                                "红色标注校准后的完整10×9网格",
+                                "按网格外沿+半棋子边距精裁，去除装饰边框",
+                                "置信度>25%的所有候选框，绿色=NMS保留，红色=NMS抑制",
+                                "NMS 后最终检测结果，显示置信度",
+                                "根据原图颜色修正红黑方，黄色=被修正",
+                                "检测框+类别标签",
+                                "棋子吸附到最近网格交叉点",
+                                "YOLO 检测数量统计与参数",
+                                "识别结果转为10×9二维数组，中文棋子名",
+                                "验证棋子数量与位置是否合法",
+                                "生成 FEN 字符串",
+                                "程序自绘标准棋盘布局",
+                                "引擎推荐的最佳走法（黄色箭头）"
+                            )
+
                             val allStepKeys = (s.stepPreviews.keys + s.stepTexts.keys).toSortedSet()
                             allStepKeys.forEach { step ->
                                 val label = stepNames.getOrNull(step - 1) ?: "步骤 $step"
+                                val desc = stepDescriptions.getOrNull(step - 1)
                                 Column(modifier = Modifier.padding(bottom = 8.dp)) {
                                     Text(
                                         text = "步 $step: $label",
@@ -165,7 +193,15 @@ fun MainScreen(
                                         fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                    Spacer(Modifier.height(2.dp))
+                                    if (desc != null) {
+                                        Text(
+                                            text = desc,
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.outline,
+                                            modifier = Modifier.padding(top = 1.dp)
+                                        )
+                                    }
+                                    Spacer(Modifier.height(4.dp))
                                     val text = s.stepTexts[step]
                                     if (text != null) {
                                         SelectionContainer {
