@@ -468,7 +468,7 @@ public class BoardUtils {
 
             Point textOrg = new Point(x1, Math.max(y1 - 4, 0));
             Imgproc.putText(output, name, textOrg,
-                    Imgproc.FONT_HERSHEY_SIMPLEX, 1.2, color, 3, Imgproc.LINE_AA, false);
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.7, color, 2, Imgproc.LINE_AA, false);
         }
         return output;
     }
@@ -599,10 +599,10 @@ public class BoardUtils {
             double x2 = absX + cellW / 2;
             double y2 = absY + cellH / 2;
             Float score = ir.rawDetectionScores != null ? ir.rawDetectionScores.get(pt) : null;
-            String label = score != null ? String.format("%s %.0f%%", name, score * 100) : name;
+            String label = score != null ? String.format("%s %.2f", name, score) : name;
             Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), new Scalar(128, 128, 128), 2);
-            Imgproc.putText(output, label, new Point(x1, Math.max(y1 - 8, 0)),
-                    Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, new Scalar(128, 128, 128), 2);
+            Imgproc.putText(output, label, new Point(x1, Math.max(y1 - 6, 0)),
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, new Scalar(128, 128, 128), 1);
         }
         return output;
     }
@@ -631,8 +631,8 @@ public class BoardUtils {
             String label = corrected ? name + "*" : name;
 
             Imgproc.rectangle(output, new Point(x1, y1), new Point(x2, y2), color, 2);
-            Imgproc.putText(output, label, new Point(x1, Math.max(y1 - 8, 0)),
-                    Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, color, 2);
+            Imgproc.putText(output, label, new Point(x1, Math.max(y1 - 6, 0)),
+                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, color, 1);
         }
         return output;
     }
@@ -664,8 +664,8 @@ public class BoardUtils {
                 boolean isRed = piece.startsWith("r");
                 Scalar color = isRed ? new Scalar(0, 0, 255) : new Scalar(0, 0, 0);
                 Imgproc.circle(output, pt, 8, color, -1);
-                Imgproc.putText(output, piece, new Point(pt.x + 10, pt.y - 8),
-                        Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, color, 2);
+                Imgproc.putText(output, piece, new Point(pt.x + 8, pt.y - 5),
+                        Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, color, 1);
             }
         }
         return output;
@@ -765,8 +765,8 @@ public class BoardUtils {
 
                 Imgproc.circle(img, new Point(cx, cy), cellSize / 2 - 4, new Scalar(255, 255, 255), -1);
                 Imgproc.circle(img, new Point(cx, cy), cellSize / 2 - 4, color, 1);
-                Imgproc.putText(img, symbol, new Point(cx - 10, cy + 10),
-                        Imgproc.FONT_HERSHEY_SIMPLEX, 1.4, color, 3);
+                Imgproc.putText(img, symbol, new Point(cx - 8, cy + 8),
+                        Imgproc.FONT_HERSHEY_SIMPLEX, 1.0, color, 2);
             }
         }
 
@@ -792,7 +792,7 @@ public class BoardUtils {
             boolean kept = ir.rawDetections.containsKey(e.getKey());
             sb.append(kept ? "[KEPT] " : "[NMS]  ");
             sb.append(name);
-            if (score != null) sb.append(String.format(" %.0f%%", score * 100));
+            if (score != null) sb.append(String.format(" %.2f", score));
             sb.append("\n");
         }
         return sb.toString();
