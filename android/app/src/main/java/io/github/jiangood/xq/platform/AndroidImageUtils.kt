@@ -23,6 +23,7 @@ object AndroidImageUtils {
     }
 
     fun matToJpeg(mat: Mat, path: String, maxWidth: Int = 600, quality: Int = 85) {
+        if (mat.empty()) return
         val src = mat
         val resized: Mat
         if (src.width() > maxWidth) {

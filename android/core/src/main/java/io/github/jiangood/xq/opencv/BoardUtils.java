@@ -705,7 +705,9 @@ public class BoardUtils {
         y = Math.max(boardRect.y, y);
         right = Math.min(boardRect.x + boardRect.width, right);
         bottom = Math.min(boardRect.y + boardRect.height, bottom);
-        return new Rect(x, y, right - x, bottom - y);
+        int w = Math.max(right - x, 1);
+        int h = Math.max(bottom - y, 1);
+        return new Rect(x, y, w, h);
     }
 
     public static Mat drawFenImage(String fen) {
