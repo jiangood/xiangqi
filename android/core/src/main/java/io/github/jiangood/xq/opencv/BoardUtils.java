@@ -748,12 +748,22 @@ public class BoardUtils {
         return img;
     }
 
+    private static final java.util.Map<String, String> PIECE_CHINESE = java.util.Map.ofEntries(
+        java.util.Map.entry("rk", "帅"), java.util.Map.entry("ra", "仕"),
+        java.util.Map.entry("rb", "相"), java.util.Map.entry("rr", "車"),
+        java.util.Map.entry("rn", "馬"), java.util.Map.entry("rc", "炮"),
+        java.util.Map.entry("rp", "兵"), java.util.Map.entry("bk", "将"),
+        java.util.Map.entry("ba", "士"), java.util.Map.entry("bb", "象"),
+        java.util.Map.entry("br", "车"), java.util.Map.entry("bn", "马"),
+        java.util.Map.entry("bc", "炮"), java.util.Map.entry("bp", "卒")
+    );
+
     public static String boardToText(String[][] board) {
         StringBuilder sb = new StringBuilder();
         for (int r = 0; r < board.length; r++) {
             for (int c = 0; c < board[r].length; c++) {
                 String p = board[r][c];
-                sb.append(p != null ? p : "＋");
+                sb.append(p != null ? PIECE_CHINESE.getOrDefault(p, p) : "＋");
                 if (c < board[r].length - 1) sb.append(" ");
             }
             if (r < board.length - 1) sb.append("\n");
