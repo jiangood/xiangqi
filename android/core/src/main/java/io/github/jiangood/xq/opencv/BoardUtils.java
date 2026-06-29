@@ -813,25 +813,4 @@ public class BoardUtils {
         sb.append("黑方: 将 士 象 车 马 炮 卒");
         return sb.toString();
     }
-
-    public static void removeGridLines(Mat image, int[] hLines, int[] vLines, int offsetX, int offsetY, int lineWidth) {
-        if (hLines != null) {
-            for (int y : hLines) {
-                int yy = y - offsetY;
-                if (yy >= 0 && yy < image.rows()) {
-                    Imgproc.line(image, new Point(0, yy), new Point(image.width() - 1, yy),
-                            new Scalar(255, 255, 255), lineWidth);
-                }
-            }
-        }
-        if (vLines != null) {
-            for (int x : vLines) {
-                int xx = x - offsetX;
-                if (xx >= 0 && xx < image.width()) {
-                    Imgproc.line(image, new Point(xx, 0), new Point(xx, image.height() - 1),
-                            new Scalar(255, 255, 255), lineWidth);
-                }
-            }
-        }
-    }
 }

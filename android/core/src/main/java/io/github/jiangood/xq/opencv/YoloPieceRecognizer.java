@@ -99,13 +99,11 @@ public class YoloPieceRecognizer implements PieceRecognizer {
 
         // YOLO inference on refined crop (convert binary back to 3-channel)
         Imgproc.cvtColor(refinedGray, boardRefinedMat, Imgproc.COLOR_GRAY2BGR);
+        Map<Point, String> rawDetsInRefined = runYoloInference(boardRefinedMat);
 
-        // Remove grid lines from the refined crop before YOLO to reduce interference
+        // Convert detections from refined-crop coords to board-crop coords
         int dx = refinedRect.x - boardRect.x;
         int dy = refinedRect.y - boardRect.y;
-        BoardUtils.removeGridLines(boardRefinedMat, hLinePos, vLinePos, dx, dy, 3);
-
-        Map<Point, String> rawDetsInRefined = runYoloInference(boardRefinedMat);
         Map<Point, String> rawDets = new LinkedHashMap<>();
         for (Map.Entry<Point, String> e : rawDetsInRefined.entrySet()) {
             rawDets.put(new Point(e.getKey().x + dx, e.getKey().y + dy), e.getValue());
