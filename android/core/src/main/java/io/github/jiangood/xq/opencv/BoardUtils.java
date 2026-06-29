@@ -13,69 +13,15 @@ public class BoardUtils {
 
     private static final Logger log = Logger.getLogger(BoardUtils.class.getName());
 
-    public static Mat cropCenter(Mat src) {
-        return cropCenter(src, 4.0 / 3.0);
-    }
-
-    public static Mat cropCenter(Mat src, double ratio) {
+    public static Mat cropBoardCenter(Mat src) {
         int h = src.rows();
         int w = src.cols();
-        if ((double) h / w <= ratio) {
+        int cropH = (int) (w * 10.0 / 9.0);
+        if (cropH >= h) {
             return src;
         }
-        int cropH = (int) (w * ratio);
         int y = (h - cropH) / 2;
         return new Mat(src, new Rect(0, y, w, cropH));
-    }
-
-    public static Rect locateBoard(Mat src) {
-        Mat blurred = new Mat();
-        Imgproc.GaussianBlur(src, blurred, new Size(5, 5), 0);
-
-        Mat edges = new Mat();
-        Imgproc.Canny(blurred, edges, 30, 100);
-
-        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
-        Imgproc.dilate(edges, edges, kernel);
-
-        List<MatOfPoint> contours = new ArrayList<>();
-        Mat hierarchy = new Mat();
-        Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-
-        log.info("locateBoard: " + contours.size() + " contours");
-
-        int cx = src.width() / 2;
-        int cy = src.height() / 2;
-        int total = src.width() * src.height();
-        Rect bestRect = null;
-        double bestScore = 0;
-        for (MatOfPoint contour : contours) {
-            Rect rect = Imgproc.boundingRect(contour);
-            double area = rect.area();
-            if (area < src.total() * 0.1) continue;
-            if (!(rect.x <= cx && cx <= rect.x + rect.width && rect.y <= cy && cy <= rect.y + rect.height)) continue;
-            double coverage = area / total;
-            if (coverage > 0.85) continue;
-            double boardRatio = (double) rect.width / rect.height;
-            if (boardRatio < 0.80 || boardRatio > 0.98) continue;
-            double fillRatio = Imgproc.contourArea(contour) / area;
-            if (fillRatio < 0.70) continue;
-            double score = coverage * (1 - Math.abs(boardRatio - 0.9));
-            if (score > bestScore) {
-                bestScore = score;
-                bestRect = rect;
-            }
-        }
-
-        if (bestRect == null) {
-            int boardW = (int) (src.width() * 0.85);
-            int boardH = (int) (boardW * 10.0 / 9.0);
-            int x = Math.max(0, cx - boardW / 2);
-            int y = Math.max(0, cy - boardH / 2);
-            log.info("locateBoard: fallback to center crop");
-            return new Rect(x, y, boardW, boardH);
-        }
-        return bestRect;
     }
 
     /**
@@ -383,12 +329,6 @@ public class BoardUtils {
         return board;
     }
 
-    public static Mat drawBoardRect(Mat src, Rect boardRect) {
-        Mat output = src.clone();
-        Imgproc.rectangle(output, boardRect.tl(), boardRect.br(), new Scalar(255, 0, 0), 3);
-        return output;
-    }
-
     public static Mat drawDetectionsOnly(Mat src, Rect boardRect, Map<Point, String> detections, Point[][] grid) {
         Mat output = src.clone();
         Imgproc.rectangle(output, boardRect.tl(), boardRect.br(), new Scalar(255, 0, 0), 2);
@@ -454,9 +394,8 @@ public class BoardUtils {
         Mat output = ir.srcOriginal.clone();
         int h = ir.srcOriginal.rows();
         int w = ir.srcOriginal.cols();
-        double ratio = 4.0 / 3.0;
-        if ((double) h / w <= ratio) return output;
-        int cropH = (int) (w * ratio);
+        int cropH = (int) (w * 10.0 / 9.0);
+        if (cropH >= h) return output;
         int y = (h - cropH) / 2;
         Imgproc.rectangle(output, new Point(0, y), new Point(w, y + cropH),
                 new Scalar(255, 255, 0), 2, Imgproc.LINE_8, 0);
@@ -467,35 +406,6 @@ public class BoardUtils {
         Mat bgr = new Mat();
         Imgproc.cvtColor(singleChannel, bgr, Imgproc.COLOR_GRAY2BGR);
         return bgr;
-    }
-
-    public static Mat drawCanny(IntermediateResult ir) {
-        if (ir == null || ir.srcCanny == null) return new Mat();
-        return toBgr(ir.srcCanny);
-    }
-
-    public static Mat drawContours(IntermediateResult ir) {
-        if (ir == null || ir.srcCannyDilated == null) return new Mat();
-        Mat output = toBgr(ir.srcCannyDilated);
-        if (ir.contours == null) return output;
-        Scalar GREEN = new Scalar(0, 255, 0);
-        Scalar BLUE = new Scalar(255, 0, 0);
-        Rect largest = null;
-        double largestArea = 0;
-        for (int i = 0; i < ir.contours.size(); i++) {
-            MatOfPoint contour = ir.contours.get(i);
-            Imgproc.drawContours(output, ir.contours, i, GREEN, 1);
-            Rect rect = Imgproc.boundingRect(contour);
-            double area = rect.area();
-            if (area > largestArea) {
-                largestArea = area;
-                largest = rect;
-            }
-        }
-        if (largest != null) {
-            Imgproc.rectangle(output, largest.tl(), largest.br(), BLUE, 2);
-        }
-        return output;
     }
 
     public static Mat drawHLines(IntermediateResult ir) {

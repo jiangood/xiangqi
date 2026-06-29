@@ -9,6 +9,8 @@ import java.nio.FloatBuffer;
 import java.util.*;
 import java.util.logging.Logger;
 
+
+
 public class YoloPieceRecognizer implements PieceRecognizer {
 
     private static final Logger log = Logger.getLogger(YoloPieceRecognizer.class.getName());
@@ -38,45 +40,24 @@ public class YoloPieceRecognizer implements PieceRecognizer {
     public String[][] parseBoard(String imageFile) throws Exception {
         log.info("加载图像: " + imageFile);
         Mat srcColor = Imgcodecs.imread(imageFile, Imgcodecs.IMREAD_COLOR);
-        srcColor = BoardUtils.cropCenter(srcColor);
-        Mat srcGrayMat = new Mat();
-        Imgproc.cvtColor(srcColor, srcGrayMat, Imgproc.COLOR_BGR2GRAY);
+        srcColor = BoardUtils.cropBoardCenter(srcColor);
 
-        // Canny edges
-        Mat srcCannyMat = new Mat();
-        Mat blurred = new Mat();
-        Imgproc.GaussianBlur(srcGrayMat, blurred, new Size(5, 5), 0);
-        Imgproc.Canny(blurred, srcCannyMat, 30, 100);
+        Rect boardRect = new Rect(0, 0, srcColor.width(), srcColor.height());
 
-        // Dilated edges + contours
-        Mat srcCannyDilated = new Mat();
-        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
-        Imgproc.dilate(srcCannyMat, srcCannyDilated, kernel);
-        List<MatOfPoint> contours = new ArrayList<>();
-        Mat hierarchy = new Mat();
-        Imgproc.findContours(srcCannyDilated, contours, hierarchy,
-                Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
-
-        // Board rect
-        Rect boardRect = BoardUtils.locateBoard(srcGrayMat);
-
-        // Crop board
-        Mat boardCroppedMat = new Mat(srcColor, boardRect).clone();
-
-        // Otsu binary on full board crop
-        Mat inferGray = new Mat();
-        Imgproc.cvtColor(boardCroppedMat, inferGray, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.threshold(inferGray, inferGray, 0, 255,
+        // Otsu binary for grid line detection
+        Mat boardGray = new Mat();
+        Imgproc.cvtColor(srcColor, boardGray, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.threshold(boardGray, boardGray, 0, 255,
                 Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
-        Mat binaryBoard = inferGray.clone();
+        Mat binaryBoard = boardGray.clone();
 
-        // Grid calibration BEFORE YOLO — detect lines from binary board crop
+        // Grid calibration — detect lines from binary board crop
         double cellSizeEst = binaryBoard.width() / 9.0;
         int[][] detectedLines = BoardUtils.detectGridLines(binaryBoard, cellSizeEst);
         int[] hLinePos = detectedLines[0];
         int[] vLinePos = detectedLines[1];
 
-        // Compute grid from detected lines (no detections needed for primary path)
+        // Compute grid from detected lines
         Point[][] calibratedGrid = BoardUtils.calibrateGrid(
                 new LinkedHashMap<Point, String>(), boardRect, binaryBoard, hLinePos, vLinePos);
 
@@ -84,7 +65,7 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         Rect refinedRect = BoardUtils.computeRefinedRect(calibratedGrid, boardRect);
         Mat boardRefinedMat = new Mat(srcColor, refinedRect).clone();
 
-        // ── Forget original image — re-base to refined-crop coordinates ──
+        // Re-base to refined-crop coordinates
         Point[][] refinedGrid = new Point[10][9];
         for (int r = 0; r < 10; r++) {
             for (int c = 0; c < 9; c++) {
@@ -94,15 +75,7 @@ public class YoloPieceRecognizer implements PieceRecognizer {
             }
         }
 
-        // Otsu binary on refined board crop
-        Mat refinedGray = new Mat();
-        Imgproc.cvtColor(boardRefinedMat, refinedGray, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.threshold(refinedGray, refinedGray, 0, 255,
-                Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
-        Mat refinedBinary = refinedGray.clone();
-
-        // YOLO inference on refined crop (convert binary back to 3-channel)
-        Imgproc.cvtColor(refinedGray, boardRefinedMat, Imgproc.COLOR_GRAY2BGR);
+        // YOLO inference on refined crop
         Map<Point, String> rawDets = runYoloInference(boardRefinedMat);
 
         // Color correction — sample boardRefinedMat directly (refined-crop coords)
@@ -116,12 +89,8 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         // Populate intermediate result
         IntermediateResult ir = new IntermediateResult();
         ir.srcOriginal = srcColor;
-        ir.srcGray = srcGrayMat;
-        ir.srcCanny = srcCannyMat;
-        ir.srcCannyDilated = srcCannyDilated;
-        ir.contours = contours;
         ir.boardRect = boardRect;
-        ir.boardCropped = boardCroppedMat;
+        ir.boardCropped = srcColor;
         ir.boardBinary = binaryBoard;
         ir.boardRefined = boardRefinedMat;
         ir.refineRect = refinedRect;
@@ -136,17 +105,14 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         ir.correctedDetections = correctedDets;
         this.lastIntermediate = ir;
 
-        // Existing fields for backward compat
+        // Fields for backward compat
         this.lastSrc = srcColor;
         this.lastBoardRect = boardRect;
         this.lastDetections = correctedDets;
         this.lastGrid = refinedGrid;
 
         // Cleanup
-        blurred.release();
-        kernel.release();
-        hierarchy.release();
-        refinedBinary.release();
+        boardGray.release();
 
         return BoardUtils.assignPiecesToGrid(correctedDets, refinedGrid);
     }
