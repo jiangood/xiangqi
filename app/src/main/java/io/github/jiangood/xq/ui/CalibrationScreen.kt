@@ -9,8 +9,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,15 +22,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.jiangood.xq.opencv.CalibrationData
 import io.github.jiangood.xq.opencv.CalibrationTemplate
+import io.github.jiangood.xq.opencv.TemplatePieceRecognizer
 import io.github.jiangood.xq.platform.AndroidImageUtils
 import io.github.jiangood.xq.settings.CalibrationManager
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -49,10 +54,18 @@ private sealed class CalibrationUiState {
         val cellSize: Double,
         val imageWidth: Int,
         val imageHeight: Int,
-        val mat: Mat
+        val mat: Mat,
+        val imagePath: String
     ) : CalibrationUiState()
     data class Error(val message: String) : CalibrationUiState()
 }
+
+private val PIECE_LABELS = mapOf(
+    "rk" to "帅", "ra" to "仕", "rb" to "相", "rr" to "车",
+    "rn" to "马", "rc" to "炮", "rp" to "兵",
+    "bk" to "将", "ba" to "士", "bb" to "象", "br" to "車",
+    "bn" to "馬", "bc" to "砲", "bp" to "卒"
+)
 
 private val STANDARD_OPENING: Array<Array<String?>> = arrayOf(
     arrayOf("bk", "bb", "bc", "ba", "bk", "ba", "bc", "bb", "bk"),
@@ -95,6 +108,16 @@ private fun mirrorOpening(standard: Array<Array<String?>>): Array<Array<String?>
     return flipped
 }
 
+private data class TestResult(
+    val passed: Boolean,
+    val total: Int,
+    val correct: Int,
+    val mismatches: List<String>,
+    val recognized: Array<Array<String?>>
+) {
+    val score: String get() = "$correct/$total"
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalibrationScreen(onBack: () -> Unit) {
@@ -104,6 +127,8 @@ fun CalibrationScreen(onBack: () -> Unit) {
     var flipped by remember { mutableStateOf(false) }
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+    var testResult by remember { mutableStateOf<TestResult?>(null) }
+    var testing by remember { mutableStateOf(false) }
 
     val pickMedia = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -119,16 +144,20 @@ fun CalibrationScreen(onBack: () -> Unit) {
         }
     }
 
+    fun cleanup() {
+        val s = state as? CalibrationUiState.Ready
+        s?.mat?.release()
+        s?.imagePath?.let { File(it).delete() }
+        onBack()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("棋盘棋子校准") },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        (state as? CalibrationUiState.Ready)?.mat?.release()
-                        onBack()
-                    }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                    IconButton(onClick = { cleanup() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
@@ -236,14 +265,31 @@ fun CalibrationScreen(onBack: () -> Unit) {
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                     ) {
                         OutlinedButton(onClick = { flipped = !flipped }) {
                             Text("⇄ 红黑互换")
                         }
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    testing = true
+                                    testResult = runTest(context, s, orientationCorrect)
+                                    testing = false
+                                }
+                            },
+                            enabled = !testing
+                        ) {
+                            if (testing) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            } else {
+                                Text("测试")
+                            }
+                        }
                         Button(onClick = {
                             saveCalibration(context, s, orientationCorrect)
                             s.mat.release()
+                            s.imagePath.let { File(it).delete() }
                             onBack()
                         }) {
                             Text("确认校准")
@@ -265,6 +311,102 @@ fun CalibrationScreen(onBack: () -> Unit) {
             }
         }
     }
+
+    if (testResult != null) {
+        TestResultDialog(
+            result = testResult!!,
+            onDismiss = { testResult = null }
+        )
+    }
+}
+
+@Composable
+private fun TestResultDialog(
+    result: TestResult,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                if (result.passed) "测试通过 ✓" else "测试失败 ✗",
+                color = if (result.passed) Color(0xFF4CAF50) else Color(0xFFE53935),
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("正确识别: ${result.score}")
+                Text("准确率: ${String.format("%.1f", result.correct * 100.0 / result.total)}%")
+
+                if (result.mismatches.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text("错误详情:", fontWeight = FontWeight.Bold)
+                    result.mismatches.take(20).forEach { msg ->
+                        Text(msg, fontSize = 13.sp, color = Color(0xFFE53935))
+                    }
+                    if (result.mismatches.size > 20) {
+                        Text("... 还有 ${result.mismatches.size - 20} 个错误", fontSize = 13.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("确定")
+            }
+        }
+    )
+}
+
+private suspend fun runTest(
+    context: android.content.Context,
+    state: CalibrationUiState.Ready,
+    orientationStandard: Boolean
+): TestResult = withContext(Dispatchers.IO) {
+    saveCalibration(context, state, orientationStandard)
+
+    val calibData = CalibrationManager.load(context) ?: throw Exception("校准数据加载失败")
+    val templateDir = CalibrationManager.getTemplateFileDir(context)
+    val recognizer = TemplatePieceRecognizer(calibData, templateDir)
+
+    val board = recognizer.parseBoard(state.imagePath)
+
+    val opening = if (orientationStandard) STANDARD_OPENING else mirrorOpening(STANDARD_OPENING)
+
+    var correct = 0
+    var total = 0
+    val mismatches = mutableListOf<String>()
+
+    for (r in 0 until 10) {
+        for (c in 0 until 9) {
+            val expected = opening[r][c]
+            val actual = board[r][c]
+            if (expected == null && actual == null) continue
+            total++
+            if (expected == actual) {
+                correct++
+            } else {
+                val pos = "($r,$c)"
+                val expStr = expected?.let { PIECE_LABELS[it] ?: it } ?: "空"
+                val actStr = actual?.let { PIECE_LABELS[it] ?: it } ?: "空"
+                mismatches.add("$pos: 期望 $expStr, 识别为 $actStr")
+            }
+        }
+    }
+
+    TestResult(
+        passed = correct == total,
+        total = total,
+        correct = correct,
+        mismatches = mismatches,
+        recognized = board
+    )
 }
 
 private suspend fun startCalibration(
@@ -303,8 +445,7 @@ private suspend fun startCalibration(
             binary.release()
 
             val bitmap = AndroidImageUtils.matToBitmap(cropped)
-            onResult(CalibrationUiState.Ready(bitmap, grid, cellSizeEst, imageWidth, imageHeight, cropped))
-            tempFile.delete()
+            onResult(CalibrationUiState.Ready(bitmap, grid, cellSizeEst, imageWidth, imageHeight, cropped, tempFile.absolutePath))
         }
     } catch (e: Exception) {
         onResult(CalibrationUiState.Error("校准失败: ${e.message ?: "未知错误"}"))

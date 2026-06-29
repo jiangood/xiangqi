@@ -1,23 +1,17 @@
 package io.github.jiangood.xq.ui
 
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -26,28 +20,6 @@ import androidx.compose.ui.unit.sp
 import io.github.jiangood.xq.BuildConfig
 import io.github.jiangood.xq.settings.CalibrationManager
 import io.github.jiangood.xq.settings.SettingsManager
-import java.io.File
-
-private val PIECE_TYPES = listOf(
-    "rk", "ra", "rb", "rr", "rn", "rc", "rp",
-    "bk", "ba", "bb", "br", "bn", "bc", "bp"
-)
-
-@Composable
-private fun rememberTemplates(context: android.content.Context): State<List<Bitmap>> {
-    return remember {
-        mutableStateOf(
-            try {
-                val dir = CalibrationManager.getDir(context)
-                PIECE_TYPES.mapNotNull { type ->
-                    dir.listFiles { f -> f.name.startsWith("${type}_") }
-                        ?.firstOrNull()
-                        ?.let { BitmapFactory.decodeFile(it.absolutePath) }
-                }
-            } catch (_: Exception) { emptyList() }
-        )
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,21 +27,18 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenCalibration: () -> Unit = {}
 ) {
-    var depth by remember { mutableStateOf(SettingsManager.getDepth()) }
-    var threads by remember { mutableStateOf(SettingsManager.getThreads()) }
     val context = LocalContext.current
+
+    var depthDialog by remember { mutableStateOf(false) }
+    var threadsDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("设置") },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        SettingsManager.setDepth(depth)
-                        SettingsManager.setThreads(threads)
-                        onBack()
-                    }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
@@ -80,91 +49,32 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(4.dp))
 
-            Text("搜索深度", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text("当前: $depth", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Slider(
-                value = depth.toFloat(),
-                onValueChange = { depth = it.toInt() },
-                valueRange = 5f..30f,
-                steps = 24,
-                modifier = Modifier.fillMaxWidth()
+            SettingCell(
+                title = "搜索深度",
+                value = "${SettingsManager.getDepth()} 层",
+                onClick = { depthDialog = true }
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("5", fontSize = 12.sp)
-                Text("30", fontSize = 12.sp)
-            }
 
-            HorizontalDivider()
-
-            Text("线程数", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text("当前: $threads", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Slider(
-                value = threads.toFloat(),
-                onValueChange = { threads = it.toInt() },
-                valueRange = 1f..8f,
-                steps = 6,
-                modifier = Modifier.fillMaxWidth()
+            SettingCell(
+                title = "线程数",
+                value = "${SettingsManager.getThreads()} 线程",
+                onClick = { threadsDialog = true }
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("1", fontSize = 12.sp)
-                Text("8", fontSize = 12.sp)
-            }
-
-            Spacer(Modifier.weight(1f))
-
-            HorizontalDivider()
-            Text("棋盘棋子校准", fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
             val calibrated = CalibrationManager.isCalibrated(context)
-            if (calibrated) {
-                val templates by rememberTemplates(context)
-                Text(
-                    "已校准 (${templates.size} 枚模板)",
-                    fontSize = 14.sp,
-                    color = Color(0xFF4CAF50)
-                )
-                if (templates.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        items(templates) { bmp ->
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .width(40.dp)
-                                    .height(40.dp)
-                                    .background(Color(0xFFE0E0E0))
-                            )
-                        }
-                    }
-                }
-            } else {
-                Text(
-                    "未校准，请选择开局截图",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
+            SettingCell(
+                title = "棋盘棋子校准",
+                value = if (calibrated) "已校准" else "未校准",
+                valueColor = if (calibrated) androidx.compose.ui.graphics.Color(0xFF4CAF50)
+                            else MaterialTheme.colorScheme.error,
+                onClick = onOpenCalibration
+            )
 
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = onOpenCalibration,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Text(if (calibrated) "重新校准" else "开始校准", fontSize = 16.sp)
-            }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.weight(1f))
 
             HorizontalDivider()
             Text(
@@ -182,4 +92,125 @@ fun SettingsScreen(
             )
         }
     }
+
+    if (depthDialog) {
+        NumberPickerDialog(
+            title = "搜索深度",
+            current = SettingsManager.getDepth(),
+            range = 5..30,
+            onDismiss = { depthDialog = false },
+            onConfirm = { v ->
+                SettingsManager.setDepth(v)
+                depthDialog = false
+            }
+        )
+    }
+
+    if (threadsDialog) {
+        NumberPickerDialog(
+            title = "线程数",
+            current = SettingsManager.getThreads(),
+            range = 1..8,
+            onDismiss = { threadsDialog = false },
+            onConfirm = { v ->
+                SettingsManager.setThreads(v)
+                threadsDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun SettingCell(
+    title: String,
+    value: String,
+    valueColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = value,
+                    fontSize = 13.sp,
+                    color = valueColor
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun NumberPickerDialog(
+    title: String,
+    current: Int,
+    range: IntRange,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var selected by remember { mutableStateOf(current) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                range.forEach { value ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selected = value }
+                            .padding(vertical = 10.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selected == value,
+                            onClick = { selected = value }
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = if (title == "搜索深度") "${value} 层" else "${value} 线程",
+                            fontSize = 16.sp,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selected) }) {
+                Text("确定")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
 }

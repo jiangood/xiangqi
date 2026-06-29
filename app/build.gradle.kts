@@ -11,8 +11,8 @@ android {
         applicationId = "io.github.jiangood.xq"
         minSdk = 34
         targetSdk = 34
-        versionCode = 83
-        versionName = "6.1.1"
+        versionCode = 84
+        versionName = "6.2.0"
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
