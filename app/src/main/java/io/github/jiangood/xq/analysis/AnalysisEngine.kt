@@ -101,6 +101,18 @@ object AnalysisEngine {
         initComplete.await()
     }
 
+    suspend fun recognize(context: Context, imagePath: String): Array<Array<String?>>? = withContext(Dispatchers.IO) {
+    try {
+        val calibData = CalibrationManager.load(context) ?: return@withContext null
+        val templateDir = CalibrationManager.getTemplateFileDir(context)
+        val recognizer = TemplatePieceRecognizer(calibData, templateDir)
+        recognizer.parseBoard(imagePath)
+    } catch (e: Exception) {
+        AppLog.add("[引擎] 识别失败: ${e.message}")
+        null
+    }
+}
+
     suspend fun analyze(imageFile: File): AnalysisResult? {
         return withContext(Dispatchers.IO) {
             try {

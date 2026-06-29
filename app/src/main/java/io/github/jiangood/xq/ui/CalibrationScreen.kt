@@ -1,6 +1,7 @@
 package io.github.jiangood.xq.ui
 
 import android.graphics.Bitmap
+import android.graphics.Paint
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,9 +27,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.jiangood.xq.analysis.AnalysisEngine
 import io.github.jiangood.xq.opencv.CalibrationData
 import io.github.jiangood.xq.opencv.CalibrationTemplate
-import io.github.jiangood.xq.opencv.TemplatePieceRecognizer
 import io.github.jiangood.xq.platform.AndroidImageUtils
 import io.github.jiangood.xq.settings.CalibrationManager
 import kotlinx.coroutines.Dispatchers
@@ -130,42 +131,53 @@ fun CalibrationScreen(onBack: () -> Unit) {
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            when (val s = state) {
-                is CalibrationUiState.Idle -> {
-                    Spacer(Modifier.weight(1f))
+        when (val s = state) {
+            is CalibrationUiState.Idle -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
                     Button(onClick = {
                         pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                     }) {
                         Text("选择校准图片", fontSize = 18.sp)
                     }
-                    Spacer(Modifier.weight(1f))
                 }
+            }
 
-                is CalibrationUiState.Processing -> {
-                    Spacer(Modifier.weight(1f))
-                    CircularProgressIndicator()
-                    Spacer(Modifier.height(16.dp))
-                    Text("正在检测棋盘网格...")
-                    Spacer(Modifier.weight(1f))
+            is CalibrationUiState.Processing -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        Spacer(Modifier.height(16.dp))
+                        Text("正在检测棋盘网格...")
+                    }
                 }
+            }
 
-                is CalibrationUiState.Ready -> {
+            is CalibrationUiState.Ready -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .padding(16.dp)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Box(
                         modifier = Modifier
-                            .weight(if (testResult != null) 0.4f else 1f)
                             .fillMaxWidth()
+                            .aspectRatio(s.bitmap.width.toFloat() / s.bitmap.height.toFloat())
                             .background(Color(0xFF333333))
                     ) {
-                        Canvas(
-                            modifier = Modifier.fillMaxSize()
-                        ) {
+                        Canvas(modifier = Modifier.fillMaxSize()) {
                             val bmp = s.bitmap
                             val imgFitScale = minOf(
                                 size.width / bmp.width,
@@ -184,8 +196,10 @@ fun CalibrationScreen(onBack: () -> Unit) {
 
                             val grid = s.grid
                             val gScale = imgFitScale * scale
-                            val gX = imgX + offset.x
-                            val gY = imgY + offset.y
+                            val gridCx = (grid[0][0].x + grid[0][8].x + grid[9][0].x + grid[9][8].x) / 4.0
+                            val gridCy = (grid[0][0].y + grid[0][8].y + grid[9][0].y + grid[9][8].y) / 4.0
+                            val gX = imgX + (gridCx * imgFitScale * (1 - scale)).toFloat() + offset.x
+                            val gY = imgY + (gridCy * imgFitScale * (1 - scale)).toFloat() + offset.y
                             for (r in 0 until 10) {
                                 val x1 = gX + (grid[r][0].x * gScale).toFloat()
                                 val y1 = gY + (grid[r][0].y * gScale).toFloat()
@@ -214,13 +228,13 @@ fun CalibrationScreen(onBack: () -> Unit) {
                                 .padding(8.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            SmallFloatingActionButton(onClick = { scale = (scale + 0.02f).coerceAtMost(2f) }) {
+                            SmallFloatingActionButton(onClick = { scale += 0.05f }) {
                                 Text("+", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             }
                             SmallFloatingActionButton(onClick = { scale = 1f; offset = Offset.Zero }) {
                                 Text("⊙", fontSize = 14.sp)
                             }
-                            SmallFloatingActionButton(onClick = { scale = (scale - 0.02f).coerceAtLeast(1f) }) {
+                            SmallFloatingActionButton(onClick = { scale -= 0.05f }) {
                                 Text("−", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             }
                         }
@@ -231,33 +245,38 @@ fun CalibrationScreen(onBack: () -> Unit) {
                     val templates = remember(s.mat, s.grid, s.cellSize) {
                         cropTemplates(s.mat, s.grid, s.cellSize)
                     }
-                    @OptIn(ExperimentalLayoutApi::class)
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
-                        verticalArrangement = Arrangement.spacedBy(1.dp)
-                    ) {
-                        templates.forEach { (type, bmp) ->
-                            val label = PIECE_CHINESE[type] ?: type
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.width(36.dp)
-                            ) {
-                                Image(
-                                    bitmap = bmp.asImageBitmap(),
-                                    contentDescription = type,
-                                    modifier = Modifier
-                                        .width(34.dp)
-                                        .height(40.dp)
-                                        .background(Color(0xFFE0E0E0))
-                                )
-                                Text(
-                                    text = label,
-                                    fontSize = 9.sp,
-                                    color = if (type.startsWith("r")) Color(0xFFD32F2F) else Color(0xFF1976D2)
-                                )
-                            }
+                    @Composable fun PieceItem(type: String, bmp: Bitmap) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.width(36.dp)
+                        ) {
+                            Image(
+                                bitmap = bmp.asImageBitmap(),
+                                contentDescription = type,
+                                modifier = Modifier
+                                    .width(34.dp)
+                                    .height(40.dp)
+                                    .background(Color(0xFFE0E0E0))
+                            )
+                            Text(
+                                text = PIECE_CHINESE[type] ?: type,
+                                fontSize = 9.sp,
+                                color = if (type.startsWith("r")) Color(0xFFD32F2F) else Color(0xFF1976D2)
+                            )
                         }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        templates.take(7).forEach { (type, bmp) -> PieceItem(type, bmp) }
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        templates.drop(7).forEach { (type, bmp) -> PieceItem(type, bmp) }
                     }
 
                     Spacer(Modifier.height(4.dp))
@@ -297,22 +316,27 @@ fun CalibrationScreen(onBack: () -> Unit) {
                     }
 
                     if (testResult != null) {
-                        Column(modifier = Modifier.weight(0.5f)) {
-                            TestResultSection(testResult!!)
-                        }
+                        TestResultSection(testResult!!)
                     }
                 }
+            }
 
-                is CalibrationUiState.Error -> {
-                    Spacer(Modifier.weight(1f))
-                    Text(s.message, color = Color.Red, fontSize = 16.sp)
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = {
-                        state = CalibrationUiState.Idle
-                    }) {
-                        Text("重新选择")
+            is CalibrationUiState.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(s.message, color = Color.Red, fontSize = 16.sp)
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = {
+                            state = CalibrationUiState.Idle
+                        }) {
+                            Text("重新选择")
+                        }
                     }
-                    Spacer(Modifier.weight(1f))
                 }
             }
         }
@@ -322,10 +346,7 @@ fun CalibrationScreen(onBack: () -> Unit) {
 @Composable
 private fun TestResultSection(result: TestResult) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight()
-            .verticalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         HorizontalDivider()
@@ -376,36 +397,56 @@ private fun generateTestVisualization(
 ): Bitmap? {
     return try {
         val img = Imgcodecs.imread(imagePath, Imgcodecs.IMREAD_COLOR) ?: return null
+        val cropped = io.github.jiangood.xq.opencv.BoardUtils.cropBoardCenter(img)
+        img.release()
+        val mat = cropped
 
-        val cellSize = grid[0][1].x - grid[0][0].x
-        val pieceSize = cellSize * 0.85
-        val half = (pieceSize / 2).toInt()
+        val green = Scalar(0.0, 255.0, 0.0)
+        for (r in 0 until 10) {
+            Imgproc.line(mat, Point(grid[r][0].x, grid[r][0].y), Point(grid[r][8].x, grid[r][8].y), green, 2)
+        }
+        for (c in 0 until 9) {
+            Imgproc.line(mat, Point(grid[0][c].x, grid[0][c].y), Point(grid[9][c].x, grid[9][c].y), green, 2)
+        }
 
-        val cropY = if (img.height() > img.width() * 10.0 / 9.0)
-            (img.height() - (img.width() * 10.0 / 9.0).toInt()) / 2 else 0
+        val bmp = AndroidImageUtils.matToBitmap(mat)
+        mat.release()
 
-        val red = Scalar(0.0, 0.0, 255.0)
-        val blue = Scalar(255.0, 0.0, 0.0)
-        val white = Scalar(255.0, 255.0, 255.0)
-        val font = Imgproc.FONT_HERSHEY_SIMPLEX
-
+        val canvas = android.graphics.Canvas(bmp)
         for (r in 0 until 10) {
             for (c in 0 until 9) {
                 val p = board[r][c] ?: continue
-                val color = if (p.startsWith("r")) red else blue
-                val cx = grid[r][c].x.toInt()
-                val cy = grid[r][c].y.toInt() + cropY
-                val x1 = cx - half
-                val y1 = cy - half
-                val x2 = cx + half
-                val y2 = cy + half
-                Imgproc.rectangle(img, Point(x1.toDouble(), y1.toDouble()), Point(x2.toDouble(), y2.toDouble()), color, 2)
-                Imgproc.putText(img, p, Point(x1.toDouble(), (y1 - 4).toDouble()), font, 0.5, white, 2)
+                val ch = PIECE_CHINESE[p] ?: continue
+                val pt = grid[r][c]
+                val expected = STANDARD_OPENING[r][c]
+                val correct = p == expected
+
+                val textPaint = Paint().apply {
+                    color = if (correct) android.graphics.Color.RED else android.graphics.Color.YELLOW
+                    textSize = 28f
+                    isAntiAlias = true
+                    isFakeBoldText = true
+                }
+                val textW = textPaint.measureText(ch)
+                val bgPaint = Paint().apply {
+                    color = android.graphics.Color.argb(180, 0, 0, 0)
+                }
+                canvas.drawRect(
+                    (pt.x - textW / 2 - 3).toFloat(),
+                    (pt.y - textPaint.textSize / 2 - 3).toFloat(),
+                    (pt.x + textW / 2 + 3).toFloat(),
+                    (pt.y + textPaint.textSize / 2 + 3).toFloat(),
+                    bgPaint
+                )
+                canvas.drawText(
+                    ch,
+                    (pt.x - textW / 2).toFloat(),
+                    (pt.y + textPaint.textSize / 3).toFloat(),
+                    textPaint
+                )
             }
         }
 
-        val bmp = AndroidImageUtils.matToBitmap(img)
-        img.release()
         bmp
     } catch (_: Exception) {
         null
@@ -418,11 +459,8 @@ private suspend fun runTest(
 ): TestResult = withContext(Dispatchers.IO) {
     saveCalibration(context, state)
 
-    val calibData = CalibrationManager.load(context) ?: throw Exception("校准数据加载失败")
-    val templateDir = CalibrationManager.getTemplateFileDir(context)
-    val recognizer = TemplatePieceRecognizer(calibData, templateDir)
-
-    val board = recognizer.parseBoard(state.imagePath)
+    val board = AnalysisEngine.recognize(context, state.imagePath)
+        ?: throw Exception("校准数据加载失败")
 
     var correct = 0
     var total = 0
