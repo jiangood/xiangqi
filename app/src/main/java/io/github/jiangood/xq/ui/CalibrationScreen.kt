@@ -176,15 +176,14 @@ fun CalibrationScreen(onBack: () -> Unit) {
                                 }
                         ) {
                             val bmp = s.bitmap
-                            val fitScale = minOf(
+                            val imgFitScale = minOf(
                                 size.width / bmp.width,
                                 size.height / bmp.height
                             ).coerceAtMost(1f)
-                            val totalScale = fitScale * scale
-                            val imgW = bmp.width * totalScale
-                            val imgH = bmp.height * totalScale
-                            val imgX = (size.width - imgW) / 2f + offset.x
-                            val imgY = (size.height - imgH) / 2f + offset.y
+                            val imgW = bmp.width * imgFitScale
+                            val imgH = bmp.height * imgFitScale
+                            val imgX = (size.width - imgW) / 2f
+                            val imgY = (size.height - imgH) / 2f
 
                             drawImage(
                                 image = bmp.asImageBitmap(),
@@ -193,24 +192,27 @@ fun CalibrationScreen(onBack: () -> Unit) {
                             )
 
                             val grid = s.grid
+                            val gScale = imgFitScale * scale
+                            val gX = imgX + offset.x
+                            val gY = imgY + offset.y
                             for (r in 0 until 10) {
-                                val x1 = imgX + (grid[r][0].x * totalScale).toFloat()
-                                val y1 = imgY + (grid[r][0].y * totalScale).toFloat()
-                                val x2 = imgX + (grid[r][8].x * totalScale).toFloat()
-                                val y2 = imgY + (grid[r][8].y * totalScale).toFloat()
+                                val x1 = gX + (grid[r][0].x * gScale).toFloat()
+                                val y1 = gY + (grid[r][0].y * gScale).toFloat()
+                                val x2 = gX + (grid[r][8].x * gScale).toFloat()
+                                val y2 = gY + (grid[r][8].y * gScale).toFloat()
                                 drawLine(Color.Green, Offset(x1, y1), Offset(x2, y2), strokeWidth = 2f)
                             }
                             for (c in 0 until 9) {
-                                val x1 = imgX + (grid[0][c].x * totalScale).toFloat()
-                                val y1 = imgY + (grid[0][c].y * totalScale).toFloat()
-                                val x2 = imgX + (grid[9][c].x * totalScale).toFloat()
-                                val y2 = imgY + (grid[9][c].y * totalScale).toFloat()
+                                val x1 = gX + (grid[0][c].x * gScale).toFloat()
+                                val y1 = gY + (grid[0][c].y * gScale).toFloat()
+                                val x2 = gX + (grid[9][c].x * gScale).toFloat()
+                                val y2 = gY + (grid[9][c].y * gScale).toFloat()
                                 drawLine(Color.Green, Offset(x1, y1), Offset(x2, y2), strokeWidth = 2f)
                             }
                             for (r in 0 until 10) {
                                 for (c in 0 until 9) {
-                                    val px = imgX + (grid[r][c].x * totalScale).toFloat()
-                                    val py = imgY + (grid[r][c].y * totalScale).toFloat()
+                                    val px = gX + (grid[r][c].x * gScale).toFloat()
+                                    val py = gY + (grid[r][c].y * gScale).toFloat()
                                     drawCircle(Color.Red, radius = 4f, center = Offset(px, py))
                                 }
                             }
