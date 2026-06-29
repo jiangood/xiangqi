@@ -76,12 +76,6 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         int[] hLinePos = detectedLines[0];
         int[] vLinePos = detectedLines[1];
 
-        double[] riverLine = null;
-        if (hLinePos != null && hLinePos.length >= 6) {
-            double hCenter = binaryBoard.height() / 2.0;
-            riverLine = BoardUtils.detectRiver(hLinePos, cellSizeEst, hCenter);
-        }
-
         // Compute grid from detected lines (no detections needed for primary path)
         Point[][] calibratedGrid = BoardUtils.calibrateGrid(
                 new LinkedHashMap<Point, String>(), boardRect, binaryBoard, hLinePos, vLinePos);
@@ -133,7 +127,6 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         ir.refineRect = refinedRect;
         ir.hLinePositions = hLinePos;
         ir.vLinePositions = vLinePos;
-        ir.riverLine = riverLine;
         ir.grid = refinedGrid;
         ir.rawDetections = rawDets;
         ir.rawDetectionScores = this.lastScores;

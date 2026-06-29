@@ -8,7 +8,7 @@ OUTPUT_DIR = DEMOS_DIR / "output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def test_river(image_path):
+def test_grid_lines(image_path):
     stem = image_path.stem
     src_color = cv2.imread(str(image_path))
 
@@ -26,36 +26,24 @@ def test_river(image_path):
     vis = src_color.copy()
     cv2.rectangle(vis, (bx, by), (bx+bw, by+bh), (255, 0, 0), 2)
 
+    result = ""
     if h_chain is not None and len(h_chain) >= 6:
         spacings = h_chain[1:] - h_chain[:-1]
         cs = np.median(spacings)
-        center = (h_chain[0] + h_chain[-1]) / 2.0
-        # find the pair closest to the chain span center
-        best = None
-        best_score = float('inf')
-        for i in range(len(h_chain) - 1):
-            y1, y2 = h_chain[i], h_chain[i+1]
-            spacing = y2 - y1
-            midpoint = (y1 + y2) / 2.0
-            dist = abs(midpoint - center)
-            spacing_dev = abs(spacing / cs - 1)
-            score = dist / max(center, 1) + spacing_dev
-            if score < best_score:
-                best_score = score
-                best = (y1, y2, spacing)
-        if best:
-            y1, y2, river_cs = best
-            cv2.line(vis, (bx, by+y1), (bx+bw, by+y1), (0, 255, 0), 3)
-            cv2.line(vis, (bx, by+y2), (bx+bw, by+y2), (0, 255, 255), 3)
-            cv2.putText(vis, f"river dist={river_cs:.0f} prior={cell_size_prior:.1f}", (bx, by+y1-10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-            result = f"PASS: y1={y1} y2={y2} dist={river_cs:.0f}"
-        else:
-            result = "FAIL: no valid river pair"
+        for y in h_chain:
+            cv2.line(vis, (bx, by+y), (bx+bw, by+y), (0, 255, 0), 2)
+        cell_info = f"cell={cs:.0f} prior={cell_size_prior:.1f}"
+        cv2.putText(vis, cell_info, (bx+10, by-10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        result = f"PASS: {len(h_chain)} lines, cell={cs:.0f}"
     else:
         cv2.putText(vis, "NO LINES", (bx+10, by+30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
         result = "FAIL: no horizontal lines"
+
+    if v_chain is not None:
+        for x in v_chain:
+            cv2.line(vis, (bx+x, by), (bx+x, by+bh), (255, 255, 0), 2)
 
     out_path = OUTPUT_DIR / f"{stem}-river.jpg"
     cv2.imwrite(str(out_path), vis)
@@ -68,12 +56,12 @@ def main():
         print("No images found in demos/")
         return
 
-    print(f"Testing river detection on {len(images)} images...\n")
+    print(f"Testing grid line detection on {len(images)} images...\n")
     passed = 0
     failed = 0
     for img_path in images:
         try:
-            msg = test_river(img_path)
+            msg = test_grid_lines(img_path)
             print(f"  {img_path.stem}: {msg}")
             if msg.startswith("PASS"):
                 passed += 1

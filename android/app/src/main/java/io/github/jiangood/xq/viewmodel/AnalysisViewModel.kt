@@ -152,13 +152,12 @@ class AnalysisViewModel : ViewModel() {
                 7 to BoardUtils.toBgr(ir.boardBinary),
                 8 to BoardUtils.drawHLines(ir),
                 9 to BoardUtils.drawVLines(ir),
-                10 to BoardUtils.drawRiver(ir),
-                11 to BoardUtils.drawGridFull(ir),
-                12 to ir.boardRefined,
-                13 to BoardUtils.drawRefinedRawDetections(ir),
-                14 to BoardUtils.drawRefinedColorCorrection(ir),
-                15 to BoardUtils.drawPreview(ir.boardRefined, Rect(0, 0, ir.boardRefined.width(), ir.boardRefined.height()), ir.correctedDetections, ir.grid),
-                16 to BoardUtils.drawRefinedPiecesSnapped(ir)
+                10 to BoardUtils.drawGridFull(ir),
+                11 to ir.boardRefined,
+                12 to BoardUtils.drawRefinedRawDetections(ir),
+                13 to BoardUtils.drawRefinedColorCorrection(ir),
+                14 to BoardUtils.drawPreview(ir.boardRefined, Rect(0, 0, ir.boardRefined.width(), ir.boardRefined.height()), ir.correctedDetections, ir.grid),
+                15 to BoardUtils.drawRefinedPiecesSnapped(ir)
             )
             for ((step, mat) in imageSteps) {
                 AndroidImageUtils.matToJpeg(mat, File(cacheDir, "image_%02d.jpg".format(step)).absolutePath)
@@ -175,38 +174,37 @@ class AnalysisViewModel : ViewModel() {
             steps.add(StepItem(7, "二值化", "Otsu 自适应二值化，增强对比度", hasImage = true))
             steps.add(StepItem(8, "水平线检测", "形态学运算检测水平网格线位置", hasImage = true))
             steps.add(StepItem(9, "垂直线检测", "形态学运算检测垂直网格线位置", hasImage = true))
-            steps.add(StepItem(10, "楚河汉界检测", "检测楚河汉界位置，确定网格校准基准", hasImage = true))
-            steps.add(StepItem(11, "网格红线标注", "红色标注校准后的完整10×9网格", hasImage = true))
-            steps.add(StepItem(12, "精裁棋盘", "按网格外沿+半棋子边距精裁，去除装饰边框", hasImage = true))
-            steps.add(StepItem(13, "YOLO NMS 过滤", "NMS 后最终检测结果，显示置信度", hasImage = true))
-            steps.add(StepItem(14, "颜色修正", "根据精裁棋盘颜色修正红黑方，黄色=被修正", hasImage = true))
-            steps.add(StepItem(15, "棋子识别", "检测框+类别标签", hasImage = true))
-            steps.add(StepItem(16, "棋子归位", "棋子吸附到最近网格交叉点", hasImage = true))
+            steps.add(StepItem(10, "网格校准", "由检测到的线链中心外推完整 10×9 网格", hasImage = true))
+            steps.add(StepItem(11, "精裁棋盘", "按网格外沿+半棋子边距精裁，去除装饰边框", hasImage = true))
+            steps.add(StepItem(12, "YOLO NMS 过滤", "NMS 后最终检测结果，显示置信度", hasImage = true))
+            steps.add(StepItem(13, "颜色修正", "根据精裁棋盘颜色修正红黑方，黄色=被修正", hasImage = true))
+            steps.add(StepItem(14, "棋子识别", "检测框+类别标签", hasImage = true))
+            steps.add(StepItem(15, "棋子归位", "棋子吸附到最近网格交叉点", hasImage = true))
 
             val detCount = ir.rawDetections.size
             val preNms = ir.yoloPreNmsCount
-            steps.add(StepItem(17, "检测统计", "YOLO 检测数量统计与参数", text =
+            steps.add(StepItem(16, "检测统计", "YOLO 检测数量统计与参数", text =
                 "YOLO detections: $detCount (after NMS) / $preNms (pre-NMS, conf>25%)\nConfidence threshold: 25%  NMS threshold: 65%"))
 
-            steps.add(StepItem(18, "二维数组", "识别结果转为10×9二维数组，中文棋子名", text = BoardUtils.boardToText(board)))
+            steps.add(StepItem(17, "二维数组", "识别结果转为10×9二维数组，中文棋子名", text = BoardUtils.boardToText(board)))
 
             val warnText = if (valid) "✓ 局面验证通过" else
                 "✗ 局面验证失败:\n" + state.validationWarnings.joinToString("\n") { "  ⚠ $it" }
-            steps.add(StepItem(19, "局面验证", "验证棋子数量与位置是否合法", text = warnText))
+            steps.add(StepItem(18, "局面验证", "验证棋子数量与位置是否合法", text = warnText))
 
             if (valid) {
                 val fen = FenUtil.toFen(board)
-                steps.add(StepItem(20, "FEN 识别", "生成 FEN 字符串", text = "FEN: $fen"))
+                steps.add(StepItem(19, "FEN 识别", "生成 FEN 字符串", text = "FEN: $fen"))
 
                 val layoutMat = BoardUtils.drawBoardLayout(board)
-                AndroidImageUtils.matToJpeg(layoutMat, File(cacheDir, "image_21.jpg").absolutePath)
+                AndroidImageUtils.matToJpeg(layoutMat, File(cacheDir, "image_20.jpg").absolutePath)
                 layoutMat.release()
-                steps.add(StepItem(21, "棋盘布局", "程序自绘标准棋盘布局", hasImage = true))
+                steps.add(StepItem(20, "棋盘布局", "程序自绘标准棋盘布局", hasImage = true))
 
                 val moveMat = BoardUtils.drawRefinedMoveArrow(ir)
-                AndroidImageUtils.matToJpeg(moveMat, File(cacheDir, "image_22.jpg").absolutePath)
+                AndroidImageUtils.matToJpeg(moveMat, File(cacheDir, "image_21.jpg").absolutePath)
                 moveMat.release()
-                steps.add(StepItem(22, "最佳走法", "引擎推荐的最佳走法（黄色箭头）", hasImage = true))
+                steps.add(StepItem(21, "最佳走法", "引擎推荐的最佳走法（黄色箭头）", hasImage = true))
             }
 
             val currentState = _uiState.value

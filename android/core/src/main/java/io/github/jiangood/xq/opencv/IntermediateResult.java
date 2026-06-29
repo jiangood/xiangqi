@@ -15,7 +15,7 @@ public class IntermediateResult {
     public Mat boardBinary;
     public int[] hLinePositions;
     public int[] vLinePositions;
-    public double[] riverLine;
+
     public Point[][] grid;
     public Map<Point, String> rawDetections;
     public Map<Point, Float> rawDetectionScores;

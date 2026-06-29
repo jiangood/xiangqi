@@ -44,25 +44,38 @@ public class BoardUtils {
 
         log.info("locateBoard: " + contours.size() + " contours");
 
-        Rect largestRect = null;
-        double largestArea = 0;
+        int cx = src.width() / 2;
+        int cy = src.height() / 2;
+        int total = src.width() * src.height();
+        Rect bestRect = null;
+        double bestScore = 0;
         for (MatOfPoint contour : contours) {
             Rect rect = Imgproc.boundingRect(contour);
             double area = rect.area();
-            if (area > src.total() * 0.1 && area > largestArea) {
-                double boardRatio = (double) rect.width / rect.height;
-                if (boardRatio < 0.80 || boardRatio > 0.98) continue;
-                double fillRatio = Imgproc.contourArea(contour) / area;
-                if (fillRatio < 0.70) continue;
-                largestArea = area;
-                largestRect = rect;
+            if (area < src.total() * 0.1) continue;
+            if (!(rect.x <= cx && cx <= rect.x + rect.width && rect.y <= cy && cy <= rect.y + rect.height)) continue;
+            double coverage = area / total;
+            if (coverage > 0.85) continue;
+            double boardRatio = (double) rect.width / rect.height;
+            if (boardRatio < 0.80 || boardRatio > 0.98) continue;
+            double fillRatio = Imgproc.contourArea(contour) / area;
+            if (fillRatio < 0.70) continue;
+            double score = coverage * (1 - Math.abs(boardRatio - 0.9));
+            if (score > bestScore) {
+                bestScore = score;
+                bestRect = rect;
             }
         }
 
-        if (largestRect == null) {
-            throw new RuntimeException("未能定位棋盘区域");
+        if (bestRect == null) {
+            int boardW = (int) (src.width() * 0.85);
+            int boardH = (int) (boardW * 10.0 / 9.0);
+            int x = Math.max(0, cx - boardW / 2);
+            int y = Math.max(0, cy - boardH / 2);
+            log.info("locateBoard: fallback to center crop");
+            return new Rect(x, y, boardW, boardH);
         }
-        return largestRect;
+        return bestRect;
     }
 
     /**
@@ -73,7 +86,7 @@ public class BoardUtils {
     }
 
     /**
-     * Calibrate grid using river detection (primary) or piece-based/geometric fallback.
+     * Calibrate grid using line-chain detection (primary) or piece-based/geometric fallback.
      *
      * @param matches    piece detections (board-crop coordinates)
      * @param boardRect  board bounding rect in full-image coordinates
@@ -95,28 +108,16 @@ public class BoardUtils {
 
     public static Point[][] calibrateGrid(Map<Point, String> matches, Rect boardRect, Mat binaryBoard, int[] hChain, int[] vChain) {
         double bw = boardRect.width, bh = boardRect.height;
-        double cellSize = bw / 9.0;
 
         if (hChain != null && hChain.length >= 6) {
-            double hCenter = (hChain[0] + hChain[hChain.length - 1]) / 2.0;
-            double[] river = detectRiver(hChain, cellSize, hCenter);
-
-            double cs_h;
-            double originY;
-
-            if (river != null) {
-                double y4 = river[0], csRiver = river[2];
-                cs_h = csRiver;
-                originY = y4 - 4 * cs_h;
-            } else {
-                double[] hSpacings = new double[hChain.length - 1];
-                for (int i = 0; i < hChain.length - 1; i++) {
-                    hSpacings[i] = hChain[i + 1] - hChain[i];
-                }
-                Arrays.sort(hSpacings);
-                cs_h = hSpacings[hSpacings.length / 2];
-                originY = hCenter - 4.5 * cs_h;
+            double[] hSpacings = new double[hChain.length - 1];
+            for (int i = 0; i < hChain.length - 1; i++) {
+                hSpacings[i] = hChain[i + 1] - hChain[i];
             }
+            Arrays.sort(hSpacings);
+            double cs_h = hSpacings[hSpacings.length / 2];
+            double centerY = (hChain[0] + hChain[hChain.length - 1]) / 2.0;
+            double originY = centerY - 4.5 * cs_h;
 
             double cs_w;
             double originX;
@@ -128,14 +129,8 @@ public class BoardUtils {
                 }
                 Arrays.sort(vSpacings);
                 cs_w = vSpacings[vSpacings.length / 2];
-
-                int vFirst = Math.max(0, (int) (vChain[0] / cs_w + 0.3));
-                double[] origins = new double[vChain.length];
-                for (int i = 0; i < vChain.length; i++) {
-                    origins[i] = vChain[i] - (vFirst + i) * cs_w;
-                }
-                Arrays.sort(origins);
-                originX = origins[origins.length / 2];
+                double centerX = (vChain[0] + vChain[vChain.length - 1]) / 2.0;
+                originX = centerX - 4 * cs_w;
             } else {
                 cs_w = cs_h;
                 originX = bw / 2.0 - 4 * cs_h;
@@ -318,64 +313,7 @@ public class BoardUtils {
         return new int[][]{hChain, vChain};
     }
 
-    private static Integer estimateStartRow(int[] hChain, double cs) {
-        int N = hChain.length;
-        if (N == 10) return 0;
-        double firstSp = hChain[1] - hChain[0];
-        double lastSp = hChain[N - 1] - hChain[N - 2];
-        double thresh = Math.max(cs * 0.88, cs - 15);
-        boolean lastC = lastSp < thresh;
-        boolean firstC = firstSp < thresh;
-
-        if (N == 9) {
-            if (lastC && !firstC) return 1;
-            if (firstC && !lastC) return 0;
-            return null;
-        }
-        if (N == 8) {
-            if (lastC && !firstC) return 2;
-            if (firstC && !lastC) return 0;
-            return 1;
-        }
-        return Math.max(0, Math.min(10 - N, (int) Math.round((10 - N) / 2.0)));
-    }
-
-    public static double[] detectRiver(int[] hChain, double cellSize, double cropCenterY) {
-        if (hChain == null || hChain.length < 6) return null;
-
-        int N = hChain.length;
-        double[] spacings = new double[N - 1];
-        for (int i = 0; i < N - 1; i++) {
-            spacings[i] = hChain[i + 1] - hChain[i];
-        }
-        double[] sorted = spacings.clone();
-        Arrays.sort(sorted);
-        double cs = sorted[sorted.length / 2];
-
-        Integer R = estimateStartRow(hChain, cs);
-        if (R != null) {
-            int idx = 4 - R;
-            if (idx >= 0 && idx < N - 1) {
-                return new double[]{hChain[idx], hChain[idx + 1], hChain[idx + 1] - hChain[idx]};
-            }
-        }
-
-        double bestScore = Double.MAX_VALUE;
-        double[] bestPair = null;
-        for (int i = 0; i < N - 1; i++) {
-            double y1 = hChain[i], y2 = hChain[i + 1];
-            double spacing = y2 - y1;
-            double midpoint = (y1 + y2) / 2.0;
-            double dist = Math.abs(midpoint - cropCenterY);
-            double spacingDev = Math.abs(spacing / cs - 1);
-            double score = dist / Math.max(cropCenterY, 1) + spacingDev;
-            if (score < bestScore) {
-                bestScore = score;
-                bestPair = new double[]{y1, y2, spacing};
-            }
-        }
-        return bestPair;
-    }
+    // detectRiver / estimateStartRow removed — grid line chain handles alignment via geometric prior
 
     public static String[][] assignPiecesToGrid(Map<Point, String> matchResult, Point[][] grid) {
         String[][] board = new String[10][9];
@@ -582,21 +520,7 @@ public class BoardUtils {
         return output;
     }
 
-    public static Mat drawRiver(IntermediateResult ir) {
-        if (ir == null || ir.srcOriginal == null || ir.riverLine == null) return new Mat();
-        Mat output = ir.srcOriginal.clone();
-        Scalar GREEN = new Scalar(0, 255, 0);
-        int w = output.width();
-        int y4 = (int) ir.riverLine[0];
-        int y5 = (int) ir.riverLine[1];
-        Imgproc.line(output, new Point(0, y4), new Point(w, y4), GREEN, 3);
-        Imgproc.line(output, new Point(0, y5), new Point(w, y5), GREEN, 3);
-        Imgproc.putText(output, "River", new Point(10, y4 - 8),
-                Imgproc.FONT_HERSHEY_SIMPLEX, 0.7, GREEN, 2);
-        Imgproc.putText(output, "River", new Point(w - 100, y5 + 30),
-                Imgproc.FONT_HERSHEY_SIMPLEX, 0.7, GREEN, 2);
-        return output;
-    }
+    // drawRiver removed — grid alignment uses line chain center, no river detection needed
 
     public static Mat drawGridFull(IntermediateResult ir) {
         if (ir == null || ir.srcOriginal == null || ir.grid == null) return new Mat();

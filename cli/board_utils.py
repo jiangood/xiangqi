@@ -8,26 +8,41 @@ log = logging.getLogger(__name__)
 
 
 def locate_board(img):
-    blurred = cv2.GaussianBlur(img, (5, 5), 0)
+    h, w = img.shape
+    blurred = cv2.GaussianBlur(img, (3, 3), 0)
     edges = cv2.Canny(blurred, 30, 100)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
     dilated = cv2.dilate(edges, kernel)
     contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    log.info("locateBoard: %d contours", len(contours))
 
-    largest = None
-    largest_area = 0
-    total_pixels = img.shape[0] * img.shape[1]
+    cx, cy = w // 2, h // 2
+    best = None
+    best_score = 0
+    total = h * w
     for cnt in contours:
-        x, y, w, h = cv2.boundingRect(cnt)
-        area = w * h
-        if area > total_pixels * 0.1 and area > largest_area:
-            largest_area = area
-            largest = (x, y, w, h)
+        x, y, bw, bh = cv2.boundingRect(cnt)
+        if not (x <= cx <= x + bw and y <= cy <= y + bh):
+            continue
+        area = bw * bh
+        coverage = area / total
+        if coverage > 0.85:
+            continue
+        aspect = bw / bh
+        aspect_penalty = abs(aspect - 0.9)
+        score = coverage * (1 - aspect_penalty)
+        if score > best_score:
+            best_score = score
+            best = (x, y, bw, bh)
 
-    if largest is None:
-        raise RuntimeError("未能定位棋盘区域")
-    return largest  # (x,y,w,h) 棋盘外接矩形，含边框/装饰，非精确网格边界
+    if best is None:
+        board_w = int(w * 0.85)
+        board_h = int(board_w * 10 / 9)
+        x = max(0, cx - board_w // 2)
+        y = max(0, cy - board_h // 2)
+        log.info("locate_board: fallback to center crop (%d,%d,%d,%d)", x, y, board_w, board_h)
+        return (x, y, board_w, board_h)
+
+    return best  # (x,y,w,h) 棋盘外接矩形，含边框/装饰，非精确网格边界
 
 
 def _extract_groups(cnt, threshold, gap):
@@ -98,58 +113,7 @@ def detect_grid_lines(binary_img, cell_size):
     return h_chain, v_chain
 
 
-def _estimate_start_row(h_chain, cs):
-    N = len(h_chain)
-    if N == 10:
-        return 0
-    spacings = h_chain[1:] - h_chain[:-1]
-    first_sp, last_sp = spacings[0], spacings[-1]
-    thresh = max(cs * 0.88, cs - 15)
-    last_c = last_sp < thresh
-    first_c = first_sp < thresh
 
-    if N == 9:
-        if last_c and not first_c:
-            return 1
-        if first_c and not last_c:
-            return 0
-        return None
-    if N == 8:
-        if last_c and not first_c:
-            return 2
-        if first_c and not last_c:
-            return 0
-        return 1
-    return max(0, min(10 - N, round((10 - N) / 2)))
-
-
-def _detect_river(h_chain, cell_size, crop_center_y):
-    if h_chain is None or len(h_chain) < 6:
-        return None
-    spacings = h_chain[1:] - h_chain[:-1]
-    cs = np.median(spacings)
-    N = len(h_chain)
-
-    R = _estimate_start_row(h_chain, cs)
-    if R is not None:
-        idx = 4 - R
-        if 0 <= idx < N - 1:
-            y4, y5 = h_chain[idx], h_chain[idx + 1]
-            return (y4, y5, y5 - y4)
-
-    best_pair = None
-    best_score = float('inf')
-    for i in range(N - 1):
-        y1, y2 = h_chain[i], h_chain[i+1]
-        spacing = y2 - y1
-        midpoint = (y1 + y2) / 2.0
-        dist_from_center = abs(midpoint - crop_center_y)
-        spacing_deviation = abs(spacing / cs - 1)
-        score = dist_from_center / max(crop_center_y, 1) + spacing_deviation
-        if score < best_score:
-            best_score = score
-            best_pair = (y1, y2, spacing)
-    return best_pair
 
 
 def calibrate_grid(matches, board_rect, binary_img=None, img_size=None):
@@ -160,23 +124,16 @@ def calibrate_grid(matches, board_rect, binary_img=None, img_size=None):
         h_chain, v_chain = detect_grid_lines(binary_img, cell_size)
 
         if h_chain is not None and len(h_chain) >= 6:
-            h_center = (h_chain[0] + h_chain[-1]) / 2.0
-            river = _detect_river(h_chain, cell_size, h_center)
-
-            if river is not None:
-                y4, y5, cs_h = river
-                origin_y = y4 - 4 * cs_h
-            else:
-                spacings = h_chain[1:] - h_chain[:-1]
-                cs_h = np.median(spacings)
-                origin_y = h_center - 4.5 * cs_h
+            spacings = h_chain[1:] - h_chain[:-1]
+            cs_h = np.median(spacings)
+            center_y = (h_chain[0] + h_chain[-1]) / 2.0
+            origin_y = center_y - 4.5 * cs_h
 
             if v_chain is not None and len(v_chain) >= 4:
                 v_spacings = v_chain[1:] - v_chain[:-1]
                 cs_w = np.median(v_spacings)
-                v_first = max(0, int(v_chain[0] / cs_w + 0.3))
-                origins = [v_chain[i] - (v_first + i) * cs_w for i in range(len(v_chain))]
-                origin_x = np.median(origins)
+                center_x = (v_chain[0] + v_chain[-1]) / 2.0
+                origin_x = center_x - 4 * cs_w
             else:
                 cs_w = cs_h
                 origin_x = bw / 2.0 - 4 * cs_h
