@@ -13,9 +13,8 @@ python inference.py <image-path>
 
 ## 推理管线
 
-`locate_board()` (Canny+contour, 中心约束) → `calibrate_grid()` (线检测 + 几何对齐) → 按网格外沿 + 半棋子半径精裁 → YOLO ONNX → 颜色修正 → `assign_pieces_to_grid()` → `to_fen()`
+`locate_board()` (Canny+contour, 中心约束) → `calibrate_grid()` (线检测 + 几何对齐) → YOLO ONNX → 颜色修正 → `assign_pieces_to_grid()` → `to_fen()`
 
-- **精裁**: 网格校准在 YOLO 之前；裁剪到最外 grid line + `cell_size × 0.5` 边距，去除装饰边框
 - **颜色修正**: `_correct_colors()` — 取检测点周围 9×9 窗口的红色分量修正被 YOLO 误分的棋子
 - **FEN 走子方**: 根据 `k`(将) 在底部三行 (row 7-9) 判定 — 红方帅在底部则 `w`，黑方将在底部则 `b`
 

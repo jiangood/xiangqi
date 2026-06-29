@@ -149,36 +149,10 @@ class YoloRecognizer:
         _, binary_img = cv2.threshold(infer_gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
         board_crop = cv2.cvtColor(binary_img, cv2.COLOR_GRAY2BGR)
 
-        # Step 1: calibrate grid first (does not need YOLO detections)
         calibrated_grid = calibrate_grid({}, board_rect, binary_img, src_color.shape[:2][::-1])
         log.info("自校准网格完成")
 
-        # Step 2: crop precisely to outermost grid lines + half piece radius
-        cell_w = calibrated_grid[0][1][0] - calibrated_grid[0][0][0]
-        cell_h = calibrated_grid[1][0][1] - calibrated_grid[0][0][1]
-        margin = max(cell_w, cell_h) * 0.2
-
-        gl = calibrated_grid[0][0][0] - bx
-        gr = calibrated_grid[0][8][0] - bx
-        gt = calibrated_grid[0][0][1] - by
-        gb = calibrated_grid[9][0][1] - by
-
-        crop_x = int(max(0, gl - margin))
-        crop_y = int(max(0, gt - margin))
-        crop_x2 = int(min(bw, gr + margin))
-        crop_y2 = int(min(bh, gb + margin))
-
-        MIN_CROP = 100
-        if crop_x2 - crop_x > MIN_CROP and crop_y2 - crop_y > MIN_CROP:
-            refined = board_crop[crop_y:crop_y2, crop_x:crop_x2].copy()
-            log.info("网格精裁: (%d,%d,%d,%d) %dx%d -> %dx%d",
-                     crop_x, crop_y, crop_x2 - crop_x, crop_y2 - crop_y,
-                     bw, bh, refined.shape[1], refined.shape[0])
-            detections = self.run_inference(refined)
-            detections = {(int(px + crop_x), int(py + crop_y)): cls
-                          for (px, py), cls in detections.items()}
-        else:
-            detections = self.run_inference(board_crop)
+        detections = self.run_inference(board_crop)
 
         log.info("YOLO 检测到 %d 个棋子", len(detections))
 
