@@ -58,33 +58,19 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         int[] vLinePos = detectedLines[1];
 
         // Compute grid from detected lines
-        Point[][] calibratedGrid = BoardUtils.calibrateGrid(
+        Point[][] grid = BoardUtils.calibrateGrid(
                 new LinkedHashMap<Point, String>(), boardRect, binaryBoard, hLinePos, vLinePos);
 
-        // Refined crop — recrop to grid boundaries + margin to remove decorative borders
-        Rect refinedRect = BoardUtils.computeRefinedRect(calibratedGrid, boardRect);
-        Mat boardRefinedMat = new Mat(srcColor, refinedRect).clone();
+        // YOLO inference on board crop
+        Map<Point, String> rawDets = runYoloInference(srcColor);
 
-        // Re-base to refined-crop coordinates
-        Point[][] refinedGrid = new Point[10][9];
-        for (int r = 0; r < 10; r++) {
-            for (int c = 0; c < 9; c++) {
-                refinedGrid[r][c] = new Point(
-                    calibratedGrid[r][c].x - refinedRect.x,
-                    calibratedGrid[r][c].y - refinedRect.y);
-            }
-        }
-
-        // YOLO inference on refined crop
-        Map<Point, String> rawDets = runYoloInference(boardRefinedMat);
-
-        // Color correction — sample boardRefinedMat directly (refined-crop coords)
+        // Color correction
         Map<Point, String> correctedDets = new LinkedHashMap<>();
         for (Map.Entry<Point, String> e : rawDets.entrySet()) {
             correctedDets.put(e.getKey().clone(), e.getValue());
         }
-        correctColorsFromOriginal(correctedDets, boardRefinedMat,
-                new Rect(0, 0, boardRefinedMat.width(), boardRefinedMat.height()));
+        correctColorsFromOriginal(correctedDets, srcColor,
+                new Rect(0, 0, srcColor.width(), srcColor.height()));
 
         // Populate intermediate result
         IntermediateResult ir = new IntermediateResult();
@@ -92,11 +78,11 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         ir.boardRect = boardRect;
         ir.boardCropped = srcColor;
         ir.boardBinary = binaryBoard;
-        ir.boardRefined = boardRefinedMat;
-        ir.refineRect = refinedRect;
+        ir.boardRefined = srcColor;
+        ir.refineRect = boardRect;
         ir.hLinePositions = hLinePos;
         ir.vLinePositions = vLinePos;
-        ir.grid = refinedGrid;
+        ir.grid = grid;
         ir.rawDetections = rawDets;
         ir.rawDetectionScores = this.lastScores;
         ir.yoloPreNmsCount = this.lastPreNmsCount;
@@ -109,12 +95,12 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         this.lastSrc = srcColor;
         this.lastBoardRect = boardRect;
         this.lastDetections = correctedDets;
-        this.lastGrid = refinedGrid;
+        this.lastGrid = grid;
 
         // Cleanup
         boardGray.release();
 
-        return BoardUtils.assignPiecesToGrid(correctedDets, refinedGrid);
+        return BoardUtils.assignPiecesToGrid(correctedDets, grid);
     }
 
     private Map<Point, String> runYoloInference(Mat boardRegion) throws OrtException {
