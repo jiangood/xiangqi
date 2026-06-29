@@ -1,10 +1,15 @@
 package io.github.jiangood.xq.analysis
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Typeface
 import io.github.jiangood.xq.engine.AndroidEngineClient
 import io.github.jiangood.xq.opencv.BoardUtils
 import io.github.jiangood.xq.opencv.CalibrationData
 import io.github.jiangood.xq.opencv.TemplatePieceRecognizer
+import io.github.jiangood.xq.platform.AndroidImageUtils
 import io.github.jiangood.xq.settings.CalibrationManager
 import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.util.FenUtil
@@ -18,6 +23,7 @@ import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import java.io.File
+import java.io.FileOutputStream
 
 data class AnalysisResult(
     val board: Array<Array<String?>>,
@@ -170,7 +176,6 @@ object AnalysisEngine {
 
         val grid = calib.grid
         val green = Scalar(0.0, 255.0, 0.0)
-        val red = Scalar(0.0, 0.0, 255.0)
         val yellow = Scalar(0.0, 255.0, 255.0)
 
         // Grid lines
@@ -179,17 +184,6 @@ object AnalysisEngine {
         }
         for (c in 0 until 9) {
             Imgproc.line(mat, Point(grid[0][c].x, grid[0][c].y), Point(grid[9][c].x, grid[9][c].y), green, 2)
-        }
-
-        // Piece labels
-        for (r in 0 until 10) {
-            for (c in 0 until 9) {
-                val p = board[r][c] ?: continue
-                val ch = PIECE_CHINESE[p] ?: continue
-                val pt = grid[r][c]
-                Imgproc.putText(mat, ch, Point(pt.x - 12, pt.y + 6),
-                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.6, red, 2)
-            }
         }
 
         // Best move arrow
@@ -205,9 +199,45 @@ object AnalysisEngine {
             }
         }
 
+        // Convert to Bitmap for Chinese text
+        val bmp = AndroidImageUtils.matToBitmap(mat)
+        mat.release()
+
+        val canvas = Canvas(bmp)
+        val paint = Paint().apply {
+            color = android.graphics.Color.RED
+            textSize = 28f
+            isAntiAlias = true
+            typeface = Typeface.DEFAULT_BOLD
+        }
+
+        for (r in 0 until 10) {
+            for (c in 0 until 9) {
+                val p = board[r][c] ?: continue
+                val ch = PIECE_CHINESE[p] ?: continue
+                val pt = grid[r][c]
+                // Background for readability
+                val bgPaint = Paint().apply {
+                    color = android.graphics.Color.argb(180, 255, 255, 255)
+                }
+                val textW = paint.measureText(ch)
+                canvas.drawRect(
+                    (pt.x - textW / 2 - 2).toFloat(),
+                    (pt.y - paint.textSize / 2 - 2).toFloat(),
+                    (pt.x + textW / 2 + 2).toFloat(),
+                    (pt.y + paint.textSize / 2 + 2).toFloat(),
+                    bgPaint
+                )
+                canvas.drawText(ch, (pt.x - textW / 2).toFloat(), (pt.y + paint.textSize / 3).toFloat(), paint)
+            }
+        }
+
         val outDir = File(imagePath).parentFile
         val outPath = File(outDir, "visualization.jpg").absolutePath
-        Imgcodecs.imwrite(outPath, mat)
+        FileOutputStream(outPath).use { out ->
+            bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
+        }
+        bmp.recycle()
         mat.release()
         return outPath
     }
