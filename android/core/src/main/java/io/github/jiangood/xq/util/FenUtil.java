@@ -27,13 +27,27 @@ public class FenUtil {
             errors.add("棋盘尺寸不正确: " + board.length + "×" + board[0].length + "，应为10×9");
             return errors;
         }
+
+        // Detect orientation: which king is in bottom 3 rows
+        boolean redBottom = true;
+        boolean redKingBottom = false, blackKingBottom = false;
+        for (int row = 7; row <= 9; row++) {
+            for (int col = 0; col < 9; col++) {
+                String p = board[row][col];
+                if (p == null || p.length() != 2) continue;
+                if (p.charAt(0) == 'r' && p.charAt(1) == 'k') redKingBottom = true;
+                if (p.charAt(0) == 'b' && p.charAt(1) == 'k') blackKingBottom = true;
+            }
+        }
+        if (blackKingBottom && !redKingBottom) redBottom = false;
+
         for (int row = 0; row < 10; row++) {
             for (int col = 0; col < 9; col++) {
                 String piece = board[row][col];
                 if (piece == null || piece.length() != 2) continue;
                 char color = piece.charAt(0);
                 char type = piece.charAt(1);
-                String error = getPlacementError(color, type, row, col);
+                String error = getPlacementError(color, type, row, col, redBottom);
                 if (error != null) {
                     errors.add(error);
                 }
@@ -42,21 +56,29 @@ public class FenUtil {
         return errors;
     }
 
-    private static String getPlacementError(char color, char type, int row, int col) {
+    private static String getPlacementError(char color, char type, int row, int col, boolean redBottom) {
         String pieceKey = color + "" + type;
         String pieceName = PIECE_NAMES.getOrDefault(pieceKey, "未知棋子(" + pieceKey + ")");
         String pos = "(" + row + "," + col + ")";
         boolean isRed = (color == 'r');
+        int homeStart = redBottom ? 7 : 0;
+        int homeEnd = redBottom ? 9 : 2;
+        int halfStart = redBottom ? 5 : 0;
+        int halfEnd = redBottom ? 9 : 4;
+        if (!isRed) {
+            homeStart = redBottom ? 0 : 7;
+            homeEnd = redBottom ? 2 : 9;
+            halfStart = redBottom ? 0 : 5;
+            halfEnd = redBottom ? 4 : 9;
+        }
         switch (type) {
             case 'k':
             case 'a':
                 if (col < 3 || col > 5) return pieceName + "在" + pos + "位置异常：不在九宫范围内";
-                if (isRed && (row < 7 || row > 9)) return pieceName + "在" + pos + "位置异常：不在九宫范围内";
-                if (!isRed && (row < 0 || row > 2)) return pieceName + "在" + pos + "位置异常：不在九宫范围内";
+                if (row < homeStart || row > homeEnd) return pieceName + "在" + pos + "位置异常：不在九宫范围内";
                 return null;
             case 'b':
-                if (isRed && (row < 5 || row > 9)) return pieceName + "在" + pos + "位置异常：不在己方半场";
-                if (!isRed && (row < 0 || row > 4)) return pieceName + "在" + pos + "位置异常：不在己方半场";
+                if (row < halfStart || row > halfEnd) return pieceName + "在" + pos + "位置异常：不在己方半场";
                 return null;
             default:
                 return null;
