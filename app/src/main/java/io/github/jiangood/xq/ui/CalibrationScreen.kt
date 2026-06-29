@@ -58,10 +58,7 @@ private sealed class CalibrationUiState {
     data class Error(val message: String) : CalibrationUiState()
 }
 
-private val PIECE_CHINESE = mapOf(
-    "rk" to "帅", "ra" to "仕", "rb" to "相", "rr" to "車", "rn" to "馬", "rc" to "炮", "rp" to "兵",
-    "bk" to "将", "ba" to "士", "bb" to "象", "br" to "车", "bn" to "马", "bc" to "炮", "bp" to "卒"
-)
+private val PIECE_CHINESE = io.github.jiangood.xq.util.FenUtil.PIECE_CHINESE
 
 private val STANDARD_OPENING: Array<Array<String?>> = arrayOf(
     arrayOf("br", "bn", "bb", "ba", "bk", "ba", "bb", "bn", "br"),
@@ -504,9 +501,7 @@ private suspend fun startCalibration(
     try {
         withContext(Dispatchers.IO) {
             val tempFile = File(context.cacheDir, "calib_${System.nanoTime()}.jpg")
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                tempFile.outputStream().use { output -> input.copyTo(output) }
-            }
+            AndroidImageUtils.copyUriToFile(context.contentResolver, uri, tempFile)
 
             val mat = Imgcodecs.imread(tempFile.absolutePath, Imgcodecs.IMREAD_COLOR)
             if (mat.empty()) throw Exception("无法加载图片")

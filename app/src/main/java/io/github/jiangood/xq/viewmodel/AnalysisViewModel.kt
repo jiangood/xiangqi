@@ -6,10 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.jiangood.xq.analysis.AnalysisEngine
 import io.github.jiangood.xq.platform.AndroidImageUtils
-import io.github.jiangood.xq.opencv.BoardUtils
 import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.util.FenUtil
-import io.github.jiangood.xq.util.NotationConverter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -50,7 +48,7 @@ class AnalysisViewModel : ViewModel() {
 
     fun initOpenCV(context: Context) {
         AppLog.add("OpenCV 初始化...")
-        if (!OpenCVLoader.initDebug()) {
+        if (!OpenCVLoader.initLocal()) {
             AppLog.add("OpenCV 初始化失败")
             _uiState.value = UiState.Error("OpenCV 初始化失败")
         } else {
@@ -84,9 +82,7 @@ class AnalysisViewModel : ViewModel() {
                     _uiState.value = UiState.Error("无法打开图片")
                     return@launch
                 }
-                inputStream.use { input ->
-                    tempFile.outputStream().use { output -> input.copyTo(output) }
-                }
+                AndroidImageUtils.copyToFile(inputStream, tempFile)
                 AppLog.add("图片已保存到: ${tempFile.name}")
 
                 val result = AnalysisEngine.analyze(tempFile)

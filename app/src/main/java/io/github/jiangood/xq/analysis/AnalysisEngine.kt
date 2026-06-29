@@ -53,7 +53,7 @@ object AnalysisEngine {
                     try {
                         AppLog.add("[引擎] 解压 NNUE 权重文件...")
                         context.assets.open("pikafish.nnue").use { input ->
-                            nnueFile.outputStream().use { output -> input.copyTo(output) }
+                            AndroidImageUtils.copyToFile(input, nnueFile)
                         }
                         AppLog.add("[引擎] NNUE 解压完成")
                     } catch (e: java.io.FileNotFoundException) {
@@ -128,7 +128,7 @@ object AnalysisEngine {
                 }
                 AppLog.add("[引擎] 开始模板匹配棋盘识别: ${imageFile.name}")
                 val rawBoard = recognizer.parseBoard(imageFile.absolutePath)
-                AppLog.add("[引擎] 棋盘识别完成, 检测到棋子: ${countPieces(rawBoard)}")
+                AppLog.add("[引擎] 棋盘识别完成, 检测到棋子: ${FenUtil.countPieces(rawBoard)}")
                 val board = rawBoard
                 logBoard(board)
                 val fen = FenUtil.toFen(board)
@@ -150,16 +150,6 @@ object AnalysisEngine {
         }
     }
 
-    private fun countPieces(board: Array<Array<String?>>): Int {
-        var count = 0
-        for (i in board.indices) {
-            for (j in board[i].indices) {
-                if (board[i][j] != null) count++
-            }
-        }
-        return count
-    }
-
     private fun logBoard(board: Array<Array<String?>>) {
         val lines = mutableListOf<String>()
         lines.add("[引擎] 棋盘状态 (row0=黑方底线):")
@@ -170,10 +160,7 @@ object AnalysisEngine {
         lines.forEach { AppLog.add(it) }
     }
 
-    private val PIECE_CHINESE = mapOf(
-        "rk" to "帅", "ra" to "仕", "rb" to "相", "rr" to "車", "rn" to "馬", "rc" to "炮", "rp" to "兵",
-        "bk" to "将", "ba" to "士", "bb" to "象", "br" to "车", "bn" to "马", "bc" to "炮", "bp" to "卒"
-    )
+    private val PIECE_CHINESE = FenUtil.PIECE_CHINESE
 
     private fun generateVisualization(
         imagePath: String,

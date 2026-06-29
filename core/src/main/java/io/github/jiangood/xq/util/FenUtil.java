@@ -6,6 +6,13 @@ import java.util.Map;
 
 public class FenUtil {
 
+    public static final Map<String, String> PIECE_CHINESE = Map.ofEntries(
+            Map.entry("rk", "帅"), Map.entry("ra", "仕"), Map.entry("rb", "相"),
+            Map.entry("rr", "車"), Map.entry("rn", "馬"), Map.entry("rc", "炮"), Map.entry("rp", "兵"),
+            Map.entry("bk", "将"), Map.entry("ba", "士"), Map.entry("bb", "象"),
+            Map.entry("br", "车"), Map.entry("bn", "马"), Map.entry("bc", "炮"), Map.entry("bp", "卒")
+    );
+
     private static final Map<String, String> PIECE_NAMES = Map.ofEntries(
             Map.entry("rk", "红帅"), Map.entry("ra", "红仕"), Map.entry("rb", "红相"),
             Map.entry("rr", "红车"), Map.entry("rn", "红马"), Map.entry("rc", "红炮"), Map.entry("rp", "红兵"),
@@ -134,6 +141,14 @@ public class FenUtil {
         }
 
         return boardFEN + " " + activeColor;
+    }
+
+    public static int countPieces(String[][] board) {
+        int count = 0;
+        for (int r = 0; r < 10; r++)
+            for (int c = 0; c < 9; c++)
+                if (board[r][c] != null) count++;
+        return count;
     }
 
     private static String convertPieceToFEN(String piece) {

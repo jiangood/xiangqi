@@ -1,5 +1,6 @@
 package io.github.jiangood.xq.opencv;
 
+import io.github.jiangood.xq.util.FenUtil;
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
@@ -85,7 +86,7 @@ public class TemplatePieceRecognizer implements PieceRecognizer {
         String[][] board = BoardUtils.assignPiecesToGrid(matchMap, calibrationData.grid);
 
         srcGray.release();
-        log.info("峰值匹配完成，检测到 " + countPieces(board) + " 个棋子");
+        log.info("峰值匹配完成，检测到 " + FenUtil.countPieces(board) + " 个棋子");
         return board;
     }
 
@@ -116,11 +117,4 @@ public class TemplatePieceRecognizer implements PieceRecognizer {
         return matches;
     }
 
-    private int countPieces(String[][] board) {
-        int count = 0;
-        for (int r = 0; r < 10; r++)
-            for (int c = 0; c < 9; c++)
-                if (board[r][c] != null) count++;
-        return count;
-    }
 }

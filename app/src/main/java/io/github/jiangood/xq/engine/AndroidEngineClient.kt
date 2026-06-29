@@ -2,6 +2,7 @@ package io.github.jiangood.xq.engine
 
 import android.content.Context
 import android.util.Log
+import io.github.jiangood.xq.platform.AndroidImageUtils
 import io.github.jiangood.xq.util.AppLog
 import java.io.*
 import java.util.concurrent.TimeUnit
@@ -71,7 +72,7 @@ class AndroidEngineClient(private val context: Context) {
                 val outFile = File(context.filesDir, name)
                 if (!outFile.exists()) {
                     zip.getInputStream(entry).use { input ->
-                        outFile.outputStream().use { output -> input.copyTo(output) }
+                        AndroidImageUtils.copyToFile(input, outFile)
                     }
                 }
                 if (outFile.exists()) {

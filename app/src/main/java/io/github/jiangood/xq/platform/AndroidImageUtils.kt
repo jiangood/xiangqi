@@ -1,5 +1,7 @@
 package io.github.jiangood.xq.platform
 
+import android.content.ContentResolver
+import android.net.Uri
 import android.graphics.Bitmap
 import org.opencv.android.Utils
 import org.opencv.core.Mat
@@ -8,6 +10,7 @@ import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
 import java.io.File
+import java.io.InputStream
 
 object AndroidImageUtils {
     fun bitmapToMat(bitmap: Bitmap): Mat {
@@ -36,6 +39,16 @@ object AndroidImageUtils {
         val params = MatOfInt(Imgcodecs.IMWRITE_JPEG_QUALITY, quality)
         Imgcodecs.imwrite(path, resized, params)
         resized.release()
+    }
+
+    fun copyToFile(input: InputStream, file: File) {
+        file.outputStream().use { output -> input.copyTo(output) }
+    }
+
+    fun copyUriToFile(contentResolver: ContentResolver, uri: Uri, file: File) {
+        contentResolver.openInputStream(uri)?.use { input ->
+            copyToFile(input, file)
+        }
     }
 
     fun cleanupOldAnalysisDirs(cacheDir: File, maxAgeMs: Long = 3600_000L) {
