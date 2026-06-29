@@ -109,6 +109,18 @@ public class YoloPieceRecognizer implements PieceRecognizer {
             rawDets.put(new Point(e.getKey().x + dx, e.getKey().y + dy), e.getValue());
         }
 
+        // Convert allDetections to board-crop coords too
+        Map<Point, String> allBoard = new LinkedHashMap<>();
+        Map<Point, Float> allScoreBoard = new LinkedHashMap<>();
+        if (this.lastAllDetections != null) {
+            for (Map.Entry<Point, String> e : this.lastAllDetections.entrySet()) {
+                Point boardPt = new Point(e.getKey().x + dx, e.getKey().y + dy);
+                allBoard.put(boardPt, e.getValue());
+                Float s = this.lastAllScores != null ? this.lastAllScores.get(e.getKey()) : null;
+                if (s != null) allScoreBoard.put(boardPt, s);
+            }
+        }
+
         // Color correction (works with board-crop coords)
         Map<Point, String> correctedDets = new LinkedHashMap<>();
         for (Map.Entry<Point, String> e : rawDets.entrySet()) {
@@ -135,8 +147,8 @@ public class YoloPieceRecognizer implements PieceRecognizer {
         ir.rawDetections = rawDets;
         ir.rawDetectionScores = this.lastScores;
         ir.yoloPreNmsCount = this.lastPreNmsCount;
-        ir.allDetections = this.lastAllDetections;
-        ir.allDetectionScores = this.lastAllScores;
+        ir.allDetections = allBoard;
+        ir.allDetectionScores = allScoreBoard;
         ir.correctedDetections = correctedDets;
         this.lastIntermediate = ir;
 
