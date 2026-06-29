@@ -11,7 +11,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -37,7 +36,6 @@ import io.github.jiangood.xq.settings.CalibrationManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.opencv.core.Core
 import org.opencv.core.Mat
 import org.opencv.core.Point
 import org.opencv.core.Rect
@@ -79,34 +77,6 @@ private val STANDARD_OPENING: Array<Array<String?>> = arrayOf(
     arrayOf("rr", "rn", "rb", "ra", "rk", "ra", "rb", "rn", "rr")
 )
 
-private fun detectOrientation(mat: Mat, grid: Array<Array<Point>>): Boolean {
-    val p0 = grid[0][4]
-    val p9 = grid[9][4]
-    fun avgRed(p: Point): Double {
-        val x = p.x.toInt(); val y = p.y.toInt()
-        val r = Rect(maxOf(0, x - 5), maxOf(0, y - 5), 10, 10)
-        if (r.x + r.width > mat.cols() || r.y + r.height > mat.rows()) return 0.0
-        val region = Mat(mat, r)
-        val sum = Core.sumElems(region)
-        region.release()
-        return sum.`val`[2]
-    }
-    return avgRed(p0) < avgRed(p9)
-}
-
-private fun mirrorOpening(standard: Array<Array<String?>>): Array<Array<String?>> {
-    val flipped = Array(10) { arrayOfNulls<String?>(9) }
-    for (r in 0 until 10) {
-        for (c in 0 until 9) {
-            flipped[9 - r][8 - c] = standard[r][c]?.let {
-                if (it.startsWith("r")) "b" + it.substring(1)
-                else "r" + it.substring(1)
-            }
-        }
-    }
-    return flipped
-}
-
 private data class TestResult(
     val passed: Boolean,
     val total: Int,
@@ -122,7 +92,6 @@ fun CalibrationScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf<CalibrationUiState>(CalibrationUiState.Idle) }
-    var flipped by remember { mutableStateOf(false) }
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var testResult by remember { mutableStateOf<TestResult?>(null) }
@@ -190,11 +159,6 @@ fun CalibrationScreen(onBack: () -> Unit) {
                 }
 
                 is CalibrationUiState.Ready -> {
-                    val orientationCorrect = remember(s, flipped) {
-                        val normal = detectOrientation(s.mat, s.grid)
-                        if (!flipped) normal else !normal
-                    }
-
                     Box(
                         modifier = Modifier
                             .weight(if (testResult != null) 0.4f else 1f)
@@ -255,26 +219,15 @@ fun CalibrationScreen(onBack: () -> Unit) {
 
                     Spacer(Modifier.height(8.dp))
 
-                    Text(
-                        "方向: ${if (orientationCorrect) "黑上红下 ✓" else "红上黑下 (需互换)"}",
-                        fontSize = 14.sp,
-                        color = if (orientationCorrect) Color(0xFF4CAF50) else Color(0xFFFF9800)
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                     ) {
-                        OutlinedButton(onClick = { flipped = !flipped }) {
-                            Text("⇄ 红黑互换")
-                        }
                         OutlinedButton(
                             onClick = {
                                 scope.launch {
                                     testing = true
-                                    testResult = runTest(context, s, orientationCorrect)
+                                    testResult = runTest(context, s)
                                     testing = false
                                 }
                             },
@@ -287,7 +240,7 @@ fun CalibrationScreen(onBack: () -> Unit) {
                             }
                         }
                         Button(onClick = {
-                            saveCalibration(context, s, orientationCorrect)
+                            saveCalibration(context, s)
                             s.mat.release()
                             s.imagePath.let { File(it).delete() }
                             testResult?.resultBitmap?.recycle()
@@ -427,10 +380,9 @@ private fun generateTestVisualization(
 
 private suspend fun runTest(
     context: android.content.Context,
-    state: CalibrationUiState.Ready,
-    orientationStandard: Boolean
+    state: CalibrationUiState.Ready
 ): TestResult = withContext(Dispatchers.IO) {
-    saveCalibration(context, state, orientationStandard)
+    saveCalibration(context, state)
 
     val calibData = CalibrationManager.load(context) ?: throw Exception("校准数据加载失败")
     val templateDir = CalibrationManager.getTemplateFileDir(context)
@@ -438,15 +390,13 @@ private suspend fun runTest(
 
     val board = recognizer.parseBoard(state.imagePath)
 
-    val opening = if (orientationStandard) STANDARD_OPENING else mirrorOpening(STANDARD_OPENING)
-
     var correct = 0
     var total = 0
     val mismatches = mutableListOf<String>()
 
     for (r in 0 until 10) {
         for (c in 0 until 9) {
-            val expected = opening[r][c]
+            val expected = STANDARD_OPENING[r][c]
             val actual = board[r][c]
             if (expected == null && actual == null) continue
             total++
@@ -516,8 +466,7 @@ private suspend fun startCalibration(
     }
 }
 
-private fun saveCalibration(context: android.content.Context, state: CalibrationUiState.Ready, orientationStandard: Boolean) {
-    val opening = if (orientationStandard) STANDARD_OPENING else mirrorOpening(STANDARD_OPENING)
+private fun saveCalibration(context: android.content.Context, state: CalibrationUiState.Ready) {
     val pieceSize = state.cellSize * 0.85
     val data = CalibrationData()
     data.imageWidth = state.imageWidth
@@ -532,7 +481,7 @@ private fun saveCalibration(context: android.content.Context, state: Calibration
 
     for (r in 0 until 10) {
         for (c in 0 until 9) {
-            val pieceType = opening[r][c] ?: continue
+            val pieceType = STANDARD_OPENING[r][c] ?: continue
             val pieceMat = CalibrationManager.cropPiece(state.mat, state.grid, r, c, pieceSize) ?: continue
             val filename = "${pieceType}_${counter++}.png"
             Imgcodecs.imwrite(File(dir, filename).absolutePath, pieceMat)
