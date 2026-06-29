@@ -17,6 +17,5 @@ android {
 }
 
 dependencies {
-    implementation(libs.hutool)
     api(libs.opencv.android)
 }

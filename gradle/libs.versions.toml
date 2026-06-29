@@ -6,12 +6,10 @@ kotlin = "1.9.22"
 activityCompose = "1.9.0"
 lifecycleViewmodelCompose = "2.8.0"
 coreKtx = "1.13.1"
-hutool = "5.8.37"
 opencv = "4.5.3.0"
 
 [libraries]
 opencv-android = { group = "com.quickbirdstudios", name = "opencv", version.ref = "opencv" }
-hutool = { group = "cn.hutool", name = "hutool-all", version.ref = "hutool" }
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 compose-ui = { group = "androidx.compose.ui", name = "ui" }
 compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
