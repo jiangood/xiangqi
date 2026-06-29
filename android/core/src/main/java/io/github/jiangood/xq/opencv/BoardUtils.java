@@ -768,6 +768,8 @@ public class BoardUtils {
             }
             if (r < board.length - 1) sb.append("\n");
         }
+        sb.append("\n\n红方: 帅 仕 相 車 馬 炮 兵\n");
+        sb.append("黑方: 将 士 象 车 马 炮 卒");
         return sb.toString();
     }
 }
