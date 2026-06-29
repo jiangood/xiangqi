@@ -25,6 +25,72 @@ public class BoardUtils {
     }
 
     /**
+     * Locate the chessboard rectangle using edge detection + contour finding.
+     * @param grayImage grayscale input image
+     * @return board bounding rect, or full image rect if detection fails
+     */
+    public static Rect locateBoard(Mat grayImage) {
+        Mat blurred = new Mat();
+        Imgproc.GaussianBlur(grayImage, blurred, new Size(5, 5), 0);
+
+        Mat edges = new Mat();
+        Imgproc.Canny(blurred, edges, 30, 100);
+
+        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 5));
+        Imgproc.dilate(edges, edges, kernel);
+
+        List<MatOfPoint> contours = new ArrayList<>();
+        Mat hierarchy = new Mat();
+        Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+        hierarchy.release();
+
+        Rect bestRect = null;
+        double bestArea = 0;
+        double totalArea = grayImage.total();
+        for (MatOfPoint contour : contours) {
+            Rect rect = Imgproc.boundingRect(contour);
+            double area = rect.area();
+            if (area > totalArea * 0.1 && area > bestArea) {
+                bestArea = area;
+                bestRect = rect;
+            }
+        }
+
+        edges.release();
+        blurred.release();
+        kernel.release();
+
+        if (bestRect == null) {
+            log.warning("locateBoard 未能定位棋盘，返回全图范围");
+            return new Rect(0, 0, grayImage.cols(), grayImage.rows());
+        }
+        return bestRect;
+    }
+
+    /**
+     * Detect grid lines and compute a fresh 10x9 grid for this image.
+     * @param grayImage grayscale image (e.g. cropped board region)
+     * @return 10x9 grid in image coordinates, or null if detection fails
+     */
+    public static Point[][] detectGridFromImage(Mat grayImage) {
+        Mat binary = new Mat();
+        Imgproc.threshold(grayImage, binary, 0.0, 255.0, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+
+        int w = grayImage.cols();
+        int h = grayImage.rows();
+        double cellSize = w / 9.0;
+        int[][] lines = detectGridLines(binary, cellSize);
+        binary.release();
+
+        if (lines == null || lines[0] == null || lines[0].length < 6) {
+            return null;
+        }
+
+        return calibrateGrid(new java.util.LinkedHashMap<>(),
+            new Rect(0, 0, w, h), null, lines[0], lines[1]);
+    }
+
+    /**
      * Backward-compatible calibrateGrid (no binary image available).
      */
     public static Point[][] calibrateGrid(Map<Point, String> matches, Rect boardRect) {
