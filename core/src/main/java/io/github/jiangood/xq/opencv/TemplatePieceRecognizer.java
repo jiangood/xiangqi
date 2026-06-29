@@ -6,6 +6,7 @@ import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,21 @@ public class TemplatePieceRecognizer implements PieceRecognizer {
 
     private static final Logger log = Logger.getLogger(TemplatePieceRecognizer.class.getName());
     private static final double MATCH_THRESHOLD = 0.65;
+
+    private static class MatchResult implements Comparable<MatchResult> {
+        Point point;
+        double score;
+        String pieceType;
+
+        MatchResult(Point p, double s, String t) {
+            point = p; score = s; pieceType = t;
+        }
+
+        @Override
+        public int compareTo(MatchResult o) {
+            return Double.compare(o.score, this.score);
+        }
+    }
 
     private final CalibrationData calibrationData;
     private final File templateDir;
@@ -50,66 +66,54 @@ public class TemplatePieceRecognizer implements PieceRecognizer {
         Mat srcGray = new Mat();
         Imgproc.cvtColor(srcColor, srcGray, Imgproc.COLOR_BGR2GRAY);
 
-        // Sliding window: match each template across the entire board image,
-        // then snap results to the calibration grid (same as v2.0 approach).
-        Map<Point, String> allMatches = new LinkedHashMap<>();
+        // Peak detection: for each template, find peaks via repeated minMaxLoc,
+        // then score-sort all matches across templates so high-confidence wins.
+        List<MatchResult> allMatches = new ArrayList<>();
         for (int t = 0; t < templateMats.length; t++) {
             Mat tmpl = templateMats[t];
             if (tmpl.empty()) continue;
+            allMatches.addAll(matchTemplatePeak(srcGray, tmpl, templateTypes[t]));
+        }
 
-            List<Point> matches = matchTemplateSliding(srcGray, tmpl, MATCH_THRESHOLD);
-            for (Point p : matches) {
-                allMatches.put(p, templateTypes[t]);
-            }
+        Collections.sort(allMatches);
+        Map<Point, String> matchMap = new LinkedHashMap<>();
+        for (MatchResult m : allMatches) {
+            matchMap.put(m.point, m.pieceType);
         }
 
         // Snap all detections to the nearest calibration grid intersection
-        String[][] board = BoardUtils.assignPiecesToGrid(allMatches, calibrationData.grid);
+        String[][] board = BoardUtils.assignPiecesToGrid(matchMap, calibrationData.grid);
 
         srcGray.release();
-        log.info("滑动窗口匹配完成，检测到 " + countPieces(board) + " 个棋子");
+        log.info("峰值匹配完成，检测到 " + countPieces(board) + " 个棋子");
         return board;
     }
 
-    private List<Point> matchTemplateSliding(Mat src, Mat template, double threshold) {
+    private List<MatchResult> matchTemplatePeak(Mat src, Mat template, String type) {
         Mat result = new Mat();
         Imgproc.matchTemplate(src, template, result, Imgproc.TM_CCOEFF_NORMED);
 
-        List<Point> matches = new ArrayList<>();
-        int cols = result.cols();
-        int rows = result.rows();
-        for (int y = 0; y < rows; y++) {
-            for (int x = 0; x < cols; x++) {
-                double score = result.get(y, x)[0];
-                if (score >= threshold) {
-                    matches.add(new Point(
-                        x + template.cols() / 2.0,
-                        y + template.height() / 2.0
-                    ));
-                }
-            }
+        List<MatchResult> matches = new ArrayList<>();
+        int h = result.rows(), w = result.cols();
+        int supR = Math.max(template.cols(), template.height()) / 2;
+
+        while (true) {
+            Core.MinMaxLocResult mm = Core.minMaxLoc(result);
+            if (mm.maxVal < MATCH_THRESHOLD) break;
+
+            matches.add(new MatchResult(
+                new Point(mm.maxLoc.x + template.cols() / 2.0,
+                          mm.maxLoc.y + template.height() / 2.0),
+                mm.maxVal, type));
+
+            int x0 = Math.max(0, (int) mm.maxLoc.x - supR);
+            int y0 = Math.max(0, (int) mm.maxLoc.y - supR);
+            int x1 = Math.min(w, (int) mm.maxLoc.x + supR);
+            int y1 = Math.min(h, (int) mm.maxLoc.y + supR);
+            result.submat(y0, y1, x0, x1).setTo(new Scalar(-1));
         }
         result.release();
-
-        // Non-maximum suppression
-        if (matches.size() <= 1) return matches;
-
-        List<Point> filtered = new ArrayList<>();
-        boolean[] removed = new boolean[matches.size()];
-        int nmsDist = (template.cols() + template.height()) / 2;
-        for (int i = 0; i < matches.size(); i++) {
-            if (removed[i]) continue;
-            filtered.add(matches.get(i));
-            for (int j = i + 1; j < matches.size(); j++) {
-                if (removed[j]) continue;
-                double dx = matches.get(i).x - matches.get(j).x;
-                double dy = matches.get(i).y - matches.get(j).y;
-                if (Math.sqrt(dx * dx + dy * dy) < nmsDist * 0.7) {
-                    removed[j] = true;
-                }
-            }
-        }
-        return filtered;
+        return matches;
     }
 
     private int countPieces(String[][] board) {

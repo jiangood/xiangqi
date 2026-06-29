@@ -13,8 +13,9 @@ android {
         targetSdk = 34
         versionCode = 91
         versionName = "6.4.1"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
-            abiFilters += listOf("arm64-v8a")
+            // debug 保留所有 ABI 以支持模拟器测试
         }
     }
 
@@ -38,6 +39,9 @@ android {
 
     buildTypes {
         release {
+            ndk {
+                abiFilters += listOf("arm64-v8a")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -91,4 +95,8 @@ dependencies {
     implementation(libs.core.ktx)
 
     testImplementation("junit:junit:4.13.2")
+
+    androidTestImplementation("androidx.test:runner:1.5.2")
+    androidTestImplementation("androidx.test:rules:1.5.0")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
 }

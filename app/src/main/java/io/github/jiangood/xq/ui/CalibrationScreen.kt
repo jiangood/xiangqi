@@ -539,7 +539,7 @@ private suspend fun startCalibration(
 }
 
 private fun cropTemplates(mat: Mat, grid: Array<Array<Point>>, cellSize: Double): List<Pair<String, Bitmap>> {
-    val pieceSize = cellSize * 0.85
+    val pieceSize = cellSize * 0.65
     val result = mutableListOf<Pair<String, Bitmap>>()
     val savedTypes = mutableSetOf<String>()
     for (r in 0 until 10) {
@@ -557,7 +557,7 @@ private fun cropTemplates(mat: Mat, grid: Array<Array<Point>>, cellSize: Double)
 }
 
 private fun saveCalibration(context: android.content.Context, state: CalibrationUiState.Ready) {
-    val pieceSize = state.cellSize * 0.85
+    val pieceSize = state.cellSize * 0.65
     val data = CalibrationData()
     data.imageWidth = state.imageWidth
     data.imageHeight = state.imageHeight
