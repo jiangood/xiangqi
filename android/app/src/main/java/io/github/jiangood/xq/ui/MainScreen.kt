@@ -154,7 +154,8 @@ fun MainScreen(
                                 "FEN 识别", "棋盘布局", "最佳走法"
                             )
 
-                            s.stepPreviews.toSortedMap().forEach { (step, path) ->
+                            val allStepKeys = (s.stepPreviews.keys + s.stepTexts.keys).toSortedSet()
+                            allStepKeys.forEach { step ->
                                 val label = stepNames.getOrNull(step - 1) ?: "步骤 $step"
                                 Column(modifier = Modifier.padding(bottom = 8.dp)) {
                                     Text(
@@ -164,15 +165,29 @@ fun MainScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(Modifier.height(2.dp))
-                                    val bitmap = remember(path) { BitmapFactory.decodeFile(path) }
-                                    bitmap?.let { bmp ->
-                                        Image(
-                                            bitmap = bmp.asImageBitmap(),
-                                            contentDescription = label,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clickable { selectedImage = bmp }
-                                        )
+                                    val text = s.stepTexts[step]
+                                    if (text != null) {
+                                        SelectionContainer {
+                                            Text(
+                                                text = text,
+                                                fontSize = 11.sp,
+                                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    } else {
+                                        s.stepPreviews[step]?.let { path ->
+                                            val bitmap = remember(path) { BitmapFactory.decodeFile(path) }
+                                            bitmap?.let { bmp ->
+                                                Image(
+                                                    bitmap = bmp.asImageBitmap(),
+                                                    contentDescription = label,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .clickable { selectedImage = bmp }
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }

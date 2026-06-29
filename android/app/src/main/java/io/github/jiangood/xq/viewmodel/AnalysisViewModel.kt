@@ -26,6 +26,7 @@ sealed class UiState {
         val moves: List<String>,
         val standardMoves: List<String> = emptyList(),
         val stepPreviews: Map<Int, String> = emptyMap(),
+        val stepTexts: Map<Int, String> = emptyMap(),
         val validationWarnings: List<String> = emptyList(),
         val elapsedMs: Long = 0L
     ) : UiState()
@@ -190,70 +191,66 @@ class AnalysisViewModel : ViewModel() {
 
         try {
             val board = BoardUtils.assignPiecesToGrid(ir.correctedDetections, ir.grid, ir.boardRect)
-
-            val stepLabels = mutableListOf(
-                "01_original", "02_crop_center", "03_gray", "04_canny",
-                "05_contours", "06_board_rect", "07_board_crop", "08_binary",
-                "09_h_lines", "10_v_lines", "11_river", "12_grid_full",
-                "13_refined_crop", "14_raw_detections", "15_color_correction",
-                "16_detections_labeled", "17_pieces_snapped", "18_board_array",
-                "19_validation"
-            )
-
-            val stepMats = mutableListOf<Mat>()
-
-            // Always add steps 1-16
-            stepMats.addAll(listOf(
-                ir.srcOriginal,
-                BoardUtils.drawCropCenter(ir),
-                BoardUtils.toBgr(ir.srcGray),
-                BoardUtils.drawCanny(ir),
-                BoardUtils.drawContours(ir),
-                BoardUtils.drawBoardRect(ir.srcOriginal, ir.boardRect),
-                ir.boardCropped,
-                BoardUtils.toBgr(ir.boardBinary),
-                BoardUtils.drawHLines(ir),
-                BoardUtils.drawVLines(ir),
-                BoardUtils.drawRiver(ir),
-                BoardUtils.drawGridFull(ir),
-                ir.boardRefined,
-                BoardUtils.drawRawDetections(ir),
-                BoardUtils.drawColorCorrection(ir),
-                BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid),
-                BoardUtils.drawPiecesSnapped(ir),
-                BoardUtils.drawBoardAsText(board)
-            ))
-
-            // Validation step
             val valid = state.validationWarnings.isEmpty()
-            stepMats.add(BoardUtils.drawValidationImage(state.validationWarnings))
-            stepLabels.add("19_validation")
 
-            // Only add FEN, board layout, best move if validation passed
-            if (valid) {
-                val fen = FenUtil.toFen(board)
-                stepMats.add(BoardUtils.drawFenImage(fen))
-                stepLabels.add("20_fen_text")
-                stepMats.add(BoardUtils.drawBoardLayout(board))
-                stepLabels.add("21_board_layout")
-                stepMats.add(BoardUtils.drawMoveArrow(ir))
-                stepLabels.add("22_best_move")
+            // Image steps 1-17
+            val matLabels = listOf(
+                "01_original" to ir.srcOriginal,
+                "02_crop_center" to BoardUtils.drawCropCenter(ir),
+                "03_gray" to BoardUtils.toBgr(ir.srcGray),
+                "04_canny" to BoardUtils.drawCanny(ir),
+                "05_contours" to BoardUtils.drawContours(ir),
+                "06_board_rect" to BoardUtils.drawBoardRect(ir.srcOriginal, ir.boardRect),
+                "07_board_crop" to ir.boardCropped,
+                "08_binary" to BoardUtils.toBgr(ir.boardBinary),
+                "09_h_lines" to BoardUtils.drawHLines(ir),
+                "10_v_lines" to BoardUtils.drawVLines(ir),
+                "11_river" to BoardUtils.drawRiver(ir),
+                "12_grid_full" to BoardUtils.drawGridFull(ir),
+                "13_refined_crop" to ir.boardRefined,
+                "14_raw_detections" to BoardUtils.drawRawDetections(ir),
+                "15_color_correction" to BoardUtils.drawColorCorrection(ir),
+                "16_detections_labeled" to BoardUtils.drawPreview(ir.srcOriginal, ir.boardRect, ir.correctedDetections, ir.grid),
+                "17_pieces_snapped" to BoardUtils.drawPiecesSnapped(ir)
+            )
+            for ((label, mat) in matLabels) {
+                AndroidImageUtils.matToJpeg(mat, File(cacheDir, "$label.jpg").absolutePath)
+                mat.release()
             }
 
-            val paths = mutableMapOf<Int, String>()
+            val previews = mutableMapOf<Int, String>()
+            for (i in matLabels.indices) {
+                val step = i + 1
+                val file = File(cacheDir, "${matLabels[i].first}.jpg")
+                previews[step] = file.absolutePath
+            }
 
-            for (i in stepMats.indices) {
-                val stepNum = i + 1
-                val fileName = "${stepLabels[i]}.jpg"
-                val file = File(cacheDir, fileName)
-                AndroidImageUtils.matToJpeg(stepMats[i], file.absolutePath)
-                stepMats[i].release()
-                paths[stepNum] = file.absolutePath
+            // Text steps: 18=board array, 19=validation, 20=FEN
+            val texts = mutableMapOf<Int, String>()
+            texts[18] = BoardUtils.boardToText(board)
+
+            val warnText = if (valid) "✓ 局面验证通过" else
+                "✗ 局面验证失败:\n" + state.validationWarnings.joinToString("\n") { "  ⚠ $it" }
+            texts[19] = warnText
+
+            if (valid) {
+                val fen = FenUtil.toFen(board)
+                texts[20] = "FEN: $fen"
+
+                val layoutMat = BoardUtils.drawBoardLayout(board)
+                AndroidImageUtils.matToJpeg(layoutMat, File(cacheDir, "21_board_layout.jpg").absolutePath)
+                layoutMat.release()
+                previews[21] = File(cacheDir, "21_board_layout.jpg").absolutePath
+
+                val moveMat = BoardUtils.drawMoveArrow(ir)
+                AndroidImageUtils.matToJpeg(moveMat, File(cacheDir, "22_best_move.jpg").absolutePath)
+                moveMat.release()
+                previews[22] = File(cacheDir, "22_best_move.jpg").absolutePath
             }
 
             val currentState = _uiState.value
             if (currentState is UiState.Result) {
-                _uiState.value = currentState.copy(stepPreviews = paths)
+                _uiState.value = currentState.copy(stepPreviews = previews, stepTexts = texts)
             }
         } catch (e: Exception) {
             AppLog.add("预览图生成失败: ${e.message}")

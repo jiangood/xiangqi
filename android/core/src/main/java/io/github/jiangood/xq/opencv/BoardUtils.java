@@ -768,25 +768,16 @@ public class BoardUtils {
         return img;
     }
 
-    public static Mat drawBoardAsText(String[][] board) {
-        int lineH = 28;
-        int w = 500;
-        int h = 30 + board.length * lineH;
-        Mat img = new Mat(h, w, CvType.CV_8UC3, new Scalar(255, 255, 255));
-        Scalar RED = new Scalar(0, 0, 255);
-        Scalar BLACK = new Scalar(0, 0, 0);
+    public static String boardToText(String[][] board) {
+        StringBuilder sb = new StringBuilder();
         for (int r = 0; r < board.length; r++) {
-            int y = 22 + r * lineH;
-            Imgproc.putText(img, String.format("row %d:", r), new Point(5, y),
-                    Imgproc.FONT_HERSHEY_SIMPLEX, 0.45, BLACK, 1);
             for (int c = 0; c < board[r].length; c++) {
                 String p = board[r][c];
-                String cell = p != null ? p : "--";
-                boolean isRed = p != null && p.startsWith("r");
-                Imgproc.putText(img, cell, new Point(70 + c * 45, y),
-                        Imgproc.FONT_HERSHEY_SIMPLEX, 0.45, isRed ? RED : BLACK, 1);
+                sb.append(p != null ? p : "＋");
+                if (c < board[r].length - 1) sb.append(" ");
             }
+            if (r < board.length - 1) sb.append("\n");
         }
-        return img;
+        return sb.toString();
     }
 }
