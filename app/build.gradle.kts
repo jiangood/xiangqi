@@ -11,8 +11,8 @@ android {
         applicationId = "io.github.jiangood.xq"
         minSdk = 34
         targetSdk = 34
-        versionCode = 87
-        versionName = "6.2.3"
+        versionCode = 88
+        versionName = "6.2.4"
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
@@ -89,4 +89,6 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.core.ktx)
+
+    testImplementation("junit:junit:4.13.2")
 }

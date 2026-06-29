@@ -214,13 +214,13 @@ fun CalibrationScreen(onBack: () -> Unit) {
                                 .padding(8.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            SmallFloatingActionButton(onClick = { scale = (scale * 1.3f).coerceAtMost(5f) }) {
+                            SmallFloatingActionButton(onClick = { scale = (scale + 0.02f).coerceAtMost(2f) }) {
                                 Text("+", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             }
                             SmallFloatingActionButton(onClick = { scale = 1f; offset = Offset.Zero }) {
                                 Text("⊙", fontSize = 14.sp)
                             }
-                            SmallFloatingActionButton(onClick = { scale = (scale / 1.3f).coerceAtLeast(1f) }) {
+                            SmallFloatingActionButton(onClick = { scale = (scale - 0.02f).coerceAtLeast(1f) }) {
                                 Text("−", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             }
                         }
@@ -282,13 +282,16 @@ fun CalibrationScreen(onBack: () -> Unit) {
                                 Text("测试")
                             }
                         }
-                        Button(onClick = {
-                            saveCalibration(context, s)
-                            s.mat.release()
-                            s.imagePath.let { File(it).delete() }
-                            testResult?.resultBitmap?.recycle()
-                            onBack()
-                        }) {
+                        Button(
+                            onClick = {
+                                saveCalibration(context, s)
+                                s.mat.release()
+                                s.imagePath.let { File(it).delete() }
+                                testResult?.resultBitmap?.recycle()
+                                onBack()
+                            },
+                            enabled = isSaveEnabled(testResult?.passed)
+                        ) {
                             Text("确认校准")
                         }
                     }
@@ -537,4 +540,8 @@ private fun saveCalibration(context: android.content.Context, state: Calibration
     }
 
     CalibrationManager.save(context, data)
+}
+
+internal fun isSaveEnabled(testPassed: Boolean?): Boolean {
+    return testPassed == true
 }
