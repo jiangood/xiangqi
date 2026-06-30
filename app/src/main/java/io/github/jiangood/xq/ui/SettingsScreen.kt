@@ -27,8 +27,7 @@ import io.github.jiangood.xq.settings.SettingsManager
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenCalibration: () -> Unit = {},
-    onOpenAccessibility: () -> Unit = {},
-    onOpenOverlayPermission: () -> Unit = {}
+    onOpenAccessibility: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -79,14 +78,8 @@ fun SettingsScreen(
 
             SettingCell(
                 title = "无障碍截图",
-                value = "需在系统设置中开启",
+                value = "开启后通知栏出现截图按钮",
                 onClick = onOpenAccessibility
-            )
-
-            SettingCell(
-                title = "悬浮窗权限",
-                value = "需在系统设置中开启",
-                onClick = onOpenOverlayPermission
             )
 
             Spacer(Modifier.weight(1f))

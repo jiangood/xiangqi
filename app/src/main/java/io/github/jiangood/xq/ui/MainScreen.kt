@@ -39,7 +39,7 @@ import androidx.compose.material3.IconButton
 fun MainScreen(
     viewModel: AnalysisViewModel,
     onPickImage: () -> Unit,
-    onToggleOverlay: (Boolean) -> Unit,
+    onOpenAccessibility: () -> Unit,
     isOverlayVisible: Boolean,
     onOpenSettings: () -> Unit = {}
 ) {
@@ -68,19 +68,20 @@ fun MainScreen(
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().clickable { onOpenAccessibility() }
         ) {
-            Text("悬浮窗", modifier = Modifier.weight(1f))
+            Text("通知栏截图", modifier = Modifier.weight(1f))
             Switch(
                 checked = isOverlayVisible,
-                onCheckedChange = { onToggleOverlay(it) }
+                onCheckedChange = { onOpenAccessibility() },
+                enabled = false
             )
         }
 
         Spacer(Modifier.height(4.dp))
 
         Text(
-            text = if (isOverlayVisible) "悬浮球已显示，点击即可截图分析" else "开启后显示悬浮球，方便快速截图分析",
+            text = "开启无障碍服务后，通知栏出现「截图分析」按钮，点击即可分析当前屏幕棋局",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.outline,
             modifier = Modifier.fillMaxWidth()

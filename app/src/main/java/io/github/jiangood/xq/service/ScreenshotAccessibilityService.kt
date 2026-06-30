@@ -1,39 +1,48 @@
 package io.github.jiangood.xq.service
 
 import android.accessibilityservice.AccessibilityService
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.PixelFormat
-import android.util.DisplayMetrics
 import android.view.Display
-import android.view.Gravity
-import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import androidx.core.app.NotificationCompat
+import io.github.jiangood.xq.MainActivity
+import io.github.jiangood.xq.R
 import io.github.jiangood.xq.analysis.AnalysisEngine
-import io.github.jiangood.xq.settings.SettingsManager
 import io.github.jiangood.xq.util.AppLog
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.coroutines.resume
 
 class ScreenshotAccessibilityService : AccessibilityService() {
 
+    companion object {
+        const val ACTION_CAPTURE = "io.github.jiangood.xq.action.CAPTURE"
+        private const val NOTIFICATION_ID = 1001
+        private const val CHANNEL_ID = "xq_screenshot"
+    }
+
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private var unifiedView: UnifiedBubbleView? = null
     private var isAnalyzing = false
+    private var notiBuilder: NotificationCompat.Builder? = null
+    private var idleJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
         AppLog.add("[无障碍] onCreate")
-        showUnifiedView()
+        createNotificationChannel()
+        startForeground(NOTIFICATION_ID, buildNotification("就绪"))
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_CAPTURE) {
+            onCaptureClick()
+        }
+        return START_STICKY
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
@@ -54,60 +63,66 @@ class ScreenshotAccessibilityService : AccessibilityService() {
 
     private fun cleanup() {
         scope.cancel()
-        try {
-            unifiedView?.let { v ->
-                val wm = getSystemService(WINDOW_SERVICE) as WindowManager
-                wm.removeView(v)
-            }
-        } catch (_: Exception) {}
-        unifiedView = null
+        idleJob?.cancel()
+        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
-    private fun showUnifiedView() {
-        AppLog.add("[无障碍] 显示悬浮球...")
-        try {
-            val density = resources.displayMetrics.density
-            val width = (100 * density).toInt()
-            val savedX = SettingsManager.getFloatX()
-            val savedY = SettingsManager.getFloatY()
-            val params = WindowManager.LayoutParams(
-                width, WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                PixelFormat.TRANSLUCENT
-            ).apply {
-                gravity = Gravity.TOP or Gravity.START
-                if (savedX >= 0 && savedY >= 0) {
-                    x = savedX
-                    y = savedY
-                } else {
-                    val metrics = DisplayMetrics()
-                    val wm = getSystemService(WINDOW_SERVICE) as WindowManager
-                    wm.defaultDisplay.getRealMetrics(metrics)
-                    val rightMarginDp = 80f
-                    val bottomMarginDp = 120f
-                    x = metrics.widthPixels - width - (rightMarginDp * density).toInt()
-                    y = metrics.heightPixels - (100 * density).toInt() - (bottomMarginDp * density).toInt()
-                }
-            }
-            val wm = getSystemService(WINDOW_SERVICE) as WindowManager
-            unifiedView = UnifiedBubbleView(this).apply {
-                onClick = { onUnifiedClick() }
-            }
-            wm.addView(unifiedView, params)
-            AppLog.add("[无障碍] 悬浮球已添加到窗口")
-        } catch (e: Exception) {
-            AppLog.add("[无障碍] 显示悬浮球失败: ${e.message}")
+    private fun createNotificationChannel() {
+        val channel = android.app.NotificationChannel(
+            CHANNEL_ID,
+            "截图分析",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "象棋支招截图分析服务"
+        }
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(channel)
+    }
+
+    private fun buildNotification(statusText: String): android.app.Notification {
+        val tapIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val tapPendingIntent = PendingIntent.getActivity(
+            this, 0, tapIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val captureIntent = Intent(this, ScreenshotAccessibilityService::class.java).apply {
+            action = ACTION_CAPTURE
+        }
+        val capturePendingIntent = PendingIntent.getForegroundService(
+            this, 1, captureIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        notiBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("象棋支招")
+            .setContentText(statusText)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentIntent(tapPendingIntent)
+            .addAction(android.R.drawable.ic_menu_camera, "截图分析", capturePendingIntent)
+            .setOngoing(true)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+
+        return notiBuilder!!.build()
+    }
+
+    private fun updateNotification(text: String) {
+        val nm = getSystemService(NotificationManager::class.java)
+        notiBuilder?.let {
+            it.setContentText(text)
+            nm.notify(NOTIFICATION_ID, it.build())
         }
     }
 
-    private fun onUnifiedClick() {
+    private fun onCaptureClick() {
         if (isAnalyzing) {
             AppLog.add("[无障碍] 正在分析中，忽略本次点击")
             return
         }
         AppLog.add("[无障碍] 按钮被点击，开始截图分析")
-        unifiedView?.updateState(UnifiedBubbleView.State.PROCESSING)
+        updateNotification("处理中...")
         captureAndAnalyze()
     }
 
@@ -125,23 +140,27 @@ class ScreenshotAccessibilityService : AccessibilityService() {
                     withContext(Dispatchers.Main) {
                         if (result != null && result.chineseMoves.isNotEmpty()) {
                             AppLog.add("[无障碍] 分析成功, FEN=${result.fen}")
-                            unifiedView?.updateState(UnifiedBubbleView.State.SUCCESS, move = result.chineseMoves[0])
+                            updateNotification("推荐: ${result.chineseMoves[0]}")
                             delayAutoIdle()
                         } else {
                             AppLog.add("[无障碍] 分析无结果")
-                            unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "无结果")
+                            updateNotification("无结果")
                             delayAutoIdle()
                         }
                     }
                 } else {
-                    AppLog.add("[无障碍] 截屏失败")
-                    unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = "截屏失败")
-                    delayAutoIdle()
+                    withContext(Dispatchers.Main) {
+                        AppLog.add("[无障碍] 截屏失败")
+                        updateNotification("截屏失败")
+                        delayAutoIdle()
+                    }
                 }
             } catch (e: Exception) {
                 AppLog.add("[无障碍] 截图分析异常: ${e.message}")
-                unifiedView?.updateState(UnifiedBubbleView.State.FAILED, error = e.message)
-                delayAutoIdle()
+                withContext(Dispatchers.Main) {
+                    updateNotification("出错: ${e.message}")
+                    delayAutoIdle()
+                }
             } finally {
                 isAnalyzing = false
             }
@@ -184,13 +203,11 @@ class ScreenshotAccessibilityService : AccessibilityService() {
         )
     }
 
-    private var idleJob: kotlinx.coroutines.Job? = null
-
     private fun delayAutoIdle() {
         idleJob?.cancel()
         idleJob = scope.launch {
             delay(5000)
-            unifiedView?.updateState(UnifiedBubbleView.State.IDLE)
+            updateNotification("就绪")
         }
     }
 }
