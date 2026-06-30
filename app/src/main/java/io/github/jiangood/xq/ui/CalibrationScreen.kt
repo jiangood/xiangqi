@@ -115,10 +115,20 @@ fun CalibrationScreen(onBack: () -> Unit) {
         }
     }
 
+    LaunchedEffect(Unit) {
+        if (CalibrationManager.hasOriginalImage(context) && state is CalibrationUiState.Idle) {
+            loadExistingCalibration(context) { newState ->
+                state = newState
+                gridPx = 0
+                yOffset = 0
+                testResult = null
+            }
+        }
+    }
+
     fun cleanup() {
         val s = state as? CalibrationUiState.Ready
         s?.mat?.release()
-        s?.imagePath?.let { File(it).delete() }
         testResult?.resultBitmap?.recycle()
         onBack()
     }
@@ -130,13 +140,6 @@ fun CalibrationScreen(onBack: () -> Unit) {
                 navigationIcon = {
                     IconButton(onClick = { cleanup() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    }) {
-                        Icon(Icons.Default.Add, contentDescription = "选择图片")
                     }
                 }
             )
@@ -150,10 +153,13 @@ fun CalibrationScreen(onBack: () -> Unit) {
                         .padding(padding),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("请选择校准图片", fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.height(8.dp))
-                        Text("点击右上角 + 按钮", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Button(onClick = {
+                        pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }) {
+                        Text(
+                            if (CalibrationManager.hasOriginalImage(context)) "替换图片" else "选择校准图片",
+                            fontSize = 18.sp
+                        )
                     }
                 }
             }
@@ -182,6 +188,17 @@ fun CalibrationScreen(onBack: () -> Unit) {
                         .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        OutlinedButton(onClick = {
+                            pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        }) {
+                            Text("替换图片")
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -376,7 +393,11 @@ fun CalibrationScreen(onBack: () -> Unit) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(s.message, color = Color.Red, fontSize = 16.sp)
                         Spacer(Modifier.height(16.dp))
-                        Text("点击右上角 + 重新选择", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Button(onClick = {
+                            state = CalibrationUiState.Idle
+                        }) {
+                            Text("重新选择")
+                        }
                     }
                 }
             }
@@ -481,10 +502,10 @@ private suspend fun startCalibration(
     onResult(CalibrationUiState.Processing)
     try {
         withContext(Dispatchers.IO) {
-            val tempFile = File(context.cacheDir, "calib_${System.nanoTime()}.jpg")
-            AndroidImageUtils.copyUriToFile(context.contentResolver, uri, tempFile)
+            val originalFile = CalibrationManager.getOriginalImageFile(context)
+            AndroidImageUtils.copyUriToFile(context.contentResolver, uri, originalFile)
 
-            val mat = Imgcodecs.imread(tempFile.absolutePath, Imgcodecs.IMREAD_COLOR)
+            val mat = Imgcodecs.imread(originalFile.absolutePath, Imgcodecs.IMREAD_COLOR)
             if (mat.empty()) throw Exception("无法加载图片")
 
             val cropped = io.github.jiangood.xq.opencv.BoardUtils.cropBoardCenter(mat)
@@ -507,12 +528,47 @@ private suspend fun startCalibration(
             binary.release()
 
             val bitmap = AndroidImageUtils.matToBitmap(cropped)
-            val readyState = CalibrationUiState.Ready(bitmap, grid, cellSizeEst, imageWidth, imageHeight, cropped, tempFile.absolutePath)
+            val readyState = CalibrationUiState.Ready(bitmap, grid, cellSizeEst, imageWidth, imageHeight, cropped, originalFile.absolutePath)
             saveCalibration(context, readyState)
             onResult(readyState)
         }
     } catch (e: Exception) {
         onResult(CalibrationUiState.Error("校准失败: ${e.message ?: "未知错误"}"))
+    }
+}
+
+private suspend fun loadExistingCalibration(
+    context: android.content.Context,
+    onResult: (CalibrationUiState) -> Unit
+) {
+    onResult(CalibrationUiState.Processing)
+    try {
+        withContext(Dispatchers.IO) {
+            val calibData = CalibrationManager.load(context)
+                ?: throw Exception("校准数据加载失败")
+            val originalFile = CalibrationManager.getOriginalImageFile(context)
+            if (!originalFile.exists()) throw Exception("原始图片不存在")
+
+            val mat = Imgcodecs.imread(originalFile.absolutePath, Imgcodecs.IMREAD_COLOR)
+            if (mat.empty()) throw Exception("无法加载图片")
+
+            val cropped = io.github.jiangood.xq.opencv.BoardUtils.cropBoardCenter(mat)
+            mat.release()
+
+            val bitmap = AndroidImageUtils.matToBitmap(cropped)
+
+            onResult(CalibrationUiState.Ready(
+                bitmap = bitmap,
+                grid = calibData.grid,
+                cellSize = calibData.cellSize,
+                imageWidth = calibData.imageWidth,
+                imageHeight = calibData.imageHeight,
+                mat = cropped,
+                imagePath = originalFile.absolutePath
+            ))
+        }
+    } catch (e: Exception) {
+        onResult(CalibrationUiState.Error("加载失败: ${e.message ?: "未知错误"}"))
     }
 }
 

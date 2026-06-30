@@ -15,6 +15,7 @@ object CalibrationManager {
     private const val META_FILE = "meta.json"
     private const val GRID_FILE = "grid.json"
     private const val INDEX_FILE = "index.json"
+    private const val ORIGINAL_FILE = "original.jpg"
 
     fun getDir(context: Context): File =
         File(context.filesDir, DIR_NAME).also { it.mkdirs() }
@@ -23,6 +24,12 @@ object CalibrationManager {
         val dir = getDir(context)
         return File(dir, META_FILE).exists() && File(dir, GRID_FILE).exists()
     }
+
+    fun hasOriginalImage(context: Context): Boolean =
+        getOriginalImageFile(context).exists()
+
+    fun getOriginalImageFile(context: Context): File =
+        File(getDir(context), ORIGINAL_FILE)
 
     fun save(context: Context, data: CalibrationData) {
         val dir = getDir(context)
