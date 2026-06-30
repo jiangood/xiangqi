@@ -70,7 +70,7 @@ fun MainScreen(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("悬浮窗", modifier = Modifier.weight(1f))
+            Text("无障碍截图", modifier = Modifier.weight(1f))
             Switch(
                 checked = floatingEnabled,
                 onCheckedChange = {
@@ -79,6 +79,15 @@ fun MainScreen(
                 }
             )
         }
+
+        Spacer(Modifier.height(4.dp))
+
+        Text(
+            text = "启用后点击悬浮球即可截图分析。需在系统设置→无障碍中开启。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(Modifier.height(8.dp))
 
