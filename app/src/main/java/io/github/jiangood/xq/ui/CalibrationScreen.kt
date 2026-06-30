@@ -60,7 +60,8 @@ private sealed class CalibrationUiState {
         val imageWidth: Int,
         val imageHeight: Int,
         val mat: Mat,
-        val imagePath: String
+        val imagePath: String,
+        val pieceScale: Double = 0.65
     ) : CalibrationUiState()
     data class Error(val message: String) : CalibrationUiState()
 }
@@ -105,6 +106,14 @@ fun CalibrationScreen(onBack: () -> Unit) {
     var imgFitScale by remember { mutableFloatStateOf(1f) }
     var testResult by remember { mutableStateOf<TestResult?>(null) }
     var testing by remember { mutableStateOf(false) }
+    var pieceScale by remember { mutableFloatStateOf(0.65f) }
+
+    val currentState = state
+    LaunchedEffect(currentState) {
+        if (currentState is CalibrationUiState.Ready) {
+            pieceScale = currentState.pieceScale.toFloat()
+        }
+    }
 
     val pickMedia = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -273,65 +282,44 @@ fun CalibrationScreen(onBack: () -> Unit) {
 
                     Spacer(Modifier.height(8.dp))
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            "缩放",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.width(64.dp),
-                            textAlign = TextAlign.End
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        IconButton(onClick = { gridPx = (gridPx - 1).coerceIn(5, 500) }) {
-                            Text("−", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Box(modifier = Modifier.width(56.dp), contentAlignment = Alignment.Center) {
-                            Text(gridPx.toString(), style = MaterialTheme.typography.titleMedium)
-                        }
-                        IconButton(onClick = { gridPx = (gridPx + 1).coerceIn(5, 500) }) {
-                            Icon(Icons.Filled.Add, contentDescription = "放大")
-                        }
-                    }
+                    AdjustRow(
+                        label = "缩放",
+                        valueText = gridPx.toString(),
+                        onDecrement = { gridPx = (gridPx - 1).coerceIn(5, 500) },
+                        onIncrement = { gridPx = (gridPx + 1).coerceIn(5, 500) }
+                    )
 
                     Spacer(Modifier.height(4.dp))
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            "上下移动",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.width(64.dp),
-                            textAlign = TextAlign.End
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        IconButton(onClick = { yOffset = (yOffset - 1).coerceIn(-9999, 9999) }) {
-                            Text("−", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Box(modifier = Modifier.width(56.dp), contentAlignment = Alignment.Center) {
-                            Text(yOffset.toString(), style = MaterialTheme.typography.titleMedium)
-                        }
-                        IconButton(onClick = { yOffset = (yOffset + 1).coerceIn(-9999, 9999) }) {
-                            Icon(Icons.Filled.Add, contentDescription = "下移")
-                        }
-                    }
+                    AdjustRow(
+                        label = "上下移动",
+                        valueText = yOffset.toString(),
+                        onDecrement = { yOffset = (yOffset - 1).coerceIn(-9999, 9999) },
+                        onIncrement = { yOffset = (yOffset + 1).coerceIn(-9999, 9999) }
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    AdjustRow(
+                        label = "裁切比例",
+                        valueText = String.format("%.2f", pieceScale),
+                        onDecrement = { pieceScale = (pieceScale - 0.05f).coerceIn(0.30f, 1.00f) },
+                        onIncrement = { pieceScale = (pieceScale + 0.05f).coerceIn(0.30f, 1.00f) }
+                    )
 
                     Spacer(Modifier.height(8.dp))
 
-    val templates = remember(s.mat, s.grid, s.cellSize, gridPx) {
+    val templates = remember(s.mat, s.grid, s.cellSize, gridPx, pieceScale) {
         try {
             val zoomRatio = if (imgFitScale > 0) gridPx / (imgFitScale * s.cellSize) else 1.0
-            cropTemplates(s.mat, s.grid, s.cellSize, zoomRatio)
+            cropTemplates(s.mat, s.grid, s.cellSize, zoomRatio, pieceScale.toDouble())
         } catch (e: Exception) {
             emptyList()
         }
     }
                     @Composable fun PieceItem(type: String, bmp: Bitmap, gridPx: Int) {
                         val density = LocalDensity.current.density
-                        val pieceW = (gridPx * 0.65f / density).dp
+                        val pieceW = (gridPx * pieceScale / density).dp
                         val pieceH = (gridPx * 0.75f / density).dp
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -381,7 +369,7 @@ fun CalibrationScreen(onBack: () -> Unit) {
                         onClick = {
                             scope.launch {
                                 testing = true
-                                testResult = runTest(context, s, gridPx, imgFitScale)
+                                testResult = runTest(context, s, gridPx, imgFitScale, pieceScale.toDouble())
                                 testing = false
                             }
                         },
@@ -474,9 +462,10 @@ private suspend fun runTest(
     context: android.content.Context,
     state: CalibrationUiState.Ready,
     gridPx: Int = 0,
-    imgFitScale: Float = 1f
+    imgFitScale: Float = 1f,
+    pieceScale: Double = 0.65
 ): TestResult = withContext(Dispatchers.IO) {
-    saveCalibration(context, state, gridPx, imgFitScale)
+    saveCalibration(context, state, gridPx, imgFitScale, pieceScale)
 
     val board = AnalysisEngine.recognize(context, state.imagePath)
         ?: throw Exception("校准数据加载失败")
@@ -587,7 +576,8 @@ private suspend fun loadExistingCalibration(
                 imageWidth = calibData.imageWidth,
                 imageHeight = calibData.imageHeight,
                 mat = cropped,
-                imagePath = originalFile.absolutePath
+                imagePath = originalFile.absolutePath,
+                pieceScale = calibData.pieceScale
             ))
         }
     } catch (e: Exception) {
@@ -595,8 +585,8 @@ private suspend fun loadExistingCalibration(
     }
 }
 
-private fun cropTemplates(mat: Mat, grid: Array<Array<Point>>, cellSize: Double, zoomRatio: Double = 1.0): List<Pair<String, Bitmap>> {
-    val pieceSize = cellSize * 0.65 * zoomRatio
+private fun cropTemplates(mat: Mat, grid: Array<Array<Point>>, cellSize: Double, zoomRatio: Double = 1.0, pieceScale: Double = 0.65): List<Pair<String, Bitmap>> {
+    val pieceSize = cellSize * pieceScale * zoomRatio
     val map = mutableMapOf<String, Bitmap>()
     for (r in 0 until 10) {
         for (c in 0 until 9) {
@@ -618,18 +608,20 @@ private fun saveCalibration(
     context: android.content.Context,
     state: CalibrationUiState.Ready,
     gridPx: Int = 0,
-    imgFitScale: Float = 1f
+    imgFitScale: Float = 1f,
+    pieceScale: Double = 0.65
 ) {
     val adjustedCellSize = if (gridPx > 0 && imgFitScale > 0f)
         gridPx / imgFitScale.toDouble()
     else
         state.cellSize
-    val pieceSize = adjustedCellSize * 0.65
+    val pieceSize = adjustedCellSize * pieceScale
     val data = CalibrationData()
     data.imageWidth = state.imageWidth
     data.imageHeight = state.imageHeight
     data.cellSize = state.cellSize
     data.pieceSize = pieceSize
+    data.pieceScale = pieceScale
     data.grid = state.grid
     data.templates = mutableListOf()
 
@@ -654,4 +646,34 @@ private fun saveCalibration(
 
 internal fun isSaveEnabled(testPassed: Boolean?): Boolean {
     return testPassed == true
+}
+
+@Composable
+private fun AdjustRow(
+    label: String,
+    valueText: String,
+    onDecrement: () -> Unit,
+    onIncrement: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.width(64.dp),
+            textAlign = TextAlign.End
+        )
+        Spacer(Modifier.width(8.dp))
+        IconButton(onClick = onDecrement) {
+            Text("−", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+        Box(modifier = Modifier.width(56.dp), contentAlignment = Alignment.Center) {
+            Text(valueText, style = MaterialTheme.typography.titleMedium)
+        }
+        IconButton(onClick = onIncrement) {
+            Icon(Icons.Filled.Add, contentDescription = label)
+        }
+    }
 }

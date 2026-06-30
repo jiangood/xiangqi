@@ -39,6 +39,7 @@ object CalibrationManager {
         meta.put("imageHeight", data.imageHeight)
         meta.put("cellSize", data.cellSize)
         meta.put("pieceSize", data.pieceSize)
+        meta.put("pieceScale", data.pieceScale)
         File(dir, META_FILE).writeText(meta.toString(2), Charsets.UTF_8)
 
         val gridArr = JSONArray()
@@ -76,6 +77,7 @@ object CalibrationManager {
             data.imageHeight = meta.optInt("imageHeight", 0)
             data.cellSize = meta.optDouble("cellSize", 0.0)
             data.pieceSize = meta.optDouble("pieceSize", 0.0)
+            data.pieceScale = meta.optDouble("pieceScale", 0.65)
 
             val gridArr = JSONArray(File(dir, GRID_FILE).readText(Charsets.UTF_8))
             data.grid = Array(10) { Array(9) { Point() } }

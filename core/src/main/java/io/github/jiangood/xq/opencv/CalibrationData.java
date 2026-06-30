@@ -8,6 +8,7 @@ public class CalibrationData {
     public int imageHeight;
     public double cellSize;
     public double pieceSize;
+    public double pieceScale;
     public Point[][] grid;  // [10][9]
     public List<CalibrationTemplate> templates;
 
