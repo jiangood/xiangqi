@@ -10,6 +10,8 @@
         android:name=".App"
         android:allowBackup="true"
         android:label="象棋支招"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.Material3.DayNight.NoActionBar">
         <activity
