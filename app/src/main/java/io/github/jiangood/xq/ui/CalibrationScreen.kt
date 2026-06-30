@@ -386,37 +386,6 @@ private fun TestResultSection(result: TestResult) {
     }
 }
 
-private fun generateTestVisualization(
-    imagePath: String,
-    grid: Array<Array<Point>>,
-    board: Array<Array<String?>>
-): Bitmap? {
-    return try {
-        val img = Imgcodecs.imread(imagePath, Imgcodecs.IMREAD_COLOR) ?: return null
-        val cropped = io.github.jiangood.xq.opencv.BoardUtils.cropBoardCenter(img)
-        img.release()
-        val mat = cropped
-
-        val green = Scalar(0.0, 255.0, 0.0)
-        for (r in 0 until 10) {
-            Imgproc.line(mat, Point(grid[r][0].x, grid[r][0].y), Point(grid[r][8].x, grid[r][8].y), green, 2)
-        }
-        for (c in 0 until 9) {
-            Imgproc.line(mat, Point(grid[0][c].x, grid[0][c].y), Point(grid[9][c].x, grid[9][c].y), green, 2)
-        }
-
-        val bmp = AndroidImageUtils.matToBitmap(mat)
-        mat.release()
-
-        val canvas = android.graphics.Canvas(bmp)
-        AndroidImageUtils.drawPieceLabels(canvas, grid, board)
-
-        bmp
-    } catch (_: Exception) {
-        null
-    }
-}
-
 private suspend fun runTest(
     context: android.content.Context,
     state: CalibrationUiState.Ready
@@ -447,7 +416,7 @@ private suspend fun runTest(
         }
     }
 
-    val resultBitmap = generateTestVisualization(state.imagePath, state.grid, board)
+    val resultBitmap = AndroidImageUtils.renderBoardVisualization(state.imagePath, state.grid, board)
 
     TestResult(
         passed = correct == total,

@@ -2,9 +2,7 @@ package io.github.jiangood.xq.analysis
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas
 import io.github.jiangood.xq.engine.AndroidEngineClient
-import io.github.jiangood.xq.opencv.BoardUtils
 import io.github.jiangood.xq.opencv.CalibrationData
 import io.github.jiangood.xq.opencv.TemplatePieceRecognizer
 import io.github.jiangood.xq.platform.AndroidImageUtils
@@ -18,8 +16,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.opencv.core.*
-import org.opencv.imgcodecs.Imgcodecs
-import org.opencv.imgproc.Imgproc
 import java.io.File
 import java.io.FileOutputStream
 
@@ -166,50 +162,13 @@ object AnalysisEngine {
         bestMove: String?
     ): String? {
         val calib = calibrationData ?: return null
-        val img = Imgcodecs.imread(imagePath, Imgcodecs.IMREAD_COLOR) ?: return null
-        val cropped = BoardUtils.cropBoardCenter(img)
-        img.release()
-        val mat = cropped
-
-        val grid = calib.grid
-        val green = Scalar(0.0, 255.0, 0.0)
-        val yellow = Scalar(0.0, 255.0, 255.0)
-
-        // Grid lines
-        for (r in 0 until 10) {
-            Imgproc.line(mat, Point(grid[r][0].x, grid[r][0].y), Point(grid[r][8].x, grid[r][8].y), green, 2)
-        }
-        for (c in 0 until 9) {
-            Imgproc.line(mat, Point(grid[0][c].x, grid[0][c].y), Point(grid[9][c].x, grid[9][c].y), green, 2)
-        }
-
-        // Best move arrow
-        if (bestMove != null && bestMove.length == 4) {
-            val fromCol = bestMove[0] - 'a'
-            val fromRow = 9 - (bestMove[1] - '0')
-            val toCol = bestMove[2] - 'a'
-            val toRow = 9 - (bestMove[3] - '0')
-            if (fromCol in 0..8 && fromRow in 0..9 && toCol in 0..8 && toRow in 0..9) {
-                val fromPt = grid[fromRow][fromCol]
-                val toPt = grid[toRow][toCol]
-                Imgproc.arrowedLine(mat, fromPt, toPt, yellow, 3, Imgproc.LINE_AA, 0, 0.3)
-            }
-        }
-
-        // Convert to Bitmap for Chinese text
-        val bmp = AndroidImageUtils.matToBitmap(mat)
-        mat.release()
-
-        val canvas = Canvas(bmp)
-        AndroidImageUtils.drawPieceLabels(canvas, grid, board)
-
+        val bmp = AndroidImageUtils.renderBoardVisualization(imagePath, calib.grid, board, bestMove) ?: return null
         val outDir = File(imagePath).parentFile
         val outPath = File(outDir, "visualization.jpg").absolutePath
         FileOutputStream(outPath).use { out ->
             bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
         }
         bmp.recycle()
-        mat.release()
         return outPath
     }
 
