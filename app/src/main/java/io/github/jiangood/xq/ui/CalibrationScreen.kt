@@ -26,6 +26,13 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import kotlin.math.roundToInt
 import io.github.jiangood.xq.analysis.AnalysisEngine
 import io.github.jiangood.xq.opencv.CalibrationData
 import io.github.jiangood.xq.opencv.CalibrationTemplate
@@ -87,8 +94,9 @@ fun CalibrationScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf<CalibrationUiState>(CalibrationUiState.Idle) }
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
+    var gridPx by remember { mutableIntStateOf(0) }
+    var yOffset by remember { mutableIntStateOf(0) }
+    var imgFitScale by remember { mutableFloatStateOf(1f) }
     var testResult by remember { mutableStateOf<TestResult?>(null) }
     var testing by remember { mutableStateOf(false) }
 
@@ -99,8 +107,8 @@ fun CalibrationScreen(onBack: () -> Unit) {
             scope.launch {
                 startCalibration(context, uri) { newState ->
                     state = newState
-                    scale = 1f
-                    offset = Offset.Zero
+                    gridPx = 0
+                    yOffset = 0
                     testResult = null
                 }
             }
@@ -123,6 +131,13 @@ fun CalibrationScreen(onBack: () -> Unit) {
                     IconButton(onClick = { cleanup() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
+                },
+                actions = {
+                    IconButton(onClick = {
+                        pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }) {
+                        Icon(Icons.Default.Add, contentDescription = "选择图片")
+                    }
                 }
             )
         }
@@ -135,10 +150,10 @@ fun CalibrationScreen(onBack: () -> Unit) {
                         .padding(padding),
                     contentAlignment = Alignment.Center
                 ) {
-                    Button(onClick = {
-                        pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    }) {
-                        Text("选择校准图片", fontSize = 18.sp)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("请选择校准图片", fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(8.dp))
+                        Text("点击右上角 + 按钮", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -172,15 +187,25 @@ fun CalibrationScreen(onBack: () -> Unit) {
                             .fillMaxWidth()
                             .aspectRatio(s.bitmap.width.toFloat() / s.bitmap.height.toFloat())
                             .background(Color(0xFF333333))
+                            .onSizeChanged { size ->
+                                val iScale = minOf(
+                                    size.width.toFloat() / s.bitmap.width,
+                                    size.height.toFloat() / s.bitmap.height
+                                ).coerceAtMost(1f)
+                                imgFitScale = iScale
+                                if (gridPx == 0) {
+                                    gridPx = (iScale * s.cellSize).roundToInt()
+                                }
+                            }
                     ) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             val bmp = s.bitmap
-                            val imgFitScale = minOf(
+                            val fitScale = minOf(
                                 size.width / bmp.width,
                                 size.height / bmp.height
                             ).coerceAtMost(1f)
-                            val imgW = bmp.width * imgFitScale
-                            val imgH = bmp.height * imgFitScale
+                            val imgW = bmp.width * fitScale
+                            val imgH = bmp.height * fitScale
                             val imgX = (size.width - imgW) / 2f
                             val imgY = (size.height - imgH) / 2f
 
@@ -190,56 +215,81 @@ fun CalibrationScreen(onBack: () -> Unit) {
                                 dstSize = IntSize(imgW.toInt(), imgH.toInt())
                             )
 
-                            val grid = s.grid
-                            val gScale = imgFitScale * scale
-                            val gridCx = (grid[0][0].x + grid[0][8].x + grid[9][0].x + grid[9][8].x) / 4.0
-                            val gridCy = (grid[0][0].y + grid[0][8].y + grid[9][0].y + grid[9][8].y) / 4.0
-                            val gX = imgX + (gridCx * imgFitScale * (1 - scale)).toFloat() + offset.x
-                            val gY = imgY + (gridCy * imgFitScale * (1 - scale)).toFloat() + offset.y
-                            for (r in 0 until 10) {
-                                val x1 = gX + (grid[r][0].x * gScale).toFloat()
-                                val y1 = gY + (grid[r][0].y * gScale).toFloat()
-                                val x2 = gX + (grid[r][8].x * gScale).toFloat()
-                                val y2 = gY + (grid[r][8].y * gScale).toFloat()
-                                drawLine(Color.Green, Offset(x1, y1), Offset(x2, y2), strokeWidth = 2f)
-                            }
-                            for (c in 0 until 9) {
-                                val x1 = gX + (grid[0][c].x * gScale).toFloat()
-                                val y1 = gY + (grid[0][c].y * gScale).toFloat()
-                                val x2 = gX + (grid[9][c].x * gScale).toFloat()
-                                val y2 = gY + (grid[9][c].y * gScale).toFloat()
-                                drawLine(Color.Green, Offset(x1, y1), Offset(x2, y2), strokeWidth = 2f)
-                            }
-                            for (r in 0 until 10) {
-                                for (c in 0 until 9) {
-                                    val px = gX + (grid[r][c].x * gScale).toFloat()
-                                    val py = gY + (grid[r][c].y * gScale).toFloat()
-                                    drawCircle(Color.Red, radius = 4f, center = Offset(px, py))
+                            if (gridPx > 0) {
+                                val grid = s.grid
+                                val curScale = gridPx / s.cellSize
+                                val curRatio = curScale / fitScale
+                                val gridCx = (grid[0][0].x + grid[0][8].x + grid[9][0].x + grid[9][8].x) / 4.0
+                                val gridCy = (grid[0][0].y + grid[0][8].y + grid[9][0].y + grid[9][8].y) / 4.0
+                                val gX = imgX + (gridCx * fitScale * (1 - curRatio)).toFloat()
+                                val gY = imgY + (gridCy * fitScale * (1 - curRatio)).toFloat() + yOffset
+                                for (r in 0 until 10) {
+                                    val x1 = gX + (grid[r][0].x * curScale).toFloat()
+                                    val y1 = gY + (grid[r][0].y * curScale).toFloat()
+                                    val x2 = gX + (grid[r][8].x * curScale).toFloat()
+                                    val y2 = gY + (grid[r][8].y * curScale).toFloat()
+                                    drawLine(Color.Green, Offset(x1, y1), Offset(x2, y2), strokeWidth = 2f)
                                 }
-                            }
-                        }
-                        Column(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            SmallFloatingActionButton(onClick = { scale += 0.05f }) {
-                                Text("+", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                            }
-                            SmallFloatingActionButton(onClick = { scale = 1f; offset = Offset.Zero }) {
-                                Text("⊙", fontSize = 14.sp)
-                            }
-                            SmallFloatingActionButton(onClick = { scale -= 0.05f }) {
-                                Text("−", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                for (c in 0 until 9) {
+                                    val x1 = gX + (grid[0][c].x * curScale).toFloat()
+                                    val y1 = gY + (grid[0][c].y * curScale).toFloat()
+                                    val x2 = gX + (grid[9][c].x * curScale).toFloat()
+                                    val y2 = gY + (grid[9][c].y * curScale).toFloat()
+                                    drawLine(Color.Green, Offset(x1, y1), Offset(x2, y2), strokeWidth = 2f)
+                                }
+                                for (r in 0 until 10) {
+                                    for (c in 0 until 9) {
+                                        val px = gX + (grid[r][c].x * curScale).toFloat()
+                                        val py = gY + (grid[r][c].y * curScale).toFloat()
+                                        drawCircle(Color.Red, radius = 4f, center = Offset(px, py))
+                                    }
+                                }
                             }
                         }
                     }
 
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(8.dp))
 
-                    val templates = remember(s.mat, s.grid, s.cellSize) {
-                        cropTemplates(s.mat, s.grid, s.cellSize)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("缩放", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(48.dp))
+                        OutlinedTextField(
+                            value = gridPx.toString(),
+                            onValueChange = { input ->
+                                val parsed = input.toIntOrNull()
+                                if (parsed != null && parsed in 5..500) {
+                                    gridPx = parsed
+                                }
+                            },
+                            modifier = Modifier.width(100.dp),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                            textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text("上下移动", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(64.dp))
+                        OutlinedTextField(
+                            value = yOffset.toString(),
+                            onValueChange = { input ->
+                                val parsed = input.toIntOrNull()
+                                if (parsed != null && parsed in -9999..9999) {
+                                    yOffset = parsed
+                                }
+                            },
+                            modifier = Modifier.width(100.dp),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                            textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    val templates = remember(s.mat, s.grid, s.cellSize, gridPx) {
+                        val zoomRatio = if (imgFitScale > 0) gridPx / (imgFitScale * s.cellSize) else 1.0
+                        cropTemplates(s.mat, s.grid, s.cellSize, zoomRatio)
                     }
                     @Composable fun PieceItem(type: String, bmp: Bitmap) {
                         Column(
@@ -279,7 +329,7 @@ fun CalibrationScreen(onBack: () -> Unit) {
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+                        horizontalArrangement = Arrangement.Center
                     ) {
                         OutlinedButton(
                             onClick = {
@@ -296,18 +346,6 @@ fun CalibrationScreen(onBack: () -> Unit) {
                             } else {
                                 Text("测试")
                             }
-                        }
-                        Button(
-                            onClick = {
-                                saveCalibration(context, s)
-                                s.mat.release()
-                                s.imagePath.let { File(it).delete() }
-                                testResult?.resultBitmap?.recycle()
-                                onBack()
-                            },
-                            enabled = isSaveEnabled(testResult?.passed)
-                        ) {
-                            Text("确认校准")
                         }
                     }
 
@@ -327,11 +365,7 @@ fun CalibrationScreen(onBack: () -> Unit) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(s.message, color = Color.Red, fontSize = 16.sp)
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = {
-                            state = CalibrationUiState.Idle
-                        }) {
-                            Text("重新选择")
-                        }
+                        Text("点击右上角 + 重新选择", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -462,15 +496,17 @@ private suspend fun startCalibration(
             binary.release()
 
             val bitmap = AndroidImageUtils.matToBitmap(cropped)
-            onResult(CalibrationUiState.Ready(bitmap, grid, cellSizeEst, imageWidth, imageHeight, cropped, tempFile.absolutePath))
+            val readyState = CalibrationUiState.Ready(bitmap, grid, cellSizeEst, imageWidth, imageHeight, cropped, tempFile.absolutePath)
+            saveCalibration(context, readyState)
+            onResult(readyState)
         }
     } catch (e: Exception) {
         onResult(CalibrationUiState.Error("校准失败: ${e.message ?: "未知错误"}"))
     }
 }
 
-private fun cropTemplates(mat: Mat, grid: Array<Array<Point>>, cellSize: Double): List<Pair<String, Bitmap>> {
-    val pieceSize = cellSize * 0.65
+private fun cropTemplates(mat: Mat, grid: Array<Array<Point>>, cellSize: Double, zoomRatio: Double = 1.0): List<Pair<String, Bitmap>> {
+    val pieceSize = cellSize * 0.65 * zoomRatio
     val result = mutableListOf<Pair<String, Bitmap>>()
     val savedTypes = mutableSetOf<String>()
     for (r in 0 until 10) {
