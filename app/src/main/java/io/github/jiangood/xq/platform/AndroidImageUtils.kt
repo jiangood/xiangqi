@@ -20,8 +20,11 @@ object AndroidImageUtils {
     }
 
     fun matToBitmap(mat: Mat): Bitmap {
-        val bitmap = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888)
-        Utils.matToBitmap(mat, bitmap)
+        val rgba = Mat()
+        Imgproc.cvtColor(mat, rgba, Imgproc.COLOR_BGR2RGBA)
+        val bitmap = Bitmap.createBitmap(rgba.cols(), rgba.rows(), Bitmap.Config.ARGB_8888)
+        Utils.matToBitmap(rgba, bitmap)
+        rgba.release()
         return bitmap
     }
 

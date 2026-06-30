@@ -203,8 +203,14 @@ object AnalysisEngine {
         mat.release()
 
         val canvas = Canvas(bmp)
-        val paint = Paint().apply {
+        val redPaint = Paint().apply {
             color = android.graphics.Color.RED
+            textSize = 28f
+            isAntiAlias = true
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        val bluePaint = Paint().apply {
+            color = 0xFF1976D2.toInt()
             textSize = 28f
             isAntiAlias = true
             typeface = Typeface.DEFAULT_BOLD
@@ -215,6 +221,7 @@ object AnalysisEngine {
                 val p = board[r][c] ?: continue
                 val ch = PIECE_CHINESE[p] ?: continue
                 val pt = grid[r][c]
+                val paint = if (p.startsWith("r")) redPaint else bluePaint
                 // Background for readability
                 val bgPaint = Paint().apply {
                     color = android.graphics.Color.argb(180, 255, 255, 255)
