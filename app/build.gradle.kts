@@ -11,8 +11,8 @@ android {
         applicationId = "io.github.jiangood.xq"
         minSdk = 34
         targetSdk = 34
-        versionCode = 95
-        versionName = "7.0.2"
+        versionCode = 96
+        versionName = "7.0.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             // debug 保留所有 ABI 以支持模拟器测试

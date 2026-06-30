@@ -243,6 +243,29 @@ public class BoardUtils {
         return new int[][]{hChain, vChain};
     }
 
+    /**
+     * 根据将帅在宫格中的位置判断棋盘方向
+     * @param board 10×9 棋盘数组
+     * @return true  红帅在图像下方（走子方为红方 "w"）
+     *         false 黑将在图像下方（走子方为黑方 "b"）
+     * @throws IllegalArgumentException 未同时检测到红帅和黑将
+     */
+    public static boolean isRedBottom(String[][] board) {
+        int rkRow = -1, bkRow = -1;
+        for (int r = 0; r < 10; r++) {
+            if (r > 2 && r < 7) continue;
+            for (int c = 3; c <= 5; c++) {
+                String p = board[r][c];
+                if (p == null) continue;
+                if (p.equals("rk")) rkRow = r;
+                else if (p.equals("bk")) bkRow = r;
+            }
+        }
+        if (rkRow == -1 || bkRow == -1)
+            throw new IllegalArgumentException("未同时检测到红帅和黑将");
+        return rkRow > bkRow;
+    }
+
     public static String[][] assignPiecesToGrid(Map<Point, String> matchResult, Point[][] grid) {
         String[][] board = new String[10][9];
         double cellRadius = Math.max(

@@ -1,5 +1,6 @@
 package io.github.jiangood.xq.util;
 
+import io.github.jiangood.xq.opencv.BoardUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,18 +36,13 @@ public class FenUtil {
             return errors;
         }
 
-        // Detect orientation: which king is in bottom 3 rows
-        boolean redBottom = true;
-        boolean redKingBottom = false, blackKingBottom = false;
-        for (int row = 7; row <= 9; row++) {
-            for (int col = 0; col < 9; col++) {
-                String p = board[row][col];
-                if (p == null || p.length() != 2) continue;
-                if (p.charAt(0) == 'r' && p.charAt(1) == 'k') redKingBottom = true;
-                if (p.charAt(0) == 'b' && p.charAt(1) == 'k') blackKingBottom = true;
-            }
+        boolean redBottom;
+        try {
+            redBottom = BoardUtils.isRedBottom(board);
+        } catch (IllegalArgumentException e) {
+            errors.add(e.getMessage());
+            redBottom = true;
         }
-        if (blackKingBottom && !redKingBottom) redBottom = false;
 
         for (int row = 0; row < 10; row++) {
             for (int col = 0; col < 9; col++) {
@@ -127,18 +123,9 @@ public class FenUtil {
 
         String boardFEN = String.join("/", fenRows);
 
-        // 2. 从底部半场（row 7-9）找帅/将，确定走子方
-        String activeColor = "w";
-        outer:
-        for (int i = 9; i >= 7; i--) {
-            for (int j = 0; j < 9; j++) {
-                String p = board[i][j];
-                if (p != null && p.length() == 2 && p.charAt(1) == 'k') {
-                    activeColor = (p.charAt(0) == 'r') ? "w" : "b";
-                    break outer;
-                }
-            }
-        }
+        // 2. 根据将帅宫格位置确定走子方
+        boolean redBottom = BoardUtils.isRedBottom(board);
+        String activeColor = redBottom ? "w" : "b";
 
         return boardFEN + " " + activeColor;
     }
