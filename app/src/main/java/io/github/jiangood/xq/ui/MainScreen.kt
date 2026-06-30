@@ -39,8 +39,8 @@ import androidx.compose.material3.IconButton
 fun MainScreen(
     viewModel: AnalysisViewModel,
     onPickImage: () -> Unit,
-    onOpenAccessibility: () -> Unit,
-    onOpenOverlayPermission: () -> Unit,
+    onToggleOverlay: (Boolean) -> Unit,
+    isOverlayVisible: Boolean,
     onOpenSettings: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -66,41 +66,27 @@ fun MainScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        Button(
-            onClick = onOpenAccessibility,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("特殊权限无障碍的开启")
+            Text("悬浮窗", modifier = Modifier.weight(1f))
+            Switch(
+                checked = isOverlayVisible,
+                onCheckedChange = { onToggleOverlay(it) }
+            )
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
 
         Text(
-            text = "启用后点击悬浮球即可截图分析。需在系统设置→无障碍中开启。",
+            text = if (isOverlayVisible) "悬浮球已显示，点击即可截图分析" else "开启后显示悬浮球，方便快速截图分析",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.outline,
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(Modifier.height(12.dp))
-
-        Button(
-            onClick = onOpenOverlayPermission,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("悬浮窗的开启")
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        Text(
-            text = "开启后允许应用在其他应用上层显示悬浮球。",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(Modifier.height(8.dp))
 
         Row(
             verticalAlignment = Alignment.CenterVertically,

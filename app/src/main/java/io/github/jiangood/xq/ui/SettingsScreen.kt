@@ -26,7 +26,9 @@ import io.github.jiangood.xq.settings.SettingsManager
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
-    onOpenCalibration: () -> Unit = {}
+    onOpenCalibration: () -> Unit = {},
+    onOpenAccessibility: () -> Unit = {},
+    onOpenOverlayPermission: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -73,6 +75,18 @@ fun SettingsScreen(
                 valueColor = if (calibrated) androidx.compose.ui.graphics.Color(0xFF4CAF50)
                             else MaterialTheme.colorScheme.error,
                 onClick = onOpenCalibration
+            )
+
+            SettingCell(
+                title = "无障碍截图",
+                value = "需在系统设置中开启",
+                onClick = onOpenAccessibility
+            )
+
+            SettingCell(
+                title = "悬浮窗权限",
+                value = "需在系统设置中开启",
+                onClick = onOpenOverlayPermission
             )
 
             Spacer(Modifier.weight(1f))
