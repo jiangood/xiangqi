@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -65,6 +66,11 @@ private sealed class CalibrationUiState {
 }
 
 private val PIECE_CHINESE = io.github.jiangood.xq.util.FenUtil.PIECE_CHINESE
+
+private val PIECE_DISPLAY_ORDER = listOf(
+    "rk", "ra", "rb", "rr", "rn", "rc", "rp",
+    "bk", "ba", "bb", "br", "bn", "bc", "bp"
+)
 
 private val STANDARD_OPENING: Array<Array<String?>> = arrayOf(
     arrayOf("br", "bn", "bb", "ba", "bk", "ba", "bb", "bn", "br"),
@@ -323,17 +329,20 @@ fun CalibrationScreen(onBack: () -> Unit) {
             emptyList()
         }
     }
-                    @Composable fun PieceItem(type: String, bmp: Bitmap) {
+                    @Composable fun PieceItem(type: String, bmp: Bitmap, gridPx: Int) {
+                        val density = LocalDensity.current.density
+                        val pieceW = (gridPx * 0.65f / density).dp
+                        val pieceH = (gridPx * 0.75f / density).dp
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.width(36.dp)
+                            modifier = Modifier.width(pieceW + 2.dp)
                         ) {
                             Image(
                                 bitmap = bmp.asImageBitmap(),
                                 contentDescription = type,
                                 modifier = Modifier
-                                    .width(34.dp)
-                                    .height(40.dp)
+                                    .width(pieceW)
+                                    .height(pieceH)
                                     .background(Color(0xFFE0E0E0))
                             )
                             Text(
@@ -343,18 +352,23 @@ fun CalibrationScreen(onBack: () -> Unit) {
                             )
                         }
                     }
+                    Text(
+                        "棋子模板（${templates.size} 个）",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        templates.take(7).forEach { (type, bmp) -> PieceItem(type, bmp) }
+                        templates.take(7).forEach { (type, bmp) -> PieceItem(type, bmp, gridPx) }
                     }
                     Spacer(Modifier.height(2.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        templates.drop(7).forEach { (type, bmp) -> PieceItem(type, bmp) }
+                        templates.drop(7).forEach { (type, bmp) -> PieceItem(type, bmp, gridPx) }
                     }
 
                     Spacer(Modifier.height(4.dp))
@@ -363,16 +377,16 @@ fun CalibrationScreen(onBack: () -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                scope.launch {
-                                    testing = true
-                                    testResult = runTest(context, s)
-                                    testing = false
-                                }
-                            },
-                            enabled = !testing
-                        ) {
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                testing = true
+                                testResult = runTest(context, s, gridPx, imgFitScale)
+                                testing = false
+                            }
+                        },
+                        enabled = !testing
+                    ) {
                             if (testing) {
                                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             } else {
@@ -458,9 +472,11 @@ private fun TestResultSection(result: TestResult) {
 
 private suspend fun runTest(
     context: android.content.Context,
-    state: CalibrationUiState.Ready
+    state: CalibrationUiState.Ready,
+    gridPx: Int = 0,
+    imgFitScale: Float = 1f
 ): TestResult = withContext(Dispatchers.IO) {
-    saveCalibration(context, state)
+    saveCalibration(context, state, gridPx, imgFitScale)
 
     val board = AnalysisEngine.recognize(context, state.imagePath)
         ?: throw Exception("校准数据加载失败")
@@ -581,25 +597,34 @@ private suspend fun loadExistingCalibration(
 
 private fun cropTemplates(mat: Mat, grid: Array<Array<Point>>, cellSize: Double, zoomRatio: Double = 1.0): List<Pair<String, Bitmap>> {
     val pieceSize = cellSize * 0.65 * zoomRatio
-    val result = mutableListOf<Pair<String, Bitmap>>()
-    val savedTypes = mutableSetOf<String>()
+    val map = mutableMapOf<String, Bitmap>()
     for (r in 0 until 10) {
         for (c in 0 until 9) {
             val pieceType = STANDARD_OPENING[r][c] ?: continue
-            if (pieceType in savedTypes) continue
-            savedTypes.add(pieceType)
+            if (pieceType in map) continue
             val pieceMat = CalibrationManager.cropPiece(mat, grid, r, c, pieceSize) ?: continue
             if (pieceMat.empty()) { pieceMat.release(); continue }
             val bmp = AndroidImageUtils.matToBitmap(pieceMat)
             pieceMat.release()
-            result.add(pieceType to bmp)
+            map[pieceType] = bmp
         }
     }
-    return result
+    return PIECE_DISPLAY_ORDER.mapNotNull { type ->
+        map[type]?.let { type to it }
+    }
 }
 
-private fun saveCalibration(context: android.content.Context, state: CalibrationUiState.Ready) {
-    val pieceSize = state.cellSize * 0.65
+private fun saveCalibration(
+    context: android.content.Context,
+    state: CalibrationUiState.Ready,
+    gridPx: Int = 0,
+    imgFitScale: Float = 1f
+) {
+    val adjustedCellSize = if (gridPx > 0 && imgFitScale > 0f)
+        gridPx / imgFitScale.toDouble()
+    else
+        state.cellSize
+    val pieceSize = adjustedCellSize * 0.65
     val data = CalibrationData()
     data.imageWidth = state.imageWidth
     data.imageHeight = state.imageHeight
