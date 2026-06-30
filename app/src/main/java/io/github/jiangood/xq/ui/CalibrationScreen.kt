@@ -503,7 +503,8 @@ private suspend fun startCalibration(
     try {
         withContext(Dispatchers.IO) {
             val originalFile = CalibrationManager.getOriginalImageFile(context)
-            AndroidImageUtils.copyUriToFile(context.contentResolver, uri, originalFile)
+            if (!AndroidImageUtils.copyUriToFile(context.contentResolver, uri, originalFile))
+                throw Exception("无法读取图片文件")
 
             val mat = Imgcodecs.imread(originalFile.absolutePath, Imgcodecs.IMREAD_COLOR)
             if (mat.empty()) throw Exception("无法加载图片")

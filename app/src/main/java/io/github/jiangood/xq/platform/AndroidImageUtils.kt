@@ -129,10 +129,10 @@ object AndroidImageUtils {
         file.outputStream().use { output -> input.copyTo(output) }
     }
 
-    fun copyUriToFile(contentResolver: ContentResolver, uri: Uri, file: File) {
-        contentResolver.openInputStream(uri)?.use { input ->
-            copyToFile(input, file)
-        }
+    fun copyUriToFile(contentResolver: ContentResolver, uri: Uri, file: File): Boolean {
+        val input = contentResolver.openInputStream(uri) ?: return false
+        input.use { copyToFile(it, file) }
+        return true
     }
 
     fun cleanupOldAnalysisDirs(cacheDir: File, maxAgeMs: Long = 3600_000L) {

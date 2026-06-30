@@ -18,10 +18,13 @@ public class BoardUtils {
         int w = src.cols();
         int cropH = (int) (w * 10.0 / 9.0);
         if (cropH >= h) {
-            return src;
+            return src.clone();
         }
         int y = (h - cropH) / 2;
-        return new Mat(src, new Rect(0, y, w, cropH));
+        Mat roi = new Mat(src, new Rect(0, y, w, cropH));
+        Mat result = roi.clone();
+        roi.release();
+        return result;
     }
 
     public static Point[][] calibrateGrid(Map<Point, String> matches, Rect boardRect, Mat binaryBoard, int[] hChain, int[] vChain) {
