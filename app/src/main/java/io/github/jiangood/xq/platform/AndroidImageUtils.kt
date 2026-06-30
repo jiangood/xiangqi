@@ -27,6 +27,7 @@ object AndroidImageUtils {
     }
 
     fun matToBitmap(mat: Mat): Bitmap {
+        if (mat.empty()) throw IllegalArgumentException("mat为空，无法转换为Bitmap")
         val rgba = Mat()
         Imgproc.cvtColor(mat, rgba, Imgproc.COLOR_BGR2RGBA)
         val bitmap = Bitmap.createBitmap(rgba.cols(), rgba.rows(), Bitmap.Config.ARGB_8888)
@@ -76,7 +77,8 @@ object AndroidImageUtils {
         board: Array<Array<String?>>,
         bestMove: String? = null
     ): Bitmap? {
-        val img = Imgcodecs.imread(imagePath, Imgcodecs.IMREAD_COLOR) ?: return null
+        val img = Imgcodecs.imread(imagePath, Imgcodecs.IMREAD_COLOR)
+        if (img.empty()) return null
         val cropped = BoardUtils.cropBoardCenter(img)
         img.release()
         val mat = cropped

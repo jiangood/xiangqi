@@ -315,10 +315,14 @@ fun CalibrationScreen(onBack: () -> Unit) {
 
                     Spacer(Modifier.height(8.dp))
 
-                    val templates = remember(s.mat, s.grid, s.cellSize, gridPx) {
-                        val zoomRatio = if (imgFitScale > 0) gridPx / (imgFitScale * s.cellSize) else 1.0
-                        cropTemplates(s.mat, s.grid, s.cellSize, zoomRatio)
-                    }
+    val templates = remember(s.mat, s.grid, s.cellSize, gridPx) {
+        try {
+            val zoomRatio = if (imgFitScale > 0) gridPx / (imgFitScale * s.cellSize) else 1.0
+            cropTemplates(s.mat, s.grid, s.cellSize, zoomRatio)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
                     @Composable fun PieceItem(type: String, bmp: Bitmap) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -510,6 +514,7 @@ private suspend fun startCalibration(
             if (mat.empty()) throw Exception("无法加载图片")
 
             val cropped = io.github.jiangood.xq.opencv.BoardUtils.cropBoardCenter(mat)
+            if (cropped.empty()) throw Exception("裁剪棋盘区域失败")
             val imageWidth = mat.width()
             val imageHeight = mat.height()
             mat.release()
@@ -554,6 +559,7 @@ private suspend fun loadExistingCalibration(
             if (mat.empty()) throw Exception("无法加载图片")
 
             val cropped = io.github.jiangood.xq.opencv.BoardUtils.cropBoardCenter(mat)
+            if (cropped.empty()) throw Exception("裁剪棋盘区域失败")
             mat.release()
 
             val bitmap = AndroidImageUtils.matToBitmap(cropped)
@@ -583,6 +589,7 @@ private fun cropTemplates(mat: Mat, grid: Array<Array<Point>>, cellSize: Double,
             if (pieceType in savedTypes) continue
             savedTypes.add(pieceType)
             val pieceMat = CalibrationManager.cropPiece(mat, grid, r, c, pieceSize) ?: continue
+            if (pieceMat.empty()) { pieceMat.release(); continue }
             val bmp = AndroidImageUtils.matToBitmap(pieceMat)
             pieceMat.release()
             result.add(pieceType to bmp)

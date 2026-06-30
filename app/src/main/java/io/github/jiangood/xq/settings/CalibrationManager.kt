@@ -109,7 +109,7 @@ object CalibrationManager {
         val y = (center.y - half).toInt()
         val w = pieceSize.toInt()
         val h = pieceSize.toInt()
-        if (x < 0 || y < 0 || x + w > mat.cols() || y + h > mat.rows()) return null
+        if (x < 0 || y < 0 || x + w > mat.cols() || y + h > mat.rows() || w <= 0 || h <= 0) return null
         return Mat(mat, Rect(x, y, w, h))
     }
 }

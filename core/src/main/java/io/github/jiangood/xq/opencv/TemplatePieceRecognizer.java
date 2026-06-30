@@ -62,6 +62,7 @@ public class TemplatePieceRecognizer implements PieceRecognizer {
     public String[][] parseBoard(String imageFile) throws Exception {
         log.info("加载图像: " + imageFile);
         Mat srcOrig = Imgcodecs.imread(imageFile, Imgcodecs.IMREAD_COLOR);
+        if (srcOrig.empty()) throw new Exception("无法加载图片: " + imageFile);
         Mat srcColor = BoardUtils.cropBoardCenter(srcOrig);
         if (srcColor != srcOrig) srcOrig.release();
 
