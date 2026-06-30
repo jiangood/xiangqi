@@ -44,6 +44,9 @@ class AnalysisViewModel : ViewModel() {
     private val _ready = MutableStateFlow(false)
     val ready: StateFlow<Boolean> = _ready
 
+    private val _showNnueWarning = MutableStateFlow(false)
+    val showNnueWarning: StateFlow<Boolean> = _showNnueWarning
+
     val logs: StateFlow<List<String>> = AppLog.logs
 
     fun initOpenCV(context: Context) {
@@ -57,6 +60,9 @@ class AnalysisViewModel : ViewModel() {
                 try {
                     AnalysisEngine.awaitInitialized()
                     _ready.value = AnalysisEngine.boardRecognizer != null && AnalysisEngine.engineClient != null
+                    if (AnalysisEngine.isNnueMissing) {
+                        _showNnueWarning.value = true
+                    }
                 } catch (_: Exception) {
                     _ready.value = false
                 }
@@ -108,6 +114,10 @@ class AnalysisViewModel : ViewModel() {
                 _uiState.value = UiState.Error(e.message ?: "分析出错")
             }
         }
+    }
+
+    fun dismissNnueWarning() {
+        _showNnueWarning.value = false
     }
 
     fun selectMove(@Suppress("UNUSED_PARAMETER") index: Int) {

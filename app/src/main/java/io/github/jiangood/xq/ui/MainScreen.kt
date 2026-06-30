@@ -194,6 +194,22 @@ fun MainScreen(
 
         LogCard(title = "日志", logs = allLogs, autoExpand = state is UiState.Error)
     }
+
+    if (viewModel.showNnueWarning.collectAsState().value) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissNnueWarning() },
+            icon = { Text("⚠️", fontSize = 28.sp) },
+            title = { Text("精简版提示") },
+            text = {
+                Text("NNUE 权重文件缺失，当前为精简版安装包，无法启动引擎分析。\n\n请安装完整版以获得完整功能。")
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissNnueWarning() }) {
+                    Text("知道了")
+                }
+            }
+        )
+    }
 }
 
 @Composable

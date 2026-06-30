@@ -34,6 +34,8 @@ object AnalysisEngine {
         private set
     var calibrationData: CalibrationData? = null
         private set
+    var isNnueMissing = false
+        private set
 
     private val initComplete = CompletableDeferred<Unit>()
 
@@ -51,6 +53,7 @@ object AnalysisEngine {
                         }
                         AppLog.add("[引擎] NNUE 解压完成")
                     } catch (e: java.io.FileNotFoundException) {
+                        isNnueMissing = true
                         AppLog.add("[引擎] NNUE 权重文件不存在（thin 包），请先安装完整版")
                     } catch (e: Exception) {
                         AppLog.add("[引擎] NNUE 解压跳过: ${e.message}")
