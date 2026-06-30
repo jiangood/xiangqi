@@ -43,7 +43,6 @@ object AnalysisEngine {
         if (initComplete.isCompleted) return
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                AppLog.add("[引擎] 初始化 NNUE...")
                 val nnueFile = File(context.filesDir, "pikafish.nnue")
                 if (!nnueFile.exists()) {
                     try {
@@ -51,15 +50,12 @@ object AnalysisEngine {
                         context.assets.open("pikafish.nnue").use { input ->
                             AndroidImageUtils.copyToFile(input, nnueFile)
                         }
-                        AppLog.add("[引擎] NNUE 解压完成")
                     } catch (e: java.io.FileNotFoundException) {
                         isNnueMissing = true
                         AppLog.add("[引擎] NNUE 权重文件不存在（thin 包），请先安装完整版")
                     } catch (e: Exception) {
                         AppLog.add("[引擎] NNUE 解压跳过: ${e.message}")
                     }
-                } else {
-                    AppLog.add("[引擎] NNUE 已存在")
                 }
                 if (!nnueFile.exists()) {
                     AppLog.add("[引擎] NNUE 权重文件缺失，跳过引擎启动")
@@ -70,7 +66,6 @@ object AnalysisEngine {
                 val engine = AndroidEngineClient(context)
                 if (engine.start()) {
                     engineClient = engine
-                    AppLog.add("[引擎] 引擎启动成功")
                 } else {
                     AppLog.add("[引擎] 引擎启动失败")
                 }
@@ -81,7 +76,7 @@ object AnalysisEngine {
                 if (calibData != null) {
                     val templateDir = CalibrationManager.getTemplateFileDir(context)
                     boardRecognizer = TemplatePieceRecognizer(calibData, templateDir)
-                    AppLog.add("[引擎] 校准数据加载成功，使用模板匹配")
+                    AppLog.add("[引擎] 校准数据加载成功")
                 } else {
                     AppLog.add("[引擎] 未找到校准数据，请先在设置中完成棋盘棋子校准")
                 }
@@ -117,7 +112,7 @@ object AnalysisEngine {
                 val recognizer = boardRecognizer
                 val engine = engineClient
                 if (recognizer == null || engine == null) {
-                    AppLog.add("[引擎] 分析失败: recognizer=${recognizer != null}, engine=${engine != null}")
+                    AppLog.add("[引擎] 分析失败: 引擎未初始化")
                     if (recognizer == null) {
                         AppLog.add("[引擎] 请先在设置中完成棋盘棋子校准")
                     }
@@ -127,16 +122,12 @@ object AnalysisEngine {
                 val rawBoard = recognizer.parseBoard(imageFile.absolutePath)
                 AppLog.add("[引擎] 棋盘识别完成, 检测到棋子: ${FenUtil.countPieces(rawBoard)}")
                 val board = rawBoard
-                logBoard(board)
                 val fen = FenUtil.toFen(board)
-                AppLog.add("[引擎] FEN: $fen")
                 AppLog.add("[引擎] 引擎分析中...")
                 val moves = engine.getBestMove(fen, io.github.jiangood.xq.settings.SettingsManager.getDepth())
-                AppLog.add("[引擎] 引擎返回 ${moves.size} 条走法: ${moves.joinToString(", ")}")
+                AppLog.add("[引擎] 引擎返回 ${moves.size} 条走法")
                 val chineseMoves = moves.map { move ->
-                    val result = NotationConverter.convertToChineseNotation(board, move)
-                    AppLog.add("[引擎] 翻译: $move -> $result")
-                    result
+                    NotationConverter.convertToChineseNotation(board, move)
                 }
                 val vizPath = generateVisualization(imageFile.absolutePath, board, moves.firstOrNull())
                 AnalysisResult(board, fen, moves, chineseMoves, vizPath)
@@ -145,16 +136,6 @@ object AnalysisEngine {
                 null
             }
         }
-    }
-
-    private fun logBoard(board: Array<Array<String?>>) {
-        val lines = mutableListOf<String>()
-        lines.add("[引擎] 棋盘状态 (row0=黑方底线):")
-        for (i in board.indices) {
-            val row = board[i].joinToString(" ") { it ?: "--" }
-            lines.add("[引擎]   row$i: $row")
-        }
-        lines.forEach { AppLog.add(it) }
     }
 
     private val PIECE_CHINESE = FenUtil.PIECE_CHINESE

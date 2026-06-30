@@ -94,9 +94,7 @@ class AndroidEngineClient(private val context: Context) {
         var line: String?
         while (System.currentTimeMillis() < deadline) {
             line = reader?.readLine() ?: break
-            AppLog.add("[引擎] << $line")
             if (line.startsWith("uciok")) {
-                AppLog.add("[引擎] 收到 uciok")
                 val nnueFile = File(context.filesDir, NNUE_NAME)
                 if (nnueFile.exists()) {
                     AppLog.add("[引擎] 设置 NNUE: ${nnueFile.absolutePath}")
@@ -110,7 +108,6 @@ class AndroidEngineClient(private val context: Context) {
                 val readyDeadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10)
                 while (System.currentTimeMillis() < readyDeadline) {
                     line = reader?.readLine() ?: break
-                    AppLog.add("[引擎] << $line")
                     if (line.startsWith("readyok")) {
                         AppLog.add("[引擎] UCI 握手成功")
                         return true
@@ -133,7 +130,6 @@ class AndroidEngineClient(private val context: Context) {
     }
 
     fun getBestMove(fen: String, depth: Int = io.github.jiangood.xq.settings.SettingsManager.getDepth()): List<String> {
-        AppLog.add("[引擎] getBestMove: isReady=$isReady, processAlive=${isProcessAlive()}")
         if (!isReady) {
             AppLog.add("[引擎] getBestMove: 引擎未就绪，返回空列表")
             return emptyList()
@@ -206,9 +202,9 @@ class AndroidEngineClient(private val context: Context) {
         try {
             val exitVal = try { process?.exitValue() } catch (_: Exception) { null }
             if (exitVal != null) {
-                AppLog.add("[引擎] 关闭, 进程已退出: exitValue=$exitVal")
+                AppLog.add("[引擎] 关闭引擎（进程已退出）")
             } else {
-                AppLog.add("[引擎] 关闭, 发送 quit 命令")
+                AppLog.add("[引擎] 关闭引擎")
                 send("quit")
                 process?.waitFor(2, TimeUnit.SECONDS)
             }

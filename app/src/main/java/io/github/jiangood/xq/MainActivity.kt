@@ -3,6 +3,7 @@ package io.github.jiangood.xq
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
@@ -74,14 +75,17 @@ class MainActivity : ComponentActivity() {
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                             )
                         },
-                        onToggleFloating = { enabled ->
-                            if (enabled) {
-                                AppLog.add("[无障碍] 引导用户前往设置启用")
-                                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                            } else {
-                                AppLog.add("[无障碍] 提示用户在设置中关闭")
-                                Toast.makeText(this, "请在 设置 → 无障碍 → 已安装的应用 → 象棋支招 中关闭", Toast.LENGTH_LONG).show()
-                            }
+                        onOpenAccessibility = {
+                            AppLog.add("[无障碍] 引导用户前往设置启用")
+                            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                        },
+                        onOpenOverlayPermission = {
+                            AppLog.add("[悬浮窗] 引导用户开启悬浮窗权限")
+                            val intent = Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:$packageName")
+                            )
+                            startActivity(intent)
                         },
                         onOpenSettings = { showSettings = true }
                     )
