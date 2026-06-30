@@ -3,8 +3,6 @@ package io.github.jiangood.xq.analysis
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Typeface
 import io.github.jiangood.xq.engine.AndroidEngineClient
 import io.github.jiangood.xq.opencv.BoardUtils
 import io.github.jiangood.xq.opencv.CalibrationData
@@ -203,40 +201,7 @@ object AnalysisEngine {
         mat.release()
 
         val canvas = Canvas(bmp)
-        val redPaint = Paint().apply {
-            color = android.graphics.Color.RED
-            textSize = 28f
-            isAntiAlias = true
-            typeface = Typeface.DEFAULT_BOLD
-        }
-        val bluePaint = Paint().apply {
-            color = 0xFF1976D2.toInt()
-            textSize = 28f
-            isAntiAlias = true
-            typeface = Typeface.DEFAULT_BOLD
-        }
-
-        for (r in 0 until 10) {
-            for (c in 0 until 9) {
-                val p = board[r][c] ?: continue
-                val ch = PIECE_CHINESE[p] ?: continue
-                val pt = grid[r][c]
-                val paint = if (p.startsWith("r")) redPaint else bluePaint
-                // Background for readability
-                val bgPaint = Paint().apply {
-                    color = android.graphics.Color.argb(180, 255, 255, 255)
-                }
-                val textW = paint.measureText(ch)
-                canvas.drawRect(
-                    (pt.x - textW / 2 - 2).toFloat(),
-                    (pt.y - paint.textSize / 2 - 2).toFloat(),
-                    (pt.x + textW / 2 + 2).toFloat(),
-                    (pt.y + paint.textSize / 2 + 2).toFloat(),
-                    bgPaint
-                )
-                canvas.drawText(ch, (pt.x - textW / 2).toFloat(), (pt.y + paint.textSize / 3).toFloat(), paint)
-            }
-        }
+        AndroidImageUtils.drawPieceLabels(canvas, grid, board)
 
         val outDir = File(imagePath).parentFile
         val outPath = File(outDir, "visualization.jpg").absolutePath

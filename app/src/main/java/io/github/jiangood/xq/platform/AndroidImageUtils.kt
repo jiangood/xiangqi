@@ -3,9 +3,14 @@ package io.github.jiangood.xq.platform
 import android.content.ContentResolver
 import android.net.Uri
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Typeface
+import io.github.jiangood.xq.util.FenUtil
 import org.opencv.android.Utils
 import org.opencv.core.Mat
 import org.opencv.core.MatOfInt
+import org.opencv.core.Point
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
@@ -26,6 +31,41 @@ object AndroidImageUtils {
         Utils.matToBitmap(rgba, bitmap)
         rgba.release()
         return bitmap
+    }
+
+    fun drawPieceLabels(canvas: Canvas, grid: Array<Array<Point>>, board: Array<Array<String?>>) {
+        val redPaint = Paint().apply {
+            color = android.graphics.Color.RED
+            textSize = 28f
+            isAntiAlias = true
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        val bluePaint = Paint().apply {
+            color = 0xFF1976D2.toInt()
+            textSize = 28f
+            isAntiAlias = true
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        for (r in 0 until 10) {
+            for (c in 0 until 9) {
+                val p = board[r][c] ?: continue
+                val ch = FenUtil.PIECE_CHINESE[p] ?: continue
+                val pt = grid[r][c]
+                val paint = if (p.startsWith("r")) redPaint else bluePaint
+                val bgPaint = Paint().apply {
+                    color = android.graphics.Color.argb(180, 255, 255, 255)
+                }
+                val textW = paint.measureText(ch)
+                canvas.drawRect(
+                    (pt.x - textW / 2 - 2).toFloat(),
+                    (pt.y - paint.textSize / 2 - 2).toFloat(),
+                    (pt.x + textW / 2 + 2).toFloat(),
+                    (pt.y + paint.textSize / 2 + 2).toFloat(),
+                    bgPaint
+                )
+                canvas.drawText(ch, (pt.x - textW / 2).toFloat(), (pt.y + paint.textSize / 3).toFloat(), paint)
+            }
+        }
     }
 
     fun matToJpeg(mat: Mat, path: String, maxWidth: Int = 600, quality: Int = 85) {

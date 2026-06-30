@@ -1,7 +1,6 @@
 package io.github.jiangood.xq.ui
 
 import android.graphics.Bitmap
-import android.graphics.Paint
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -410,39 +409,7 @@ private fun generateTestVisualization(
         mat.release()
 
         val canvas = android.graphics.Canvas(bmp)
-        for (r in 0 until 10) {
-            for (c in 0 until 9) {
-                val p = board[r][c] ?: continue
-                val ch = PIECE_CHINESE[p] ?: continue
-                val pt = grid[r][c]
-                val expected = STANDARD_OPENING[r][c]
-                val correct = p == expected
-
-                val textPaint = Paint().apply {
-                    color = if (correct) android.graphics.Color.RED else android.graphics.Color.YELLOW
-                    textSize = 28f
-                    isAntiAlias = true
-                    isFakeBoldText = true
-                }
-                val textW = textPaint.measureText(ch)
-                val bgPaint = Paint().apply {
-                    color = android.graphics.Color.argb(180, 0, 0, 0)
-                }
-                canvas.drawRect(
-                    (pt.x - textW / 2 - 3).toFloat(),
-                    (pt.y - textPaint.textSize / 2 - 3).toFloat(),
-                    (pt.x + textW / 2 + 3).toFloat(),
-                    (pt.y + textPaint.textSize / 2 + 3).toFloat(),
-                    bgPaint
-                )
-                canvas.drawText(
-                    ch,
-                    (pt.x - textW / 2).toFloat(),
-                    (pt.y + textPaint.textSize / 3).toFloat(),
-                    textPaint
-                )
-            }
-        }
+        AndroidImageUtils.drawPieceLabels(canvas, grid, board)
 
         bmp
     } catch (_: Exception) {
