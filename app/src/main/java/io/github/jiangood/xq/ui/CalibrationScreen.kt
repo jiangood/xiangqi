@@ -254,35 +254,46 @@ fun CalibrationScreen(onBack: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("缩放", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(48.dp))
-                        OutlinedTextField(
-                            value = gridPx.toString(),
-                            onValueChange = { input ->
-                                val parsed = input.toIntOrNull()
-                                if (parsed != null && parsed in 5..500) {
-                                    gridPx = parsed
-                                }
-                            },
-                            modifier = Modifier.width(100.dp),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                            textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
+                        Text(
+                            "缩放",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.width(64.dp),
+                            textAlign = TextAlign.End
                         )
-                        Spacer(Modifier.width(16.dp))
-                        Text("上下移动", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(64.dp))
-                        OutlinedTextField(
-                            value = yOffset.toString(),
-                            onValueChange = { input ->
-                                val parsed = input.toIntOrNull()
-                                if (parsed != null && parsed in -9999..9999) {
-                                    yOffset = parsed
-                                }
-                            },
-                            modifier = Modifier.width(100.dp),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                            textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center)
+                        Spacer(Modifier.width(8.dp))
+                        IconButton(onClick = { gridPx = (gridPx - 1).coerceIn(5, 500) }) {
+                            Text("−", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Box(modifier = Modifier.width(56.dp), contentAlignment = Alignment.Center) {
+                            Text(gridPx.toString(), style = MaterialTheme.typography.titleMedium)
+                        }
+                        IconButton(onClick = { gridPx = (gridPx + 1).coerceIn(5, 500) }) {
+                            Icon(Icons.Filled.Add, contentDescription = "放大")
+                        }
+                    }
+
+                    Spacer(Modifier.height(4.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "上下移动",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.width(64.dp),
+                            textAlign = TextAlign.End
                         )
+                        Spacer(Modifier.width(8.dp))
+                        IconButton(onClick = { yOffset = (yOffset - 1).coerceIn(-9999, 9999) }) {
+                            Text("−", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Box(modifier = Modifier.width(56.dp), contentAlignment = Alignment.Center) {
+                            Text(yOffset.toString(), style = MaterialTheme.typography.titleMedium)
+                        }
+                        IconButton(onClick = { yOffset = (yOffset + 1).coerceIn(-9999, 9999) }) {
+                            Icon(Icons.Filled.Add, contentDescription = "下移")
+                        }
                     }
 
                     Spacer(Modifier.height(8.dp))
