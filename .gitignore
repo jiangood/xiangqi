@@ -1,0 +1,70 @@
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+cli/bin/Pikafish-20250110/
+/model-training/data/images/
+/model-training/data/labels/
+/model-training/data/preview/
+/model-training/runs/
+/model-training/yolo11n.pt
+/model-training/**/__pycache__/
+/docs/superpowers/
+/docs/superpowers/specs/
+**/tmp/
+**/output/
+/model-training/data/raw/
+/model-training.rar
+# opencode
+/.opencode/
+
+# ONNX models tracked via LFS - not in .gitignore
+
+# Android
+.gradle/
+local.properties
+release-key.jks
+app/release.keystore
+*.apk
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Playwright / temp / debug artifacts
+.playwright-mcp/
+cli/temp/
+cli/logs/
+advisor-overview
+ci-status
+ci-status-*
+ci-run-detail

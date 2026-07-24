@@ -1,0 +1,240 @@
+package io.github.jiangood.xq.engine
+
+import android.content.Context
+import android.util.Log
+import io.github.jiangood.xq.platform.AndroidImageUtils
+import io.github.jiangood.xq.util.AppLog
+import java.io.*
+import java.util.concurrent.TimeUnit
+import java.util.zip.ZipFile
+
+class AndroidEngineClient(private val context: Context) {
+
+    private var process: Process? = null
+    private var writer: BufferedWriter? = null
+    private var reader: BufferedReader? = null
+    private var isReady = false
+
+    companion object {
+        private const val TAG = "AndroidEngineClient"
+        private const val NNUE_NAME = "pikafish.nnue"
+        private val ENGINE_NAMES = listOf("pikafish-armv8")
+    }
+
+    fun start(): Boolean {
+        for (name in ENGINE_NAMES) {
+            try {
+                val file = findEngine(name) ?: continue
+                file.setExecutable(true)
+                if (!file.canExecute()) {
+                    Runtime.getRuntime().exec(arrayOf("chmod", "700", file.absolutePath))
+                        .waitFor()
+                }
+                if (!file.canExecute()) continue
+
+                process = ProcessBuilder(file.absolutePath)
+                    .directory(context.filesDir)
+                    .redirectErrorStream(true)
+                    .start()
+                reader = BufferedReader(InputStreamReader(process!!.inputStream))
+                writer = BufferedWriter(OutputStreamWriter(process!!.outputStream))
+
+                if (uciHandshake()) {
+                    isReady = true
+                    Log.i(TAG, "Engine started: ${file.name}")
+                    return true
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to start $name", e)
+                process?.destroy()
+                process = null
+            }
+        }
+        return false
+    }
+
+    private fun findEngine(name: String): File? {
+        // 1. nativeLibraryDir (extracted by PackageManager from jniLibs)
+        val nativeFile = File(context.applicationInfo.nativeLibraryDir, "lib${name}.so")
+        if (nativeFile.exists()) {
+            Log.i(TAG, "Found engine in nativeLibraryDir: $nativeFile")
+            return nativeFile
+        }
+
+        // 2. Extract from APK's lib/ directory (fallback)
+        try {
+            val appInfo = context.packageManager.getApplicationInfo(context.packageName, 0)
+            val apkPath = appInfo.sourceDir
+            val abiDir = if (nativeFile.parentFile?.name == "arm64") "arm64-v8a" else "arm64"
+            val entryPath = "lib/${abiDir}/lib${name}.so"
+            ZipFile(apkPath).use { zip ->
+                val entry = zip.getEntry(entryPath) ?: return null
+                val outFile = File(context.filesDir, name)
+                if (!outFile.exists()) {
+                    zip.getInputStream(entry).use { input ->
+                        AndroidImageUtils.copyToFile(input, outFile)
+                    }
+                }
+                if (outFile.exists()) {
+                    Log.i(TAG, "Extracted engine from APK zip: $outFile")
+                    return outFile
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "APK zip extraction failed", e)
+        }
+
+        return null
+    }
+
+    private fun uciHandshake(): Boolean {
+        AppLog.add("[引擎] UCI 握手开始")
+        send("uci")
+        val deadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(15)
+        var line: String?
+        while (System.currentTimeMillis() < deadline) {
+            line = reader?.readLine() ?: break
+            if (line.startsWith("uciok")) {
+                val nnueFile = File(context.filesDir, NNUE_NAME)
+                if (nnueFile.exists()) {
+                    AppLog.add("[引擎] 设置 NNUE: ${nnueFile.absolutePath}")
+                    send("setoption name EvalFile value ${nnueFile.absolutePath}")
+                }
+                val threads = io.github.jiangood.xq.settings.SettingsManager.getThreads()
+                AppLog.add("[引擎] 设置 Hash=128, Threads=$threads")
+                send("setoption name Hash value 128")
+                send("setoption name Threads value $threads")
+                send("isready")
+                val readyDeadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(10)
+                while (System.currentTimeMillis() < readyDeadline) {
+                    line = reader?.readLine() ?: break
+                    if (line.startsWith("readyok")) {
+                        AppLog.add("[引擎] UCI 握手成功")
+                        return true
+                    }
+                }
+                AppLog.add("[引擎] UCI 握手失败: readyok 超时")
+                return false
+            }
+        }
+        AppLog.add("[引擎] UCI 握手失败: uciok 超时")
+        return false
+    }
+
+    private fun isProcessAlive(): Boolean {
+        return try {
+            process?.let { it.isAlive() && it.exitValue() == 0 } ?: false
+        } catch (_: IllegalThreadStateException) {
+            true // process is still running
+        }
+    }
+
+    fun getBestMove(fen: String, depth: Int = io.github.jiangood.xq.settings.SettingsManager.getDepth()): List<String> {
+        if (!isReady) {
+            AppLog.add("[引擎] getBestMove: 引擎未就绪，返回空列表")
+            return emptyList()
+        }
+        if (!isProcessAlive()) {
+            val exitVal = try { process?.exitValue() } catch (_: Exception) { -1 }
+            AppLog.add("[引擎] getBestMove: 引擎进程已退出, exitValue=$exitVal")
+            isReady = false
+            return emptyList()
+        }
+
+        return try {
+            val startTime = System.currentTimeMillis()
+            val currentThreads = io.github.jiangood.xq.settings.SettingsManager.getThreads()
+            AppLog.add("[引擎] 引擎分析开始 depth=$depth, threads=$currentThreads")
+            send("position fen $fen")
+            send("setoption name MultiPV value 1")
+            send("setoption name Threads value $currentThreads")
+            send("go depth $depth")
+
+            val moves = mutableListOf<String>()
+            var line: String?
+            var lineCount = 0
+            var lastLine = ""
+            var scoreLine = ""
+            val deadline = System.currentTimeMillis() + 30000
+
+            while (System.currentTimeMillis() < deadline) {
+                line = reader?.readLine() ?: break
+                lineCount++
+                lastLine = line
+                if (line.startsWith("info") && line.contains("score cp")) {
+                    scoreLine = line
+                }
+                if (line.startsWith("bestmove")) {
+                    val best = line.split(" ").getOrNull(1)
+                    if (best != null) {
+                        moves.add(best)
+                    }
+                    break
+                }
+            }
+
+            val elapsedMs = System.currentTimeMillis() - startTime
+
+            if (moves.isNotEmpty()) {
+                AppLog.add("[引擎] 引擎分析完成: ${elapsedMs}ms, 最佳走法: ${moves[0]}, 读取 ${lineCount} 行引擎输出")
+                if (scoreLine.isNotEmpty()) {
+                    // Extract depth and score from info line for richer log
+                    val depthMatch = Regex("depth\\s+(\\d+)").find(scoreLine)
+                    val scoreMatch = Regex("score cp\\s+([-]?\\d+)").find(scoreLine)
+                    val depthStr = depthMatch?.groupValues?.getOrNull(1) ?: "?"
+                    val scoreStr = scoreMatch?.groupValues?.getOrNull(1) ?: "?"
+                    AppLog.add("[引擎]   搜索深度: $depthStr, 局面评分: $scoreStr cp")
+                }
+            } else {
+                val timedOut = System.currentTimeMillis() >= deadline
+                if (timedOut) {
+                    AppLog.add("[引擎] getBestMove: 超时! 已等待 ${elapsedMs}ms, 读取了 $lineCount 行, 最后一行: $lastLine")
+                } else {
+                    AppLog.add("[引擎] getBestMove: 无走法, 读取了 $lineCount 行, reader 已关闭, 耗时 ${elapsedMs}ms")
+                }
+            }
+            moves
+        } catch (e: Exception) {
+            AppLog.add("[引擎] getBestMove 异常: ${e.javaClass.simpleName}: ${e.message}")
+            Log.e(TAG, "getBestMove failed", e)
+            emptyList()
+        }
+    }
+
+    private fun send(cmd: String) {
+        try {
+            if (writer == null) {
+                AppLog.add("[引擎] send 失败: writer 为空")
+                return
+            }
+            writer?.write("$cmd\n")
+            writer?.flush()
+        } catch (e: IOException) {
+            AppLog.add("[引擎] send 失败: ${e.message}")
+            Log.e(TAG, "send failed", e)
+        }
+    }
+
+    fun close() {
+        isReady = false
+        try {
+            val exitVal = try { process?.exitValue() } catch (_: Exception) { null }
+            if (exitVal != null) {
+                AppLog.add("[引擎] 关闭引擎（进程已退出）")
+            } else {
+                AppLog.add("[引擎] 关闭引擎")
+                send("quit")
+                process?.waitFor(2, TimeUnit.SECONDS)
+            }
+        } catch (_: Exception) {}
+        try {
+            process?.let {
+                if (it.isAlive) {
+                    it.destroyForcibly()
+                }
+            }
+        } catch (_: Exception) {}
+        try { reader?.close() } catch (_: Exception) {}
+        try { writer?.close() } catch (_: Exception) {}
+    }
+}

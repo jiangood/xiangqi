@@ -1,0 +1,77 @@
+name: Build APK
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Cache Android SDK
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}/platforms
+            ${{ env.ANDROID_HOME }}/build-tools
+          key: ${{ runner.os }}-sdk-${{ hashFiles('**/*.gradle*') }}
+          restore-keys: |
+            ${{ runner.os }}-sdk-
+
+      - name: Verify version tag matches build.gradle
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          FILE_VERSION=$(grep 'versionName\s*=' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+          if [ "$TAG_VERSION" != "$FILE_VERSION" ]; then
+            echo "ERROR: Tag version (v$TAG_VERSION) does not match build.gradle.kts (v$FILE_VERSION)"
+            exit 1
+          fi
+          echo "Version check passed: v$TAG_VERSION"
+
+      - name: Setup Android SDK
+        run: |
+          SDK_MGR="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          echo "SDK manager: $SDK_MGR"
+          yes | $SDK_MGR --install "platforms;android-34" "build-tools;34.0.0" || true
+
+      - name: Decode keystore
+        run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > app/keystore.jks
+
+      - name: Build full APK
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/app/keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: app/build/outputs/apk/release/xq-*.apk
+          generate_release_notes: true
