@@ -204,8 +204,14 @@ public class BoardUtils {
         if (grid != null) {
             log.info("computeGrid: detected from lines, cell="
                 + String.format("%.1f", grid[1][0].y - grid[0][0].y));
+            return grid;
         }
-        return grid;
+        // Fallback: use the board rectangle geometry to estimate grid
+        if (sBoardRectInCropped != null) {
+            log.warning("computeGrid: line detection failed, using board rect fallback");
+            return computeGridFromBoardRect(sBoardRectInCropped);
+        }
+        return null;
     }
 
     /**

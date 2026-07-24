@@ -1,6 +1,7 @@
 package io.github.jiangood.xq
 
 import android.app.Application
+import io.github.jiangood.xq.data.AppDatabase
 import io.github.jiangood.xq.settings.SettingsManager
 import io.github.jiangood.xq.util.GlobalExceptionHandler
 
@@ -9,5 +10,6 @@ class App : Application() {
         super.onCreate()
         GlobalExceptionHandler.init(this)
         SettingsManager.init(this)
+        AppDatabase.getInstance(this)
     }
 }
