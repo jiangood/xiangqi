@@ -45,6 +45,7 @@ cli/bin/Pikafish-20250110/
 /model-training.rar
 # opencode
 /.opencode/
+/.superpowers/
 
 # ONNX models tracked via LFS - not in .gitignore
 

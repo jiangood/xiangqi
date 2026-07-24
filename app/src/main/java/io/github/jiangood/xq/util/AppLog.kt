@@ -16,6 +16,7 @@ object AppLog {
     val logs: StateFlow<List<String>> = _logs
 
     private var logFile: File? = null
+    private var sessionStartIndex: Int? = null
 
     fun init(context: Context) {
         logFile = File(context.filesDir, LOG_FILE)
@@ -45,5 +46,17 @@ object AppLog {
         try {
             logFile?.writeText("")
         } catch (_: Exception) {}
+    }
+
+    fun startSession() {
+        sessionStartIndex = _logs.value.size
+    }
+
+    fun endSession(): String {
+        val start = sessionStartIndex ?: return ""
+        sessionStartIndex = null
+        val current = _logs.value
+        if (start >= current.size) return ""
+        return current.subList(start, current.size).joinToString("\n")
     }
 }

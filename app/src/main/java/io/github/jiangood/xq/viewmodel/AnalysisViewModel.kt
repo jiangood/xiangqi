@@ -8,13 +8,17 @@ import androidx.lifecycle.viewModelScope
 import io.github.jiangood.xq.analysis.AnalysisEngine
 import io.github.jiangood.xq.analysis.AnalysisEventBus
 import io.github.jiangood.xq.analysis.AnalysisResult
+import io.github.jiangood.xq.data.AnalysisRecord
+import io.github.jiangood.xq.data.AppDatabase
 import io.github.jiangood.xq.platform.AndroidImageUtils
 import io.github.jiangood.xq.service.CaptureOverlayService
 import io.github.jiangood.xq.util.AppLog
 import io.github.jiangood.xq.util.FenUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.opencv.android.OpenCVLoader
 import java.io.File
@@ -56,6 +60,11 @@ class AnalysisViewModel(application: Application) : AndroidViewModel(application
     val showNnueWarning: StateFlow<Boolean> = _showNnueWarning
 
     val logs: StateFlow<List<String>> = AppLog.logs
+
+    val history: StateFlow<List<AnalysisRecord>> = AppDatabase.getInstance(getApplication())
+        .analysisRecordDao()
+        .getAllRecords()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
         // 订阅悬浮窗分析事件

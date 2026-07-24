@@ -1,21 +1,29 @@
 package io.github.jiangood.xq.ui
 
+import android.content.ContentValues
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Environment
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -32,9 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import io.github.jiangood.xq.data.AnalysisRecord
 import io.github.jiangood.xq.viewmodel.AnalysisViewModel
 import io.github.jiangood.xq.viewmodel.UiState
-import androidx.compose.material3.IconButton
 
 @Composable
 fun MainScreen(
@@ -43,13 +51,10 @@ fun MainScreen(
     onOpenSettings: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
-    val scrollState = rememberScrollState()
+    val history by viewModel.history.collectAsState()
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(scrollState),
+        modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(
@@ -84,92 +89,38 @@ fun MainScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        when (val s = state) {
-            is UiState.Idle -> {
-                Text("请启动悬浮窗后截图分析", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            is UiState.Analyzing -> {
-                CircularProgressIndicator()
-                Spacer(Modifier.height(8.dp))
-                Text("分析中...")
-            }
-            is UiState.Result -> {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("分析结果", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text(
-                                text = "耗时 ${"%.1f".format(s.elapsedMs / 1000.0)}s",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Spacer(Modifier.height(12.dp))
+        if (state is UiState.Analyzing) {
+            CircularProgressIndicator()
+            Spacer(Modifier.height(8.dp))
+            Text("分析中...")
+            Spacer(Modifier.height(12.dp))
+        }
 
-                        Text("推荐走法", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = s.moves.firstOrNull() ?: "—",
-                            fontSize = 36.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        if (s.imageDir != null) {
-                            Spacer(Modifier.height(12.dp))
-                            Text("识别结果", fontWeight = FontWeight.Medium, fontSize = 13.sp)
-                            Spacer(Modifier.height(8.dp))
-
-                            ImageDisplay(
-                                imagePath = s.imageDir,
-                                contentDescription = "可视化标注"
-                            )
-                        } else if (s.sourceImageDir != null) {
-                            Spacer(Modifier.height(12.dp))
-                            Text("截图预览", fontWeight = FontWeight.Medium, fontSize = 13.sp)
-                            Spacer(Modifier.height(8.dp))
-
-                            ImageDisplay(
-                                imagePath = s.sourceImageDir,
-                                contentDescription = "截图"
-                            )
-                        }
-
-                        if (s.validationWarnings.isNotEmpty()) {
-                            Spacer(Modifier.height(12.dp))
-                            s.validationWarnings.forEach { w ->
-                                Text(text = "⚠ $w", fontSize = 13.sp, color = MaterialTheme.colorScheme.error)
-                            }
-                        }
-                    }
+        if (history.isEmpty() && state !is UiState.Analyzing) {
+            Text(
+                text = "暂无分析记录\n请启动悬浮窗后截图分析",
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            val listState = rememberLazyListState()
+            val historySize by remember { derivedStateOf { history.size } }
+            LaunchedEffect(historySize) {
+                if (history.isNotEmpty()) {
+                    listState.animateScrollToItem(0)
                 }
             }
-            is UiState.Error -> {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(s.message, color = MaterialTheme.colorScheme.error)
-                    if (s.sourceImageDir != null) {
-                        Spacer(Modifier.height(8.dp))
-                        Text("截图预览", fontWeight = FontWeight.Medium, fontSize = 13.sp)
-                        Spacer(Modifier.height(8.dp))
-                        ImageDisplay(
-                            imagePath = s.sourceImageDir,
-                            contentDescription = "截图"
-                        )
-                    }
+
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                state = listState
+            ) {
+                items(history, key = { it.id }) { record ->
+                    HistoryCard(record = record)
                 }
             }
         }
-
-        Spacer(Modifier.height(8.dp))
-
-        val allLogs = viewModel.logs.collectAsState().value
-
-        LogCard(title = "日志", logs = allLogs)
     }
 
     if (viewModel.showNnueWarning.collectAsState().value) {
@@ -181,172 +132,166 @@ fun MainScreen(
                 Text("NNUE 权重文件缺失，当前为精简版安装包，无法启动引擎分析。\n\n请安装完整版以获得完整功能。")
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.dismissNnueWarning() }) {
-                    Text("知道了")
-                }
+                TextButton(onClick = { viewModel.dismissNnueWarning() }) { Text("知道了") }
             }
         )
     }
 }
 
 @Composable
-private fun LogCard(title: String, logs: List<String>) {
-    val context = LocalContext.current
-    val logScrollState = rememberScrollState()
+private fun HistoryCard(record: AnalysisRecord) {
+    var expanded by remember { mutableStateOf(false) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = title,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 14.sp,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-                if (logs.isNotEmpty()) {
-                    Text(
-                        text = "${logs.size} 行",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f)
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val bmp = record.screenshotPath?.let { path ->
+            val opts = BitmapFactory.Options().apply { inSampleSize = 4 }
+            BitmapFactory.decodeFile(path, opts)
+        }
+                if (bmp != null) {
+                    Image(
+                        bitmap = bmp.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier.size(60.dp, 60.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(formatTimestamp(record.timestamp), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(2.dp))
+                    if (record.status == "success") {
+                        Text("走法: ${record.move ?: "—"}", fontSize = 14.sp, color = Color(0xFFC62828))
+                        Spacer(Modifier.height(2.dp))
+                        Text("棋子: ${record.pieceCount ?: 0} | 耗时: ${record.elapsedMs?.div(1000f)?.let { "%.1f".format(it) } ?: "—"}s", fontSize = 12.sp)
+                    } else {
+                        Text("❌ ${record.errorMessage ?: "失败"}", fontSize = 14.sp, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(
+                        if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (expanded) "收起" else "展开"
                     )
                 }
             }
-
-            if (logs.isNotEmpty()) {
-                Spacer(Modifier.height(4.dp))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 160.dp)
-                        .verticalScroll(logScrollState)
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                            shape = MaterialTheme.shapes.small
-                        )
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = logs.joinToString("\n"),
-                        fontSize = 11.sp,
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    IconButton(
-                        onClick = {
-                            val text = logs.joinToString("\n")
-                            copyToClipboard(context, text)
-                        },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "复制日志",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+            if (expanded) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                ExpandedContent(record = record)
             }
         }
     }
 }
 
-private fun copyToClipboard(context: Context, text: String) {
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    val clip = ClipData.newPlainText("日志", text)
-    clipboard.setPrimaryClip(clip)
-    Toast.makeText(context, "日志已复制", Toast.LENGTH_SHORT).show()
-}
-
 @Composable
-private fun ImageDisplay(imagePath: String, contentDescription: String) {
-    var selectedImage by remember { mutableStateOf<Bitmap?>(null) }
-    val bitmap = remember(imagePath) { BitmapFactory.decodeFile(imagePath) }
-    bitmap?.let { bmp ->
+private fun ExpandedContent(record: AnalysisRecord) {
+    val context = LocalContext.current
+
+    if (record.status == "success" && record.fen != null) {
+        Text("FEN: ${record.fen}", fontSize = 12.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+        Spacer(Modifier.height(4.dp))
+    }
+
+    val boardLines = record.logs.lines().filter { it.contains("row") || it.contains("  row") }
+    if (boardLines.isNotEmpty()) {
+        Text("棋盘:", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+        boardLines.forEach { line ->
+            Text(line.trim(), fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+
+    val vizBmp = record.visualizationPath?.let { BitmapFactory.decodeFile(it) }
+    val srcBmp = record.screenshotPath?.let { BitmapFactory.decodeFile(it) }
+    val displayBmp = vizBmp ?: srcBmp
+    if (displayBmp != null) {
         Image(
-            bitmap = bmp.asImageBitmap(),
-            contentDescription = contentDescription,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { selectedImage = bmp }
+            bitmap = displayBmp.asImageBitmap(),
+            contentDescription = null,
+            modifier = Modifier.fillMaxWidth()
         )
+        Spacer(Modifier.height(8.dp))
     }
 
-    selectedImage?.let { bmp ->
-        ZoomableImageDialog(
-            bitmap = bmp,
-            onDismiss = { selectedImage = null }
-        )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = { copyFullResult(record, context) }) {
+            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text("复制结果", fontSize = 12.sp)
+        }
+        if (record.screenshotPath != null) {
+            OutlinedButton(onClick = { saveImageToGallery(context, record.screenshotPath, "截图") }) {
+                Text("下载截图", fontSize = 12.sp)
+            }
+        }
+        if (record.visualizationPath != null) {
+            OutlinedButton(onClick = { saveImageToGallery(context, record.visualizationPath, "标注图") }) {
+                Text("下载标注图", fontSize = 12.sp)
+            }
+        }
     }
 
-    if (bitmap == null) {
-        Text(
-            text = "图片加载失败: $imagePath",
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.error
-        )
-    }
-}
+    Spacer(Modifier.height(8.dp))
 
-@Composable
-private fun ZoomableImageDialog(bitmap: Bitmap, onDismiss: () -> Unit) {
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offsetX by remember { mutableFloatStateOf(0f) }
-    var offsetY by remember { mutableFloatStateOf(0f) }
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
+    val logs = record.logs.lines()
+    if (logs.isNotEmpty()) {
+        Text("日志:", fontWeight = FontWeight.Medium, fontSize = 13.sp)
+        Spacer(Modifier.height(4.dp))
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
-                .clickable(onClick = onDismiss)
+                .fillMaxWidth()
+                .heightIn(max = 160.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), shape = MaterialTheme.shapes.small)
+                .padding(8.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer(
-                        scaleX = scale,
-                        scaleY = scale,
-                        translationX = offsetX,
-                        translationY = offsetY
-                    )
-                    .pointerInput(Unit) {
-                        detectTransformGestures { _, pan, zoom, _ ->
-                            scale = (scale * zoom).coerceIn(1f, 5f)
-                            offsetX += pan.x
-                            offsetY += pan.y
-                        }
-                    }
-            )
-
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "关闭",
-                    tint = Color.White
-                )
-            }
+            Text(logs.joinToString("\n"), fontSize = 11.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
         }
     }
 }
 
+private fun copyFullResult(record: AnalysisRecord, context: Context) {
+    val sb = StringBuilder()
+    sb.appendLine("===== 象棋分析结果 =====")
+    sb.appendLine("时间: ${formatTimestamp(record.timestamp)}")
+    if (record.status == "success") {
+        sb.appendLine("状态: ✅ 成功")
+        sb.appendLine("推荐走法: ${record.move ?: "—"}")
+        sb.appendLine("FEN: ${record.fen ?: "—"}")
+        sb.appendLine("棋子数: ${record.pieceCount ?: 0}")
+        sb.appendLine("总耗时: ${record.elapsedMs?.div(1000f)?.let { "%.1f".format(it) } ?: "—"}s")
+    } else {
+        sb.appendLine("状态: ❌ 失败")
+        sb.appendLine("错误: ${record.errorMessage ?: "—"}")
+    }
+    sb.appendLine()
+    sb.appendLine("--- 日志 ---")
+    sb.append(record.logs)
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText("象棋分析结果", sb.toString()))
+    Toast.makeText(context, "已复制到剪贴板", Toast.LENGTH_SHORT).show()
+}
 
+private fun saveImageToGallery(context: Context, path: String, label: String) {
+    try {
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "xiangqi_${label}_${System.currentTimeMillis()}.jpg")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/象棋支招")
+        }
+        val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+        if (uri != null) {
+            context.contentResolver.openOutputStream(uri)?.use { out ->
+                BitmapFactory.decodeFile(path)?.compress(Bitmap.CompressFormat.JPEG, 90, out)
+            }
+            Toast.makeText(context, "${label}已保存到相册", Toast.LENGTH_SHORT).show()
+        }
+    } catch (e: Exception) {
+        Toast.makeText(context, "保存失败: ${e.message}", Toast.LENGTH_SHORT).show()
+    }
+}
+
+private fun formatTimestamp(ts: Long): String {
+    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+    return sdf.format(java.util.Date(ts))
+}

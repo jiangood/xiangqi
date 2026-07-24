@@ -4,7 +4,7 @@
 
 ## Commits Made
 
-- `5bb1704` — feat: add Room database setup (entity, DAO, database, deps)
+- `6cabb9d` — feat: add Room database setup (entity, DAO, database, deps, version catalog)
 
 ## Build Result
 
